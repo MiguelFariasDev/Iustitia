@@ -1,0 +1,113 @@
+# ============================================================================
+# Iustitia — .gitignore raiz (monorepo)
+# ============================================================================
+
+# --------------------------------------------------------------------------
+# Documentação interna — NÃO versionar
+# --------------------------------------------------------------------------
+/docs/requisitos/
+/SISTEMA DE GESTÃO PARA.txt
+
+# --------------------------------------------------------------------------
+# Segredos e variáveis de ambiente
+# --------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key
+*.pem
+secrets.json
+appsettings.Development.local.json
+appsettings.*.local.json
+
+# --------------------------------------------------------------------------
+# .NET / Backend (src, tests)
+# --------------------------------------------------------------------------
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dbmdl
+*.dbproj.schemaview
+*.pdb
+*.cache
+project.lock.json
+project.fragment.lock.json
+artifacts/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+.vs/
+
+# --------------------------------------------------------------------------
+# Node / React (web)
+# --------------------------------------------------------------------------
+node_modules/
+web/dist/
+web/build/
+web/.vite/
+web/coverage/
+web/playwright-report/
+web/test-results/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# --------------------------------------------------------------------------
+# Xcode / Swift (mobile-ios) — regras específicas também em mobile-ios/.gitignore
+# --------------------------------------------------------------------------
+mobile-ios/**/DerivedData/
+mobile-ios/**/*.xcuserstate
+mobile-ios/**/xcuserdata/
+mobile-ios/**/.build/
+
+# --------------------------------------------------------------------------
+# Docker
+# --------------------------------------------------------------------------
+*.env.docker
+
+# --------------------------------------------------------------------------
+# Terraform (infra)
+# --------------------------------------------------------------------------
+infra/terraform/**/.terraform/
+infra/terraform/**/.terraform.lock.hcl
+infra/terraform/**/*.tfstate
+infra/terraform/**/*.tfstate.*
+infra/terraform/**/*.tfvars
+!infra/terraform/**/*.tfvars.example
+infra/terraform/**/crash.log
+
+# --------------------------------------------------------------------------
+# Supabase (infra)
+# --------------------------------------------------------------------------
+infra/supabase/.branches/
+infra/supabase/.temp/
+
+# --------------------------------------------------------------------------
+# Observabilidade / logs
+# --------------------------------------------------------------------------
+*.log
+logs/
+
+# --------------------------------------------------------------------------
+# IDE / editores
+# --------------------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# --------------------------------------------------------------------------
+# Sistema operacional
+# --------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
