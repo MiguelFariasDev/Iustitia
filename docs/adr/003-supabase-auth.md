@@ -21,10 +21,11 @@ Usar **Supabase Auth** para: login, MFA (TOTP), OAuth, emissão de JWT e
 gestão de refresh tokens (via SDKs oficiais Supabase JS e Supabase Swift). O
 backend .NET **nunca** gerencia senhas ou emite tokens — ele apenas **valida**
 o JWT emitido pelo Supabase, usando o endpoint JWKS para verificar a
-assinatura. Claims customizadas (`tenant_id`, `role`, `permissions`) são
-injetadas via Custom Access Token Hook do Supabase, para que o backend não
-precise consultar o banco a cada requisição só para saber o tenant do
-usuário.
+assinatura. Claims customizadas (`tenant_id`, `user_role`) são injetadas via
+Custom Access Token Hook do Supabase, para que o backend não precise
+consultar o banco a cada requisição só para saber o tenant e o papel do
+usuário — ver ADR-029 para o detalhamento (e por que a claim se chama
+`user_role`, não `role`).
 
 ## Consequências
 
@@ -39,3 +40,17 @@ usuário.
 - Qualquer regra de autorização mais fina (permissões granulares por módulo)
   precisa ser resolvida no backend a partir das claims, não delegada ao
   Supabase.
+
+## Atualização — Etapa 0.3 (implementação)
+
+Validação de JWT implementada via `JwtBearer` + `Authority` apontando para
+`{SUPABASE_URL}/auth/v1` (descoberta OIDC/JWKS automática, chaves nunca
+hardcoded) — ver `JwtValidationExtensions`. Exige assinatura assimétrica
+(RS256/ES256) habilitada no projeto Supabase; o esquema HS256/segredo
+compartilhado não expõe JWKS e não é suportado por este design.
+
+`ICurrentUser` real (`CurrentUserAccessor`) lê as claims do
+`ClaimsPrincipal` já validado pelo middleware de autenticação — nenhuma
+chamada adicional ao Supabase é feita por requisição. Fluxo completo
+(login, refresh, logout, convite, aceite de convite) documentado em
+`docs/compliance/auth-flow.md`; RBAC por policies em ADR-028.

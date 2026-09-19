@@ -43,3 +43,13 @@ Storage, que têm suas próprias ADRs (003, 018).
   viável se necessário).
 - Latência de rede entre Azure (backend) e Supabase (banco) — a decisão de
   região/hospedagem está em `docs/requisitos/15-decisoes-pendentes.md`.
+
+## Atualização — Etapa 0.2 (implementação de RLS)
+
+As extensões previstas (`pg_trgm`, `pgcrypto`, `pg_stat_statements`,
+`uuid-ossp`) foram habilitadas via migration SQL versionada
+(`infra/supabase/migrations/000_extensions.sql`) e validadas em Postgres
+real. RLS foi implementada e testada de ponta a ponta — detalhes completos
+no ADR-004 (atualizado). A estratégia de índices avançados que dependem de
+recursos específicos do Postgres (full-text, trigram, BRIN) está detalhada
+no ADR-026 e em `docs/database/indexes.md`.
