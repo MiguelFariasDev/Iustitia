@@ -7,7 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <!-- Swashbuckle.AspNetCore (não Microsoft.AspNetCore.OpenApi) é o gerador de OpenAPI/Swagger
+         UI deste projeto — ver ServiceCollectionExtensions.AddPlatformApi. Referenciar os dois
+         pacotes ao mesmo tempo quebra a compilação: Microsoft.AspNetCore.OpenApi traz
+         Microsoft.OpenApi 2.x (que removeu o namespace Microsoft.OpenApi.Models), e o CPM resolve
+         a versão mais alta do pacote transitivo no grafo inteiro, inclusive para o Swashbuckle. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Asp.Versioning.Http" />
   </ItemGroup>
 
   <ItemGroup>
