@@ -67,6 +67,16 @@ Quando um dado é excluído por direito ao esquecimento (ver
 contêm permanecerão retidos (respeitando a retenção mínima legal quando
 aplicável) e quando serão expurgados definitivamente.
 
+## Backup da outbox e da idempotência
+
+`outbox_messages` e `processed_events` (ver ADR-034/035) vivem no mesmo
+Postgres do resto do sistema, então já entram no backup padrão do banco.
+Não recebem tratamento especial de restauração: em caso de restore, mensagens
+`Pending` restauradas são reprocessadas normalmente pelo `OutboxProcessorJob`
+(idempotência dos consumers, via `processed_events`, evita efeito colateral
+duplicado — ADR-035) e registros de idempotência restaurados só encurtam a
+janela de reprocessamento, nunca causam inconsistência.
+
 ## Política de retenção de dados (resumo)
 
 - Dados de clientes e processos: 5 anos após o último movimento

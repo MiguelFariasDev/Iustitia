@@ -31,6 +31,19 @@
 - [ ] DPIA (Data Protection Impact Assessment) documentado — **TODO: anexar**.
 - [ ] Registro de consentimento sobre uso de IA nos dados do cliente final.
 
+## Retenção de mensagens na outbox e idempotência
+
+- `outbox_messages` guarda o payload serializado de cada domain event
+  (pode conter dados pessoais, ex.: e-mail em `UserInvitedEvent`) até ser
+  publicado com sucesso; mensagens `Processed` são removidas após 30 dias
+  (`Outbox:RetentionDays`) e `Failed` definitivamente após 60 dias — ver
+  ADR-034 e `OutboxCleanupJob`.
+- `processed_events` (idempotência de consumers — ADR-035) guarda apenas
+  `EventId` + nome do consumer, nunca o payload; TTL de 30 dias.
+- Nenhum consumer/job loga o payload completo de um evento — apenas
+  identificadores (`EventId`, `TenantId`, tipo do evento) — ver
+  `ConsumerBase<TMessage>`/`OutboxProcessor`.
+
 ## IA e dados pessoais
 
 - Nenhum dado de cliente é usado para treinar modelos de terceiros (ver
