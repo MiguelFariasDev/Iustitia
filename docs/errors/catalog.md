@@ -21,6 +21,8 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `COMMON_INVALID_OPERATION` | Esta operação não é permitida no estado atual. | 409 | Conflict | Fallback para transições de estado inválidas sem um código próprio (ex.: reativar um tenant que não está suspenso, mudar para o mesmo papel que o usuário já tem). | Consultar o estado atual do recurso antes de tentar a operação. |
 | `COMMON_TIMEOUT` | A operação demorou mais que o esperado. Tente novamente. | 500 | Failure | Uma operação interna excedeu um tempo limite. | Tentar novamente; se persistir, reportar ao suporte. |
 | `COMMON_UNAVAILABLE` | Serviço temporariamente indisponível. Tente novamente em instantes. | 500 | Failure | Uma dependência interna está temporariamente fora do ar. | Tentar novamente em instantes. |
+| `COMMON_RATE_LIMITED` | Muitas requisições. Tente novamente em instantes. | 429 | Failure | Rate limiting nativo do ASP.NET Core (ver ADR-039/RateLimitingConfiguration) — nunca passa pelo Result Pattern, é rejeitado antes do handler rodar. | Respeitar o header `Retry-After` da resposta antes de tentar de novo. |
+| `COMMON_CONFLICT` | Conflito de idempotência: requisição duplicada com um payload diferente. | 409 | Conflict | A mesma `Idempotency-Key` (ver ADR-041) foi reusada com um corpo de requisição diferente do original. | Gerar uma nova `Idempotency-Key` por operação distinta. |
 
 ## Validation (100–199)
 
