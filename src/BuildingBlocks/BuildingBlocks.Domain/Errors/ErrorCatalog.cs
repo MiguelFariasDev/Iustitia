@@ -28,6 +28,13 @@ public static class ErrorCatalog
                 "A operação demorou mais que o esperado. Tente novamente.", 500, ErrorType.Failure),
             [ErrorCode.COMMON_UNAVAILABLE] = new(ErrorGroup.Common, nameof(ErrorCode.COMMON_UNAVAILABLE),
                 "Serviço temporariamente indisponível. Tente novamente em instantes.", 500, ErrorType.Failure),
+            // HttpStatus 429 aqui é só metadado de referência: rate limiting é aplicado pelo
+            // middleware nativo do ASP.NET Core (ver RateLimitingConfiguration), antes de
+            // qualquer Result/handler rodar — nunca passa por ResultExtensions.ToHttpResult.
+            [ErrorCode.COMMON_RATE_LIMITED] = new(ErrorGroup.Common, nameof(ErrorCode.COMMON_RATE_LIMITED),
+                "Muitas requisições. Tente novamente em instantes.", 429, ErrorType.Failure),
+            [ErrorCode.COMMON_CONFLICT] = new(ErrorGroup.Common, nameof(ErrorCode.COMMON_CONFLICT),
+                "Conflito de idempotência: requisição duplicada com um payload diferente.", 409, ErrorType.Conflict),
 
             // VALIDATION
             [ErrorCode.VALIDATION_REQUIRED_FIELD] = new(ErrorGroup.Validation, nameof(ErrorCode.VALIDATION_REQUIRED_FIELD),
