@@ -10,7 +10,7 @@ public static class SettingsEndpoints
 {
     public static IEndpointRouteBuilder MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/settings").WithTags("Settings");
+        var group = app.MapVersionedGroup("/settings", "Settings");
 
         group.MapGet("/", async (ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new GetSettingsQuery(), cancellationToken)).ToHttpResult())

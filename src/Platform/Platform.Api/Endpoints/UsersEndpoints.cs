@@ -16,7 +16,7 @@ public static class UsersEndpoints
 {
     public static IEndpointRouteBuilder MapUsersEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/users").WithTags("Users");
+        var group = app.MapVersionedGroup("/users", "Users");
 
         group.MapPost("/invite", async (InviteUserCommand command, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(command, cancellationToken)).ToHttpResult())

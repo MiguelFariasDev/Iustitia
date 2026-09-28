@@ -1,4 +1,5 @@
 using Advocacia.BuildingBlocks.Domain.Errors;
+using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -42,7 +43,10 @@ public sealed class ExceptionHandlingMiddleware(
                 Detail = appException.Message,
                 Instance = context.Request.Path,
             };
+            problemDetails.Extensions["errorCode"] = appException.Code.ToString();
             problemDetails.Extensions["errorGroup"] = appException.Group.ToString();
+            problemDetails.Extensions["correlationId"] = LogEnrichmentContext.CorrelationId;
+            problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
 
             context.Response.StatusCode = appException.HttpStatus;
             context.Response.ContentType = "application/problem+json";
@@ -60,7 +64,10 @@ public sealed class ExceptionHandlingMiddleware(
                 Detail = environment.IsDevelopment() ? exception.Message : "Ocorreu um erro inesperado. Tente novamente mais tarde.",
                 Instance = context.Request.Path,
             };
+            problemDetails.Extensions["errorCode"] = nameof(ErrorCode.INTERNAL_UNEXPECTED);
             problemDetails.Extensions["errorGroup"] = nameof(ErrorGroup.Internal);
+            problemDetails.Extensions["correlationId"] = LogEnrichmentContext.CorrelationId;
+            problemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
 
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             context.Response.ContentType = "application/problem+json";

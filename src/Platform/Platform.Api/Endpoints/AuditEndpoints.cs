@@ -11,7 +11,7 @@ public static class AuditEndpoints
 {
     public static IEndpointRouteBuilder MapAuditEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/audit").WithTags("Audit");
+        var group = app.MapVersionedGroup("/audit", "Audit");
 
         group.MapGet("/", async ([AsParameters] ListAuditLogsRequest request, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(

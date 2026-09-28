@@ -1,4 +1,5 @@
 using Advocacia.BuildingBlocks.Application.Abstractions;
+using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Microsoft.Extensions.Logging;
 
 namespace Advocacia.Platform.Api.Middleware;
@@ -25,6 +26,7 @@ public sealed class TenantContextMiddleware(RequestDelegate next, ILogger<Tenant
         }
 
         tenantContext.SetTenant(tenantId);
+        LogEnrichmentContext.UserId = currentUser.UserId;
 
         using (logger.BeginScope(new Dictionary<string, object?>
         {

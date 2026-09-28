@@ -13,7 +13,7 @@ public static class TenantsEndpoints
 {
     public static IEndpointRouteBuilder MapTenantsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/tenants").WithTags("Tenants");
+        var group = app.MapVersionedGroup("/tenants", "Tenants");
 
         // Cadastro self-service de escritório — não exige autenticação prévia (é assim que
         // um novo cliente se cadastra) — ver CreateTenantHandler.
@@ -24,7 +24,7 @@ public static class TenantsEndpoints
 
         group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new GetTenantByIdQuery(id), cancellationToken)).ToHttpResult())
-            .RequireAuthorization(Policies.OwnerOnly);
+            .RequireAuthorization(Policies.AnyAuthenticatedUser);
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateTenantRequest request, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new UpdateTenantCommand(id, request.Name, request.LogoUrl, request.AddressJson), cancellationToken))

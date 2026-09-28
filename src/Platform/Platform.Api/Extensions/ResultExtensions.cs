@@ -1,5 +1,6 @@
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
+using Advocacia.BuildingBlocks.Infrastructure.Observability;
 
 namespace Advocacia.Platform.Api.Extensions;
 
@@ -35,7 +36,13 @@ public static class ResultExtensions
         // de infraestrutura externa (ex.: SupabaseAuthService repassando o corpo de erro do
         // Supabase) usam códigos ad-hoc que não correspondem a nenhum ErrorCode; nesse caso
         // simplesmente omitimos a extension errorGroup, sem falhar a resposta por isso.
-        var extensions = new Dictionary<string, object?> { ["errorType"] = error.Type.ToString() };
+        var extensions = new Dictionary<string, object?>
+        {
+            ["errorType"] = error.Type.ToString(),
+            ["errorCode"] = error.Code,
+            ["correlationId"] = LogEnrichmentContext.CorrelationId,
+            ["timestamp"] = DateTimeOffset.UtcNow,
+        };
         if (Enum.TryParse<ErrorCode>(error.Code, out var errorCode))
         {
             extensions["errorGroup"] = ErrorCatalog.Get(errorCode).Group.ToString();

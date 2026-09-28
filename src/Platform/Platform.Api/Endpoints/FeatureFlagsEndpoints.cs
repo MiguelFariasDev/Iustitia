@@ -10,7 +10,7 @@ public static class FeatureFlagsEndpoints
 {
     public static IEndpointRouteBuilder MapFeatureFlagsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/feature-flags").WithTags("FeatureFlags");
+        var group = app.MapVersionedGroup("/feature-flags", "FeatureFlags");
 
         group.MapGet("/", async (ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new GetFeatureFlagsQuery(), cancellationToken)).ToHttpResult())
@@ -18,7 +18,7 @@ public static class FeatureFlagsEndpoints
 
         group.MapPut("/{key}", async (string key, UpdateFeatureFlagRequest request, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new UpdateFeatureFlagCommand(key, request.IsEnabled), cancellationToken)).ToHttpResult())
-            .RequireAuthorization(Policies.PartnerOrAbove);
+            .RequireAuthorization(Policies.AdminOnly);
 
         return app;
     }
