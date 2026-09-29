@@ -24,12 +24,23 @@ public sealed class OutboxMessage
 
     public int RetryCount { get; private set; }
 
+    public string? LastError { get; private set; }
+
+    public DateTimeOffset? NextRetryAt { get; private set; }
+
+    /// <summary>
+    /// CorrelationId da requisição/job que originou o evento (ver LogEnrichmentContext),
+    /// propagado ao publicar a mensagem via MassTransit — permite rastrear um fluxo de
+    /// ponta a ponta mesmo atravessando a persistência assíncrona da outbox (ver ADR-037).
+    /// </summary>
+    public Guid? CorrelationId { get; private set; }
+
     private OutboxMessage()
     {
         // EF Core.
     }
 
-    public OutboxMessage(Guid aggregateId, string eventType, string payload, DateTimeOffset createdAt)
+    public OutboxMessage(Guid aggregateId, string eventType, string payload, DateTimeOffset createdAt, Guid? correlationId = null)
     {
         Id = Guid.NewGuid();
         AggregateId = aggregateId;
@@ -38,13 +49,31 @@ public sealed class OutboxMessage
         CreatedAt = createdAt;
         Status = OutboxStatus.Pending;
         RetryCount = 0;
+        CorrelationId = correlationId;
     }
 
     public void MarkAsProcessed(DateTimeOffset processedAt)
     {
         Status = OutboxStatus.Processed;
         ProcessedAt = processedAt;
+        LastError = null;
+        NextRetryAt = null;
     }
 
-    public void MarkAsFailed() => RetryCount++;
+    /// <summary>
+    /// Registra uma falha de publicação com backoff exponencial. Permanece <see cref="OutboxStatus.Pending"/>
+    /// (será retentada em <paramref name="nextRetryAt"/>) até esgotar <paramref name="maxRetries"/>,
+    /// quando passa a <see cref="OutboxStatus.Failed"/> definitivamente (exige intervenção/replay manual).
+    /// </summary>
+    public void MarkAsFailed(string error, DateTimeOffset nextRetryAt, int maxRetries)
+    {
+        RetryCount++;
+        LastError = error;
+        NextRetryAt = nextRetryAt;
+
+        if (RetryCount >= maxRetries)
+        {
+            Status = OutboxStatus.Failed;
+        }
+    }
 }

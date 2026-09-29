@@ -1,10 +1,11 @@
+using Advocacia.BuildingBlocks.Domain.Events;
+using MassTransit;
+
 namespace Advocacia.BuildingBlocks.Infrastructure.Messaging;
 
-/// <summary>
-/// TODO (Etapa 2): publisher de eventos de integração via MassTransit sobre
-/// Azure Service Bus, consumido pelo OutboxProcessor.
-/// </summary>
-public sealed class IntegrationEventPublisher
+/// <summary>Publisher de eventos de integração via MassTransit — ver ADR-016.</summary>
+public sealed class IntegrationEventPublisher(IPublishEndpoint publishEndpoint) : IIntegrationEventPublisher
 {
-    // Implementação real na Etapa 2.
+    public Task PublishAsync(IIntegrationEvent integrationEvent, CancellationToken cancellationToken = default) =>
+        publishEndpoint.Publish(integrationEvent, integrationEvent.GetType(), cancellationToken);
 }

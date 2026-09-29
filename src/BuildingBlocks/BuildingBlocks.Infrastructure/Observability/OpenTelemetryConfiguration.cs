@@ -41,7 +41,8 @@ public static class OpenTelemetryConfiguration
                     ActivitySourceNames.Outbox,
                     ActivitySourceNames.Jobs,
                     ActivitySourceNames.Handlers,
-                    ActivitySourceNames.Consumers)
+                    ActivitySourceNames.Consumers,
+                    ActivitySourceNames.CnjCapture)
                 .AddAspNetCoreInstrumentation(options =>
                     options.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
                 .AddHttpClientInstrumentation())

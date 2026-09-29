@@ -2,11 +2,13 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.BuildingBlocks.Infrastructure.Caching;
 using Advocacia.BuildingBlocks.Infrastructure.Identity;
+using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Interceptors;
 using Advocacia.BuildingBlocks.Infrastructure.Tenancy;
 using Advocacia.BuildingBlocks.Infrastructure.Time;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Advocacia.BuildingBlocks.Infrastructure;
 
@@ -19,7 +21,7 @@ namespace Advocacia.BuildingBlocks.Infrastructure;
 public static class DependencyInjection
 {
     public static IServiceCollection AddBuildingBlocksInfrastructure(
-        this IServiceCollection services, IConfiguration configuration)
+        this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
@@ -37,6 +39,13 @@ public static class DependencyInjection
         services.AddScoped<AuditInterceptor>();
         services.AddScoped<OutboxInterceptor>();
         services.AddScoped<TenantContextInterceptor>();
+
+        // Observabilidade (ver ADR-036): Serilog (logging estruturado) + OpenTelemetry
+        // (traces/métricas, exportadas para Application Insights quando configurado).
+        services.AddAdvocaciaSerilog(configuration, environment);
+        services.AddAdvocaciaObservability(configuration, environment);
+        services.AddTransient<CorrelationIdPropagationHandler>();
+        services.ConfigureHttpClientDefaults(builder => builder.AddHttpMessageHandler<CorrelationIdPropagationHandler>());
 
         return services;
     }

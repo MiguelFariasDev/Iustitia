@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Advocacia.BuildingBlocks.Domain.Abstractions;
+using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Outbox;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using EfDbContext = Microsoft.EntityFrameworkCore.DbContext;
@@ -51,7 +52,8 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
                     aggregateId: ExtractAggregateId(aggregate),
                     eventType: domainEvent.GetType().FullName ?? domainEvent.GetType().Name,
                     payload: JsonSerializer.Serialize(domainEvent, domainEvent.GetType()),
-                    createdAt: domainEvent.OccurredOn);
+                    createdAt: domainEvent.OccurredOn,
+                    correlationId: LogEnrichmentContext.CorrelationId);
 
                 context.Set<OutboxMessage>().Add(outboxMessage);
             }
