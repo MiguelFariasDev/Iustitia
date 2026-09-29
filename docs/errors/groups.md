@@ -18,7 +18,9 @@ e a uma faixa numérica fixa (`BuildingBlocks.Domain/Errors/ErrorCode.cs`). Ver
 | `Settings` | 700–799 | Configuração por tenant: chave não encontrada/inválida, valor inválido. |
 | `FeatureFlags` | 800–899 | Feature flag por tenant: não encontrada, chave inválida/duplicada. |
 | `Backup` | 900–999 | Falhas no processo de backup (execução, criptografia, upload). |
-| `Integration` | 1000–1099 | Falhas de integrações externas (indisponibilidade, timeout, autenticação, rate limit, resposta inválida). |
+| `Integration` | 1000–1099 | Falhas de integrações externas genéricas (indisponibilidade, timeout, autenticação, rate limit, resposta inválida). Integrações com contrato próprio têm grupo dedicado — ver `CNJ`. |
+| `Publication` | 1300–1399 | Publicações capturadas de diários oficiais: número CNJ inválido, data inválida, conteúdo vazio, transição de status de revisão proibida, deduplicação. |
+| `CNJ` | 1700–1799 | Integração com o DJEN/CNJ: indisponibilidade, timeout, rate limit, resposta em formato inesperado, consulta rejeitada. |
 | `Internal` | 9000–9999 | Erros internos genuinamente inesperados (bug, banco de dados, serialização) — normalmente originados de uma exceção não tratada, não de um `Result.Failure` deliberado. |
 
 ## Grupos reservados (fases futuras — nenhum `ErrorCode` implementado ainda)
@@ -30,11 +32,9 @@ Nenhuma dessas faixas tem código algum hoje — só a reserva numérica.
 |---|---|---|
 | `Client` | 1100–1199 | Fase 2 |
 | `Process` | 1200–1299 | Fase 2 |
-| `Publication` | 1300–1399 | Fase 2 |
 | `Task` | 1400–1499 | Fase 3 |
 | `Review` | 1500–1599 | Fase 3 |
 | `AI` | 1600–1699 | Fase 3 |
-| `CNJ` | 1700–1799 | Fase 1 |
 | `Document` | 1800–1899 | Fase 4 |
 | `Signature` | 1900–1999 | Fase 4 |
 | `Calendar` | 2000–2099 | Fase 4 |

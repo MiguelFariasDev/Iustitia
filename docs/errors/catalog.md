@@ -127,6 +127,36 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `INTEGRATION_RATE_LIMITED` | Limite de requisições ao serviço externo '{0}' excedido. Tente novamente mais tarde. | 500 | Failure | Reservado (ver acima). | Tentar novamente mais tarde. |
 | `INTEGRATION_INVALID_RESPONSE` | Resposta inesperada do serviço externo '{0}'. | 500 | Failure | Reservado (ver acima). | Reportar ao suporte. |
 
+## Publication (1300–1399)
+
+Módulo Legal — ver `docs/modules/legal/publications.md`.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `PUBLICATION_NOT_FOUND` | Publicação não encontrada. | 404 | NotFound | `GetPublicationById`/`MarkPublicationAsRead` não encontrou a publicação. Publicação de outro escritório cai aqui também: o filtro global e o RLS a tornam invisível, e responder 404 (não 403) evita confirmar que ela existe. | Confirmar o identificador da publicação. |
+| `PUBLICATION_ALREADY_EXISTS` | Esta publicação já foi capturada. | 409 | Conflict | Reservado — o fluxo normal de captura trata duplicata como **sucesso** com `Existing = true` (ver ADR-056); ficaria para um futuro endpoint de captura manual estrita. | Consultar a publicação existente pelo `ExternalId`. |
+| `PUBLICATION_INVALID_CNJ` | Número de processo CNJ inválido. | 400 | Validation | `CNJNumber.Create` rejeitou o valor: não tem 20 dígitos, tem segmento `0`, ou os dígitos verificadores não conferem (mod 97, ISO 7064). Na captura, a publicação é contada em `cnj.capture.invalid.count` e descartada sem abortar a página. | Conferir o número no padrão `NNNNNNN-DD.AAAA.J.TR.OOOO`. |
+| `PUBLICATION_INVALID_DATE` | Data de publicação inválida: não pode estar no futuro. | 400 | Validation | `PublishedAt.Create` recebeu data futura além da tolerância de 5 minutos para desalinhamento de relógio. | Conferir a data de disponibilização informada. |
+| `PUBLICATION_EMPTY_CONTENT` | O conteúdo da publicação não pode estar vazio. | 400 | Validation | `RawContent.Create` recebeu conteúdo vazio, em branco, ou que ficou vazio depois de remover a marcação HTML. | Enviar o inteiro teor da publicação. |
+| `PUBLICATION_DUPLICATED_EXTERNAL_ID` | Já existe uma publicação com este identificador do CNJ. | 409 | Conflict | Reservado — a deduplicação por `(tenant_id, external_id, source)` é idempotente e devolve sucesso (ver ADR-056). Ficaria para um caminho que exija criação estrita. | Consultar a publicação existente. |
+| `PUBLICATION_INVALID_STATUS_TRANSITION` | Não é possível mudar a publicação de '{0}' para '{1}'. | 409 | Conflict | `Publication.ChangeStatus` recusou a transição: voltar para `PendingReview` depois de revisada, mudar entre desfechos de revisão, ou sair de `Archived` (terminal). | Consultar o status atual; de um desfecho de revisão, só `Archived` é permitido. |
+| `PUBLICATION_ALREADY_READ` | Esta publicação já foi marcada como lida. | 409 | Conflict | `MarkAsRead` em publicação com `IsRead = true`. | Nenhuma ação necessária — a publicação já está lida. |
+
+## CNJ (1700–1799)
+
+Integração com o DJEN — ver `docs/modules/legal/cnj-capture.md`. Todos são
+levantados pelo `DjenClient` e, no job de captura, relançados como
+`IntegrationException` para o Hangfire aplicar retry (ver ADR-033).
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CNJ_UNAVAILABLE` | O serviço de publicações do CNJ está indisponível no momento. | 500 | Failure | Falha de rede, ou `5xx` do CNJ que sobreviveu ao retry/circuit breaker. | Nenhuma ação: a captura é idempotente e o Hangfire retenta automaticamente. |
+| `CNJ_TIMEOUT` | O serviço de publicações do CNJ demorou mais que o esperado para responder. | 500 | Failure | Timeout do pipeline Polly, ou `408`/`504` do CNJ. | Nenhuma ação (ver acima). Se recorrente, aumentar `Cnj:TimeoutSeconds`. |
+| `CNJ_RATE_LIMITED` | Limite de consultas ao CNJ excedido. A captura será retomada automaticamente. | 500 | Failure | `429` do CNJ. Já é retentado com backoff exponencial e jitter. | Se recorrente, reduzir `LookbackDays` ou a lista de tribunais por execução. |
+| `CNJ_INVALID_RESPONSE` | O CNJ devolveu uma resposta em formato inesperado. | 500 | Failure | Corpo não desserializável como o contrato do DJEN — geralmente indica mudança na API. | Investigar: provável mudança de contrato. Itens individuais malformados são descartados com aviso, sem gerar este código. |
+| `CNJ_AUTH_FAILED` | Falha de autenticação ao consultar o CNJ. | 401 | Unauthorized | `401`/`403` do CNJ. A API de comunicações é pública hoje, então isso indica bloqueio por origem ou mudança de política. | Investigar com o CNJ / verificar bloqueio de IP. |
+| `CNJ_INVALID_REQUEST` | A consulta enviada ao CNJ foi rejeitada por parâmetros inválidos. | 400 | Validation | `400`/`422` do CNJ — sigla de tribunal inexistente, intervalo de datas inválido. **Não é retentado** (4xx é erro nosso; repetir só gasta quota). | Conferir `Jobs:CnjCapture:Tribunais` e o intervalo de datas. |
+
 ## Internal (9000–9999)
 
 | Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
