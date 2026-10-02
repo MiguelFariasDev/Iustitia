@@ -1,4 +1,23 @@
-# Integração com o CNJ (DJEN)
+# Integrações com o CNJ
+
+O CNJ expõe **duas** APIs públicas, e o Iustitia usa as duas — para coisas diferentes.
+Confundi-las é fácil e caro, então a distinção vem antes de tudo:
+
+| | DJEN / Comunica | DataJud |
+|---|---|---|
+| Base | `comunicaapi.pje.jus.br` | `api-publica.datajud.cnj.jus.br` |
+| Traz | **Texto** das publicações do diário | **Metadados** do processo |
+| Autenticação | nenhuma | `Authorization: APIKey …` |
+| Formato | REST, query string | Elasticsearch Query DSL (POST) |
+| Quem consome | `CnjCaptureJob` (Worker, diário) | Formulário de cadastro (sob demanda) |
+| Porta | `ICnjClient` | `IConsultaProcessoTribunal` (módulo Legal) |
+| Uso comercial | ver termo próprio | **proibido** — ver ADR-064 |
+
+Este documento cobre as duas seções abaixo.
+
+---
+
+# DJEN / Comunica — publicações
 
 API pública de comunicações processuais do Conselho Nacional de Justiça, fonte
 das publicações capturadas pelo Iustitia.
@@ -102,3 +121,108 @@ espaços duplicados, zero problemas de encoding (acentuação preservada em 42 d
 | Aperto do rate limit | médio — não há contrato; exigiria reduzir vazão |
 | Restrição/remoção do acesso público | **risco de produto, não de engenharia** — precisa estar visível para quem decide |
 | Indisponibilidade prolongada | médio — a captura atrasa, os prazos não |
+
+---
+
+# DataJud — metadados do processo
+
+Base de metadados processuais que os tribunais enviam ao CNJ. Usada para auto-preencher o
+cadastro de processos.
+
+> **USO RESTRITO A PORTFÓLIO.** O Termo de Uso do DataJud proíbe uso comercial (cláusulas
+> 3.3 e 3.8) e consumir a API implica aceitá-lo. Ver
+> [`../compliance/datajud-termo.md`](../compliance/datajud-termo.md) e a **ADR-064**.
+
+- Base: `https://api-publica.datajud.cnj.jus.br`
+- Recurso: `POST /api_publica_{alias}/_search`
+- **Autenticação:** `Authorization: APIKey <chave>` — a chave é pública (divulgada na wiki do
+  CNJ), mas fica em user-secrets/Key Vault, nunca no appsettings versionado: o CNJ pode
+  trocá-la sem aviso, e trocá-la deve ser um comando, não um commit.
+- Implementação: `Integrations.CNJ.Infrastructure/DataJud/DataJudClient.cs`
+- Porta consumida pelo módulo Legal: `IConsultaProcessoTribunal`
+
+## Índice por tribunal
+
+Cada tribunal tem o seu índice: `/api_publica_tjsp/_search`, `/api_publica_trf1/_search`.
+O alias é a sigla em minúsculas, e a lista é **explícita** (`DataJudEndpoints`) — derivar por
+minúsculas geraria uma URL plausível para um índice inexistente, e o erro chegaria como 404
+genérico em vez de "tribunal não suportado".
+
+**O STF não publica no DataJud.** A tela desabilita o botão de consulta nesse caso, em vez de
+gastar a chamada.
+
+O tribunal é derivado do **próprio número CNJ** (`TribunalResolver`, campos J e TR da
+Resolução 65/2008). Nunca é informado pelo usuário: divergir número e tribunal devolve "não
+encontrado" sem erro nenhum que denuncie a causa.
+
+## Requisição
+
+```json
+POST /api_publica_trf1/_search
+{ "query": { "match": { "numeroProcesso": "00008323520184013202" } }, "size": 1 }
+```
+
+O número vai **sem máscara**, 20 dígitos — mesma regra do DJEN.
+
+## Comportamento observado (setembro de 2026)
+
+Medido contra a API real:
+
+| | Observado | Documentado |
+|---|---|---|
+| Latência da 1ª consulta | **~12 a 14 s** | ~500 ms (P50) |
+| Consulta em cache (nossa) | ~40 ms | — |
+| `dataAjuizamento` | `"20181029000000"` | ISO 8601 |
+| `movimentos[].dataHora` | `"2018-10-30T14:06:24.000Z"` | ISO 8601 |
+
+### A armadilha das datas
+
+**Os dois formatos convivem na mesma resposta.** `dataAjuizamento` vem compacto
+(`yyyyMMddHHmmss`) e `dataHora` vem ISO. A documentação mostra ISO nos dois.
+
+Um cliente que só entenda ISO devolve erro de parsing sobre um HTTP 200 perfeitamente válido.
+`DataJudDateTimeConverter` aceita os dois, e data ilegível vira `null` em vez de exceção —
+perder a data degrada o auto-preenchimento; derrubar a consulta cancela o recurso.
+
+É o mesmo padrão do `count` mentiroso do DJEN: documentação de API pública descreve a
+intenção, não o que o serviço faz.
+
+### Processo não encontrado
+
+Responde **HTTP 200 com `hits.total.value = 0`**, não 404. Nem todo processo está lá — depende
+do que o tribunal enviou. O endpoint devolve `found: false` com 200, para a tela distinguir
+"não existe lá" de "a consulta falhou".
+
+## Contenção
+
+| Medida | Valor | Por quê |
+|---|---|---|
+| Cache (Redis) | 1 h por `(tribunal, processo)` | O CNJ pede que não se faça consulta em massa |
+| Cache do "não encontrado" | sim | É o número mais reconsultado — o usuário acha que errou |
+| Rate limit | 10/min por usuário | `RateLimitingConfiguration.ExternalQueryPolicy` |
+| Circuit breaker | abre com 50% de falhas em 5 tentativas | Quem espera é uma pessoa no formulário, não um job |
+| Timeout | 30 s por tentativa | A latência real exige folga |
+
+## Erros
+
+| Código | Quando |
+|---|---|
+| `PROCESS_CNJ_INVALID` | Número mal formado ou com dígito verificador errado |
+| `CNJ_TRIBUNAL_NOT_SUPPORTED` | Tribunal fora do DataJud (ex.: STF) |
+| `CNJ_AUTH_FAILED` | Chave inválida ou revogada — **verificar se o CNJ a trocou** |
+| `CNJ_RATE_LIMITED` | Limite do CNJ excedido |
+| `CNJ_UNAVAILABLE` / `CNJ_TIMEOUT` | Serviço fora do ar ou lento demais |
+| `CNJ_INVALID_RESPONSE` | Resposta ilegível — provável mudança de contrato |
+| `COMMON_RATE_LIMITED` | Nosso limite de 10/min por usuário |
+
+Em todos, o cadastro manual continua disponível. Nenhum erro impede cadastrar o processo.
+
+## Observabilidade
+
+- `ActivitySource`: `Advocacia.CNJ.DataJud` — spans `datajud.consultar` e `datajud.parse`
+- Métricas: `datajud.requests.count`, `.failed.count`, `.rate_limited.count`,
+  `.not_found.count`, `datajud.cache.hits.count`, `datajud.requests.duration`
+
+Nenhuma métrica ou log carrega o payload da resposta: os metadados incluem partes e
+movimentos de um processo real, que pode estar em segredo de justiça. O que se registra é
+tribunal, desfecho e latência.
