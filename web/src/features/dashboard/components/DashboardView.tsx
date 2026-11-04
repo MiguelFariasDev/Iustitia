@@ -1,7 +1,18 @@
 'use client'
 
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { ArrowRight, Bell, Briefcase, CalendarDays, Newspaper, ScanEye, Users } from 'lucide-react'
+import {
+  ArrowRight,
+  Banknote,
+  Bell,
+  Briefcase,
+  CalendarDays,
+  ChartNoAxesCombined,
+  Contact,
+  Newspaper,
+  ScanEye,
+  Users,
+} from 'lucide-react'
 import Link from 'next/link'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { MetricCard } from '@/components/shared/MetricCard'
@@ -66,22 +77,46 @@ export function DashboardMetrics({ metrics }: { metrics: DashboardSummary['metri
 }
 
 /**
- * Atalhos para os módulos das próximas fases. Sem número de propósito: agenda e atendimentos
- * não existem no backend, e um contador aqui seria inventado. Cada atalho é um link de
- * verdade — o cartão inteiro clicável, com foco visível.
+ * Atalhos para os módulos de apoio. Sem número de propósito: nenhum deles tem backend (os
+ * quatro primeiros usam dados de demonstração; agenda e atendimentos nem existem), e um
+ * contador aqui seria inventado. Cada atalho é um link de verdade — o cartão inteiro
+ * clicável, com foco visível — e diz o estado real do módulo: "demonstração" ou "em breve".
  */
 const atalhos = [
+  {
+    label: 'Contatos',
+    descricao: 'CRM: partes contrárias e testemunhas',
+    icon: Contact,
+    href: routes.contacts,
+    estado: 'demonstração',
+  },
+  {
+    label: 'Indicadores',
+    descricao: 'Carteira, publicações e produtividade',
+    icon: ChartNoAxesCombined,
+    href: routes.indicators,
+    estado: 'demonstração',
+  },
+  {
+    label: 'Financeiro',
+    descricao: 'Honorários e fluxo de caixa',
+    icon: Banknote,
+    href: routes.finance,
+    estado: 'demonstração',
+  },
   {
     label: 'Agenda',
     descricao: 'Audiências e compromissos',
     icon: CalendarDays,
     href: routes.agenda,
+    estado: 'em breve',
   },
   {
     label: 'Atendimentos',
     descricao: 'Relacionamento com clientes',
     icon: Users,
     href: routes.serviceDesk,
+    estado: 'em breve',
   },
 ] as const
 
@@ -91,8 +126,8 @@ export function DashboardAtalhos() {
       <h2 id="atalhos-heading" className="sr-only">
         Atalhos
       </h2>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {atalhos.map(({ label, descricao, icon: Icon, href }) => (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {atalhos.map(({ label, descricao, icon: Icon, href, estado }) => (
           <Link
             key={label}
             href={href as never}
@@ -101,7 +136,9 @@ export function DashboardAtalhos() {
             <Icon className="size-5 text-muted-foreground" aria-hidden />
             <span className="flex-1">
               <span className="block text-sm font-medium">{label}</span>
-              <span className="block text-xs text-muted-foreground">{descricao} — em breve</span>
+              <span className="block text-xs text-muted-foreground">
+                {descricao} — {estado}
+              </span>
             </span>
             <ArrowRight
               className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5"

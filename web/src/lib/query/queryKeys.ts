@@ -42,6 +42,25 @@ export const queryKeys = {
     /** `weekStart` em ISO (segunda-feira) mantém uma entrada de cache por semana. */
     week: (weekStart: string) => [...queryKeys.agenda.all, 'week', weekStart] as const,
   },
+  contatos: {
+    all: ['contatos'] as const,
+    list: (filters: unknown) => [...queryKeys.contatos.all, 'list', filters] as const,
+    byId: (id: string) => [...queryKeys.contatos.all, 'detail', id] as const,
+  },
+  documentos: {
+    all: ['documentos'] as const,
+    list: (filters: unknown) => [...queryKeys.documentos.all, 'list', filters] as const,
+  },
+  indicadores: {
+    all: ['indicadores'] as const,
+    periodo: (periodo: string) => [...queryKeys.indicadores.all, periodo] as const,
+  },
+  financeiro: {
+    all: ['financeiro'] as const,
+    resumo: () => [...queryKeys.financeiro.all, 'resumo'] as const,
+    lancamentos: () => [...queryKeys.financeiro.all, 'lancamentos'] as const,
+    fluxoCaixa: () => [...queryKeys.financeiro.all, 'fluxo-caixa'] as const,
+  },
   tenant: {
     all: ['tenant'] as const,
     current: () => [...queryKeys.tenant.all, 'current'] as const,

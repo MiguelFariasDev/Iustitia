@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { FinanceiroDashboard } from '@/features/financeiro/components/FinanceiroDashboard'
+import { FinanceiroView } from '@/features/financeiro/components/FinanceiroView'
+import { NovoLancamentoModal } from '@/features/financeiro/components/NovoLancamentoModal'
 
 export const metadata: Metadata = { title: 'Financeiro' }
 
@@ -10,8 +11,9 @@ export default function FinanceiroPage() {
       <PageHeader
         title="Financeiro"
         description="Honorários, contas a pagar e a receber e fluxo de caixa."
+        actions={<NovoLancamentoModal />}
       />
-      <FinanceiroDashboard />
+      <FinanceiroView />
     </>
   )
 }

@@ -25,6 +25,11 @@ export interface NavItem {
   href: Route
   /** Módulo das Fases 2–5: a rota existe, mas a página é um placeholder. */
   soon?: boolean
+  /**
+   * A tela existe e funciona, mas os dados são de demonstração (ainda não há endpoint no
+   * backend). O menu avisa, para ninguém tomar decisão em cima de número inventado.
+   */
+  demo?: boolean
   /** Contador de pendências exibido à direita do rótulo. */
   badge?: NavBadge
   /** Funcionalidade assistida por IA (recebe o selo ✨). */
@@ -50,17 +55,17 @@ export const mainNavigation: NavGroup[] = [
     items: [
       { label: 'Processos', icon: BriefcaseBusiness, href: routes.processes },
       { label: 'Clientes', icon: Users, href: routes.clients },
-      { label: 'Contatos', icon: Users, href: routes.contacts, soon: true },
+      { label: 'Contatos', icon: Users, href: routes.contacts, demo: true },
       { label: 'Atendimentos', icon: Headset, href: routes.serviceDesk, soon: true },
-      { label: 'Financeiro', icon: Banknote, href: routes.finance, soon: true },
+      { label: 'Financeiro', icon: Banknote, href: routes.finance, demo: true },
     ],
   },
   {
     label: 'Ferramentas',
     items: [
       { label: 'Criação de peças', icon: PenLine, href: routes.drafting, soon: true, ai: true },
-      { label: 'Documentos', icon: FolderOpen, href: routes.documents, soon: true },
-      { label: 'Indicadores', icon: ChartNoAxesCombined, href: routes.indicators, soon: true },
+      { label: 'Documentos', icon: FolderOpen, href: routes.documents, demo: true },
+      { label: 'Indicadores', icon: ChartNoAxesCombined, href: routes.indicators, demo: true },
     ],
   },
 ]

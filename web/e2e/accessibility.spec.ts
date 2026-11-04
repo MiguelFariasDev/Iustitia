@@ -22,6 +22,11 @@ const authenticatedPages = [
   ['/alertas/alert-001', 'Alerta'],
   ['/agenda', 'Agenda'],
   ['/processos', 'Processos'],
+  ['/contatos', 'Contatos'],
+  ['/contatos/novo', 'Novo contato'],
+  ['/documentos', 'Documentos'],
+  ['/indicadores', 'Indicadores'],
+  ['/financeiro', 'Financeiro'],
   ['/configuracoes/perfil', 'Configurações'],
   ['/configuracoes/usuarios', 'Configurações'],
   ['/configuracoes/integracoes', 'Configurações'],
@@ -74,6 +79,42 @@ test.describe('Acessibilidade — rotas autenticadas', () => {
     await page.getByRole('button', { name: 'Marcar como lida' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText('1 publicação(ões) marcada(s) como lida(s).')).toBeVisible()
+  })
+
+  test('o diálogo de upload de documentos não tem violações WCAG 2.1 AA', async ({ page }) => {
+    await dismissOnboardingHints(page)
+    await page.goto('/documentos')
+    await page.getByRole('button', { name: 'Upload' }).click()
+    await expect(page.getByRole('dialog', { name: 'Enviar documento' })).toBeVisible()
+
+    const { violations } = await analyze(page)
+    expect(violations.map((v) => `${v.id}: ${v.nodes.length} nó(s)`)).toEqual([])
+  })
+
+  test('o diálogo de novo lançamento não tem violações WCAG 2.1 AA', async ({ page }) => {
+    await dismissOnboardingHints(page)
+    await page.goto('/financeiro')
+    await page.getByRole('button', { name: 'Novo lançamento' }).click()
+    await expect(page.getByRole('dialog', { name: 'Novo lançamento' })).toBeVisible()
+
+    const { violations } = await analyze(page)
+    expect(violations.map((v) => `${v.id}: ${v.nodes.length} nó(s)`)).toEqual([])
+  })
+
+  test('as telas de gráficos (indicadores e fluxo de caixa) são acessíveis com os gráficos montados', async ({
+    page,
+  }) => {
+    await dismissOnboardingHints(page)
+    await page.goto('/indicadores')
+    await expect(page.locator('.recharts-wrapper')).toHaveCount(3)
+    let { violations } = await analyze(page)
+    expect(violations.map((v) => `${v.id}: ${v.nodes.length} nó(s)`)).toEqual([])
+
+    await page.goto('/financeiro')
+    await page.getByRole('tab', { name: 'Fluxo de caixa' }).click()
+    await expect(page.locator('.recharts-wrapper')).toHaveCount(1)
+    ;({ violations } = await analyze(page))
+    expect(violations.map((v) => `${v.id}: ${v.nodes.length} nó(s)`)).toEqual([])
   })
 
   test('o tema escuro mantém o contraste exigido', async ({ page }) => {
