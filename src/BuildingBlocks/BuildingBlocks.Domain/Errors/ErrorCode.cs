@@ -151,6 +151,10 @@ public enum ErrorCode
     CNJ_NOT_FOUND = 1706,
     CNJ_TRIBUNAL_NOT_SUPPORTED = 1707,
 
+    // AI (1800-1899) — classificação e sugestão de prazo via Anthropic (Fase 3, Etapa 3.2)
+    AI_INVALID_RESPONSE = 1800,
+    AI_PROMPT_NOT_FOUND = 1801,
+
     // INTERNAL (9000-9999)
     INTERNAL_UNEXPECTED = 9000,
     INTERNAL_DATABASE_ERROR = 9001,

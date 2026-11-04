@@ -166,6 +166,8 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `CNJ_INVALID_RESPONSE` | O CNJ devolveu uma resposta em formato inesperado. | 500 | Failure | Corpo não desserializável como o contrato do DJEN — geralmente indica mudança na API. | Investigar: provável mudança de contrato. Itens individuais malformados são descartados com aviso, sem gerar este código. |
 | `CNJ_AUTH_FAILED` | Falha de autenticação ao consultar o CNJ. | 401 | Unauthorized | `401`/`403` do CNJ. A API de comunicações é pública hoje, então isso indica bloqueio por origem ou mudança de política. | Investigar com o CNJ / verificar bloqueio de IP. |
 | `CNJ_INVALID_REQUEST` | A consulta enviada ao CNJ foi rejeitada por parâmetros inválidos. | 400 | Validation | `400`/`422` do CNJ — sigla de tribunal inexistente, intervalo de datas inválido. **Não é retentado** (4xx é erro nosso; repetir só gasta quota). | Conferir `Jobs:CnjCapture:Tribunais` e o intervalo de datas. |
+| `AI_INVALID_RESPONSE` | A resposta da IA não pôde ser validada e foi descartada. | 500 | Failure | O Claude devolveu texto que não é JSON, não segue o contrato do prompt (campo ausente, tipo errado, `act_type` fora da lista, `confidence` fora de 0–100). Os tokens consumidos continuam registrados em `ai_usage_logs`. | Nenhuma ação do usuário: a publicação segue sem sugestão e é reprocessada pelo job; se recorrente, revisar o prompt/versão. |
+| `AI_PROMPT_NOT_FOUND` | O prompt '{0}' não foi encontrado. | 500 | Failure | O arquivo `.md` versionado não está embarcado no assembly ou não tem as seções `SYSTEM`/`USER`. | Erro de empacotamento — reportar ao suporte. |
 
 ## Internal (9000–9999)
 

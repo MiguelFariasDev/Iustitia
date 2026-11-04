@@ -247,6 +247,12 @@ public static class ErrorCatalog
             [ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED),
                 "O tribunal '{0}' não é atendido pela consulta pública do DataJud.", 400, ErrorType.Validation),
 
+            // AI (classificação e sugestão de prazo — ver ADR-067 e docs/modules/legal/ai-classification.md)
+            [ErrorCode.AI_INVALID_RESPONSE] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_INVALID_RESPONSE),
+                "A resposta da IA não pôde ser validada e foi descartada.", 500, ErrorType.Failure),
+            [ErrorCode.AI_PROMPT_NOT_FOUND] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_PROMPT_NOT_FOUND),
+                "O prompt '{0}' não foi encontrado.", 500, ErrorType.Failure),
+
             // INTERNAL
             [ErrorCode.INTERNAL_UNEXPECTED] = new(ErrorGroup.Internal, nameof(ErrorCode.INTERNAL_UNEXPECTED),
                 "Ocorreu um erro interno inesperado.", 500, ErrorType.Failure),
