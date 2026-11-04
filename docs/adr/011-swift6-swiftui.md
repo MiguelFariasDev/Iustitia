@@ -1,6 +1,6 @@
 # ADR-011: Swift 6 + SwiftUI nativo para mobile (iOS 26+)
 
-**Status:** Proposto (placeholder — detalhar antes da fase correspondente)
+**Status:** Substituído por [ADR-067](./067-flutter-para-o-app-mobile.md) (Flutter) — o app iOS nativo foi descartado.
 
 ## Contexto
 
