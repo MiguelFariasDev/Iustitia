@@ -1,0 +1,8 @@
+.next
+.next-e2e
+playwright/.auth
+node_modules
+coverage
+playwright-report
+test-results
+package-lock.json

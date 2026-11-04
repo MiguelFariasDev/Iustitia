@@ -1,13 +1,18 @@
-# Iustitia — web (React + Vite + TypeScript)
+# Web (Next.js) — frontend
 
+# Dependências
 node_modules/
-dist/
-dist-ssr/
-build/
-.vite/
-.vite-inspect/
+.pnp
+.pnp.*
 
-# Env
+# Next.js / build
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Env (nunca commitar segredos)
 .env
 .env.local
 .env.*.local
@@ -18,22 +23,26 @@ coverage/
 playwright-report/
 test-results/
 blob-report/
+playwright/.cache/
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
 # Editor
 .vscode/*
 !.vscode/extensions.json
 .idea/
 
-# TypeScript
-*.tsbuildinfo
+# Vercel
+.vercel
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Playwright: estado de sessão gerado pelo setup
+playwright/.auth/
+.next-e2e/
