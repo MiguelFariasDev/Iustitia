@@ -1,0 +1,55 @@
+# Iustitia — mobile-ios (Swift 6 / SwiftUI / Xcode)
+
+## Xcode
+build/
+DerivedData/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+
+## Xcode Patch
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+/*.gcno
+
+## Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+## XcodeGen (project.yml gera o .xcodeproj — não versionar o gerado)
+*.xcodeproj/
+
+## CocoaPods (se usado no futuro)
+Pods/
+
+## Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+## Testes
+*.xcresult
+
+## Segredos
+GoogleService-Info.plist
+*.mobileprovision
+*.p12
+*.cer
+Secrets.swift
+Secrets.xcconfig
+
+## OS
+.DS_Store

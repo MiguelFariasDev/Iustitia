@@ -2,6 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Specifications;
 using Advocacia.BuildingBlocks.Domain.Time;
+using Advocacia.Platform.Application.Abstractions;
 using Advocacia.Platform.Application.Features.FeatureFlags.UpdateFeatureFlag;
 using Advocacia.Platform.Domain.FeatureFlags;
 using FluentAssertions;
@@ -15,6 +16,7 @@ public class UpdateFeatureFlagHandlerTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IDateTimeProvider _dateTimeProvider = Substitute.For<IDateTimeProvider>();
+    private readonly IFeatureFlagService _featureFlagService = Substitute.For<IFeatureFlagService>();
 
     private readonly Guid _tenantId = Guid.NewGuid();
 
@@ -24,7 +26,8 @@ public class UpdateFeatureFlagHandlerTests
         _dateTimeProvider.UtcNow.Returns(DateTimeOffset.UtcNow);
     }
 
-    private UpdateFeatureFlagHandler CreateHandler() => new(_featureFlagRepository, _unitOfWork, _currentUser, _dateTimeProvider);
+    private UpdateFeatureFlagHandler CreateHandler() =>
+        new(_featureFlagRepository, _unitOfWork, _currentUser, _dateTimeProvider, _featureFlagService);
 
     [Fact]
     public async Task Handle_WhenFlagDoesNotExist_CreatesIt()

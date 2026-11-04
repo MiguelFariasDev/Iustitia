@@ -1,3 +1,4 @@
+using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Messaging;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Idempotency;
 using Advocacia.BuildingBlocks.Infrastructure.UnitTests.Outbox;
@@ -11,7 +12,7 @@ namespace Advocacia.BuildingBlocks.Infrastructure.UnitTests.Messaging;
 public sealed class ConsumerBaseTests
 {
     private sealed class CountingConsumer(IProcessedEventStore store)
-        : ConsumerBase<TestDomainEvent>(store, NullLogger<ConsumerBase<TestDomainEvent>>.Instance)
+        : ConsumerBase<TestDomainEvent>(store, Substitute.For<IAppMetrics>(), NullLogger<ConsumerBase<TestDomainEvent>>.Instance)
     {
         public int HandleCallCount { get; private set; }
 

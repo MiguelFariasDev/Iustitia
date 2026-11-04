@@ -1,0 +1,21 @@
+# Contexto de build dos Dockerfiles (Api, Worker, migrator) é a raiz do repo.
+# bin/obj do host carregam project.assets.json com caminhos locais e quebram o
+# restore dentro do container.
+**/bin/
+**/obj/
+**/node_modules/
+**/.next/
+**/TestResults/
+.git/
+.github/
+.vs/
+.idea/
+web/
+mobile-ios/
+docs/
+tests/
+infra/terraform/
+*.md
+!README.md
+.env
+.env.*

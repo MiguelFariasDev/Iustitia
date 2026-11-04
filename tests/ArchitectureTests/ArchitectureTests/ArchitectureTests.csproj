@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Advocacia.ArchitectureTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="MassTransit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Platform\Platform.Domain\Platform.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Platform\Platform.Application\Platform.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Platform\Platform.Api\Platform.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Domain\Legal.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Application\Legal.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Api\Legal.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Application\Integrations.CNJ.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

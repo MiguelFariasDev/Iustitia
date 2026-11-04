@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Outbox;
 using FluentAssertions;
 using MassTransit;
@@ -13,10 +14,11 @@ public sealed class OutboxProcessorTests
 {
     private readonly IPublishEndpoint _publishEndpoint = Substitute.For<IPublishEndpoint>();
     private readonly IEventTypeResolver _eventTypeResolver = new EventTypeResolver();
+    private readonly IAppMetrics _metrics = Substitute.For<IAppMetrics>();
     private readonly OutboxProcessorOptions _options = new() { BatchSize = 100, MaxRetries = 3, BackoffBaseSeconds = 1 };
 
     private OutboxProcessor CreateSut(TestDbContext dbContext) =>
-        new(dbContext, _publishEndpoint, _eventTypeResolver, Options.Create(_options), NullLogger<OutboxProcessor>.Instance);
+        new(dbContext, _publishEndpoint, _eventTypeResolver, Options.Create(_options), _metrics, NullLogger<OutboxProcessor>.Instance);
 
     private static OutboxMessage CreatePendingMessage(TestDomainEvent domainEvent) =>
         new(Guid.NewGuid(), typeof(TestDomainEvent).FullName!, JsonSerializer.Serialize(domainEvent), DateTimeOffset.UtcNow);
@@ -36,7 +38,8 @@ public sealed class OutboxProcessorTests
         processedCount.Should().Be(1);
         message.Status.Should().Be(OutboxStatus.Processed);
         message.ProcessedAt.Should().NotBeNull();
-        await _publishEndpoint.Received(1).Publish(Arg.Any<object>(), typeof(TestDomainEvent), Arg.Any<CancellationToken>());
+        await _publishEndpoint.Received(1).Publish(
+            Arg.Any<object>(), typeof(TestDomainEvent), Arg.Any<IPipe<PublishContext>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -47,7 +50,7 @@ public sealed class OutboxProcessorTests
         dbContext.Set<OutboxMessage>().Add(message);
         await dbContext.SaveChangesAsync();
 
-        _publishEndpoint.Publish(Arg.Any<object>(), typeof(TestDomainEvent), Arg.Any<CancellationToken>())
+        _publishEndpoint.Publish(Arg.Any<object>(), typeof(TestDomainEvent), Arg.Any<IPipe<PublishContext>>(), Arg.Any<CancellationToken>())
             .ThrowsAsyncForAnyArgs(new InvalidOperationException("transporte indisponível"));
 
         var sut = CreateSut(dbContext);
@@ -86,7 +89,7 @@ public sealed class OutboxProcessorTests
         dbContext.Set<OutboxMessage>().Add(message);
         await dbContext.SaveChangesAsync();
 
-        _publishEndpoint.Publish(Arg.Any<object>(), typeof(TestDomainEvent), Arg.Any<CancellationToken>())
+        _publishEndpoint.Publish(Arg.Any<object>(), typeof(TestDomainEvent), Arg.Any<IPipe<PublishContext>>(), Arg.Any<CancellationToken>())
             .ThrowsAsyncForAnyArgs(new InvalidOperationException("falha"));
 
         var sut = CreateSut(dbContext);

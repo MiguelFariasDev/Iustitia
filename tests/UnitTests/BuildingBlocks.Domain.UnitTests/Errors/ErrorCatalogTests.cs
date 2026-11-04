@@ -58,7 +58,15 @@ public partial class ErrorCatalogTests
     [MemberData(nameof(AllDefinitions))]
     public void Definition_HttpStatus_IsAKnownValue(ErrorCode errorCode, ErrorDefinition definition)
     {
-        _ = errorCode;
+        // 429 é a única exceção: COMMON_RATE_LIMITED nunca passa por
+        // ResultExtensions.ToHttpResult (rate limiting é rejeitado pelo middleware nativo do
+        // ASP.NET Core antes de qualquer Result existir — ver ADR-039/RateLimitingConfiguration).
+        if (errorCode == ErrorCode.COMMON_RATE_LIMITED)
+        {
+            definition.HttpStatus.Should().Be(429);
+            return;
+        }
+
         definition.HttpStatus.Should().BeOneOf(400, 401, 403, 404, 409, 500);
     }
 
@@ -74,6 +82,11 @@ public partial class ErrorCatalogTests
     [InlineData(ErrorCode.FEATURE_FLAG_NOT_FOUND, 800, 899)]
     [InlineData(ErrorCode.BACKUP_FAILED, 900, 999)]
     [InlineData(ErrorCode.INTEGRATION_UNAVAILABLE, 1000, 1099)]
+    [InlineData(ErrorCode.CLIENT_NOT_FOUND, 1100, 1199)]
+    [InlineData(ErrorCode.PROCESS_NOT_FOUND, 1200, 1299)]
+    [InlineData(ErrorCode.PUBLICATION_NOT_FOUND, 1300, 1399)]
+    [InlineData(ErrorCode.ALERT_NOT_FOUND, 1400, 1499)]
+    [InlineData(ErrorCode.CNJ_UNAVAILABLE, 1700, 1799)]
     [InlineData(ErrorCode.INTERNAL_UNEXPECTED, 9000, 9999)]
     public void ErrorCode_NumericValue_IsWithinItsGroupRange(ErrorCode code, int rangeStart, int rangeEnd)
     {
@@ -86,7 +99,8 @@ public partial class ErrorCatalogTests
         var ranges = new (int Start, int End)[]
         {
             (0, 99), (100, 199), (200, 299), (300, 399), (400, 499), (500, 599),
-            (600, 699), (700, 799), (800, 899), (900, 999), (1000, 1099), (9000, 9999),
+            (600, 699), (700, 799), (800, 899), (900, 999), (1000, 1099),
+            (1100, 1199), (1200, 1299), (1300, 1399), (1400, 1499), (1700, 1799), (9000, 9999),
         };
 
         foreach (var code in Enum.GetValues<ErrorCode>())
