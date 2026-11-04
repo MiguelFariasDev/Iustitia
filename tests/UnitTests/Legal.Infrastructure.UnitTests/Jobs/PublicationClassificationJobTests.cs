@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Errors.Exceptions;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.BuildingBlocks.Domain.Time;
+using Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Application.Ai;
 using Advocacia.Modules.Legal.Domain.Publications;
@@ -26,6 +27,7 @@ public class PublicationClassificationJobTests : IDisposable
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Publication _publication;
     private readonly IPublicationSuggestionRepository _suggestions = Substitute.For<IPublicationSuggestionRepository>();
+    private readonly IAnthropicUsageQuery _usageQuery = Substitute.For<IAnthropicUsageQuery>();
     private readonly IProcessoRepository _processos = Substitute.For<IProcessoRepository>();
     private readonly IClassificationService _classification = Substitute.For<IClassificationService>();
     private readonly IDeadlineSuggestionService _deadline = Substitute.For<IDeadlineSuggestionService>();
@@ -55,8 +57,8 @@ public class PublicationClassificationJobTests : IDisposable
             .Returns(new List<Guid> { _tenantId });
         _suggestions.ListAwaitingSuggestionAsync(_tenantId, 0, Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<Publication> { _publication });
-        _suggestions.CountInvalidResponseAttemptsAsync(
-                _tenantId, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _usageQuery.CountFailuresByReferenceAsync(
+                _tenantId, "classification", "AI_INVALID_RESPONSE", Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int>());
         _suggestions.When(repository => repository.Add(Arg.Any<PublicationSuggestion>()))
             .Do(call => _added.Add(call.Arg<PublicationSuggestion>()));
@@ -164,14 +166,15 @@ public class PublicationClassificationJobTests : IDisposable
     }
 
     [Theory]
-    [InlineData(ErrorCode.INTEGRATION_UNAVAILABLE)]
-    [InlineData(ErrorCode.INTEGRATION_TIMEOUT)]
-    [InlineData(ErrorCode.INTEGRATION_RATE_LIMITED)]
-    [InlineData(ErrorCode.INTEGRATION_AUTH_FAILED)]
+    [InlineData(ErrorCode.AI_UNAVAILABLE)]
+    [InlineData(ErrorCode.AI_TIMEOUT)]
+    [InlineData(ErrorCode.AI_RATE_LIMITED)]
+    [InlineData(ErrorCode.AI_UNAUTHORIZED)]
+    [InlineData(ErrorCode.AI_OVERLOADED)]
     public async Task ExecuteAsync_ProviderOutage_StopsAndRethrowsSoHangfireRetries(ErrorCode code)
     {
         _classification.ClassifyAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Failure<ClassificationResult>(ErrorFactory.From(code, "Anthropic")));
+            .Returns(Result.Failure<ClassificationResult>(ErrorFactory.From(code)));
 
         var act = () => CreateJob().ExecuteAsync(CancellationToken.None);
 
@@ -183,8 +186,8 @@ public class PublicationClassificationJobTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_PublicationThatExhaustedItsAttempts_IsNotSentToTheModelAgain()
     {
-        _suggestions.CountInvalidResponseAttemptsAsync(
-                _tenantId, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _usageQuery.CountFailuresByReferenceAsync(
+                _tenantId, "classification", "AI_INVALID_RESPONSE", Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, int> { [_publication.Id.Value] = 3 });
 
         await CreateJob().ExecuteAsync(CancellationToken.None);
@@ -219,6 +222,7 @@ public class PublicationClassificationJobTests : IDisposable
 
         return new PublicationClassificationJob(
             _suggestions,
+            _usageQuery,
             _processos,
             _classification,
             _deadline,

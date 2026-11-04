@@ -68,8 +68,8 @@ public static class DependencyInjection
         // Legal; o DataJud fica atrás deste adaptador (ver ADR-064).
         services.AddScoped<IConsultaProcessoTribunal, DataJudConsultaProcessoTribunal>();
 
-        // Classificação de publicações por IA (Etapa 3.2 — ver ADR-067). Depende das PORTAS de
-        // Integrations.Anthropic.Application (IAnthropicClient, IAiCostCalculator, IPromptCatalog),
+        // Classificação de publicações por IA (Etapa 3.2 — ver ADR-070). Depende das PORTAS de
+        // Integrations.Anthropic.Application (IAnthropicClient, IAnthropicUsageLogger, IAnthropicUsageQuery, IPromptCatalog),
         // cujas implementações o host registra (AddAnthropicIntegration/AddWorkflowInfrastructure).
         services.AddScoped<IPublicationSuggestionRepository, PublicationSuggestionRepository>();
         services.AddScoped<IAiUsageContext, AiUsageContext>();

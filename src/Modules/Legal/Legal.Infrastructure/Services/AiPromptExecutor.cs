@@ -3,7 +3,7 @@ using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
 using Advocacia.Modules.Integrations.Anthropic.Application.Models;
 using Advocacia.Modules.Legal.Application.Abstractions;
-using Advocacia.Modules.Legal.Domain.Ai;
+using Advocacia.Modules.Integrations.Anthropic.Domain.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -16,7 +16,6 @@ public sealed record AiCompletion(
     string Model,
     string PromptVersion,
     AnthropicUsage Usage,
-    decimal CostUsd,
     int LatencyMs,
     string? RequestId,
     bool ContentTruncated);
@@ -27,9 +26,9 @@ public sealed record AiCompletion(
 /// ai_usage_logs.
 ///
 /// O registro tem dois momentos porque o desfecho só é conhecido depois da validação:
-/// se a chamada FALHA, este executor já grava o log (status Failed); se a chamada RESPONDE,
-/// quem chamou valida e então confirma via <see cref="RecordOutcomeAsync"/> (Succeeded ou
-/// InvalidResponse). Assim nenhuma chamada — nem a de resposta inválida, que foi cobrada —
+/// se a chamada FALHA, este executor já grava o log (sucesso falso); se a chamada RESPONDE,
+/// quem chamou valida e então confirma via <see cref="RecordOutcomeAsync"/> (sucesso ou
+/// resposta inválida). Assim nenhuma chamada — nem a de resposta inválida, que foi cobrada —
 /// fica fora da auditoria.
 ///
 /// NUNCA loga o conteúdo da publicação, o prompt renderizado ou o texto devolvido pelo modelo.
@@ -37,7 +36,6 @@ public sealed record AiCompletion(
 public sealed class AiPromptExecutor(
     IPromptCatalog promptCatalog,
     IAnthropicClient anthropicClient,
-    IAiCostCalculator costCalculator,
     IAiUsageRecorder usageRecorder,
     IOptions<AnthropicModelsOptions> modelsOptions,
     ILogger<AiPromptExecutor> logger)
@@ -64,14 +62,15 @@ public sealed class AiPromptExecutor(
 
         var renderValues = new Dictionary<string, string>(values) { ["raw_content"] = content };
 
-        var request = new AnthropicRequest(
-            model,
-            template.SystemPrompt,
-            template.RenderUser(renderValues),
-            modelsOptions.Value.MaxOutputTokens);
+        var callOptions = new AnthropicOptions
+        {
+            Model = model,
+            MaxTokens = modelsOptions.Value.MaxOutputTokens,
+        };
 
         var stopwatch = Stopwatch.StartNew();
-        var response = await anthropicClient.SendAsync(request, cancellationToken);
+        var response = await anthropicClient.SendMessageAsync(
+            template.RenderUser(renderValues), template.SystemPrompt, callOptions, cancellationToken);
         stopwatch.Stop();
         var latencyMs = (int)Math.Min(stopwatch.ElapsedMilliseconds, int.MaxValue);
 
@@ -82,36 +81,33 @@ public sealed class AiPromptExecutor(
 
             await usageRecorder.RecordAsync(
                 new AiUsageEntry(
-                    purpose, Provider, model, template.Version, 0, 0, 0, 0, 0m, latencyMs,
-                    AiCallStatus.Failed, response.Error.Code, null),
+                    purpose, model, template.Version, 0, 0, 0, 0, latencyMs,
+                    false, response.Error.Code, null),
                 cancellationToken);
 
             return Result.Failure<AiCompletion>(response.Error);
         }
 
         var answer = response.Value;
-        var cost = costCalculator.Calculate(answer.Model, answer.Usage);
 
         return Result.Success(new AiCompletion(
-            purpose, answer.Text, answer.Model, template.Version, answer.Usage, cost, latencyMs, answer.RequestId, truncated));
+            purpose, answer.Content, answer.Model, template.Version, answer.Usage, latencyMs, answer.RequestId, truncated));
     }
 
     /// <summary>Grava o desfecho de uma chamada que RESPONDEU (e foi cobrada).</summary>
     public Task RecordOutcomeAsync(
-        AiCompletion completion, AiCallStatus status, string? errorCode, CancellationToken cancellationToken) =>
+        AiCompletion completion, bool success, string? errorCode, CancellationToken cancellationToken) =>
         usageRecorder.RecordAsync(
             new AiUsageEntry(
                 completion.Purpose,
-                Provider,
                 completion.Model,
                 completion.PromptVersion,
                 completion.Usage.InputTokens,
                 completion.Usage.OutputTokens,
-                completion.Usage.CacheCreationInputTokens,
-                completion.Usage.CacheReadInputTokens,
-                completion.CostUsd,
+                completion.Usage.CacheCreationTokens,
+                completion.Usage.CacheReadTokens,
                 completion.LatencyMs,
-                status,
+                success,
                 errorCode,
                 completion.RequestId),
             cancellationToken);

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LegalDbContext))]
-    [Migration("20261104120000_AddPublicationSuggestionsAndAiUsageLogs")]
-    partial class AddPublicationSuggestionsAndAiUsageLogs
+    [Migration("20261104120000_AddPublicationSuggestions")]
+    partial class AddPublicationSuggestions
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -84,102 +84,6 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                         {
                             t.ExcludeFromMigrations();
                         });
-                });
-
-            modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Ai.AiUsageLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("CacheCreationInputTokens")
-                        .HasColumnType("integer")
-                        .HasColumnName("cache_creation_input_tokens");
-
-                    b.Property<int>("CacheReadInputTokens")
-                        .HasColumnType("integer")
-                        .HasColumnName("cache_read_input_tokens");
-
-                    b.Property<decimal>("CostUsd")
-                        .HasColumnType("numeric(12,6)")
-                        .HasColumnName("cost_usd");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("ErrorCode")
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)")
-                        .HasColumnName("error_code");
-
-                    b.Property<int>("InputTokens")
-                        .HasColumnType("integer")
-                        .HasColumnName("input_tokens");
-
-                    b.Property<int>("LatencyMs")
-                        .HasColumnType("integer")
-                        .HasColumnName("latency_ms");
-
-                    b.Property<string>("Model")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("model");
-
-                    b.Property<int>("OutputTokens")
-                        .HasColumnType("integer")
-                        .HasColumnName("output_tokens");
-
-                    b.Property<string>("PromptVersion")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("prompt_version");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("provider");
-
-                    b.Property<string>("Purpose")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("purpose");
-
-                    b.Property<Guid?>("ReferenceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("reference_id");
-
-                    b.Property<string>("RequestId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("request_id");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("status");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_ai_usage_logs");
-
-                    b.HasIndex("ReferenceId")
-                        .HasDatabaseName("ix_ai_usage_logs_reference")
-                        .HasFilter("reference_id IS NOT NULL");
-
-                    b.HasIndex("TenantId", "CreatedAt")
-                        .IsDescending(false, true)
-                        .HasDatabaseName("ix_ai_usage_logs_tenant_created");
-
-                    b.ToTable("ai_usage_logs", (string)null);
                 });
 
             modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Clientes.Cliente", b =>

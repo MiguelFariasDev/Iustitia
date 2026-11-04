@@ -3,24 +3,24 @@ using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Polly.Timeout;
 
-namespace Advocacia.Modules.Integrations.Anthropic.Infrastructure;
+namespace Advocacia.Modules.Integrations.Anthropic.Infrastructure.Resilience;
 
 /// <summary>
-/// Mesma ordem do pipeline do CNJ: timeout total &gt; circuit breaker &gt; retry &gt; timeout
+/// Mesma ordem do pipeline do CNJ (ver ADR-067): timeout total &gt; circuit breaker &gt; retry &gt; timeout
 /// por tentativa. 4xx (exceto 408/429) não é retentado — é erro nosso e repetir só gasta
 /// dinheiro. 529 (overloaded) é tratado como transitório.
 /// </summary>
 public static class AnthropicResiliencePipeline
 {
     public static IHttpStandardResiliencePipelineBuilder Configure(
-        IHttpStandardResiliencePipelineBuilder builder, AnthropicOptions options)
+        IHttpStandardResiliencePipelineBuilder builder, AnthropicSettings options)
     {
         builder.Configure(resilience =>
         {
-            resilience.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds * (options.RetryCount + 1));
+            resilience.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds * (options.MaxRetries + 1));
             resilience.AttemptTimeout.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 
-            resilience.Retry.MaxRetryAttempts = options.RetryCount;
+            resilience.Retry.MaxRetryAttempts = options.MaxRetries;
             resilience.Retry.Delay = TimeSpan.FromSeconds(options.RetryBaseDelaySeconds);
             resilience.Retry.BackoffType = DelayBackoffType.Exponential;
             resilience.Retry.UseJitter = true;

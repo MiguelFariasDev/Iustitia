@@ -2,7 +2,7 @@
 
 **Status:** implementado na Fase 3, Etapa 3.2. A **revisão humana** (aprovar/corrigir/rejeitar a
 sugestão) e a criação de tarefas/fila são as Etapas 3.3 e 3.4 — **nada aqui altera a publicação**.
-Decisões: ADR-067 (fluxo e validação), ADR-068 (prompts), ADR-069 (cliente e auditoria).
+Decisões: ADR-070 (fluxo e validação), ADR-071 (prompts); a integração com a Anthropic está nas ADR-067 a 069 e em [anthropic.md](../../integrations/anthropic.md).
 
 ## Fluxo
 
@@ -15,7 +15,7 @@ PublicationClassificationJob  (Hangfire, a cada 15 min, por escritório)
 Cada chamada (inclusive a inválida) → ai_usage_logs
 ```
 
-- **Validação:** `AiResponseParser` rejeita qualquer resposta fora do contrato (ver ADR-067). Erro
+- **Validação:** `AiResponseParser` rejeita qualquer resposta fora do contrato (ver ADR-070). Erro
   `AI_INVALID_RESPONSE`; o log cita só o nome do campo, nunca o conteúdo.
 - **Confiança < 50** ⇒ `requires_manual_review = true` ("pendente de revisão manual").
 - **Falha do provedor** (indisponível, timeout, limite, credencial) ⇒ a execução para e relança
@@ -47,21 +47,20 @@ no front matter. **Mudou o texto ⇒ suba a versão e rode a regressão.** Tipos
 | `…:TenantIds` | `[]` | restringe a escritórios específicos (vazio = todos com pendência) |
 
 > O modelo `claude-3-5-sonnet-20241022` (do pedido original da etapa) foi aposentado pela
-> Anthropic; a API o recusa. Veja ADR-069.
+> Anthropic; a API o recusa. Veja ADR-067.
 
 ## Tabelas
 
-- **`publication_suggestions`** — uma por publicação (`ux_publication_suggestions_publication`):
-  `act_type`, `suggested_deadline_days`, `deadline_type` (`business`/`calendar`), `legal_basis`,
-  `confidence`, `requires_manual_review`, `content_truncated`, `ai_provider`, `ai_model`,
-  `prompt_version`, `raw_response` (jsonb com as respostas validadas), `created_at`.
-- **`ai_usage_logs`** — uma linha por chamada: finalidade, modelo, versão do prompt, publicação,
-  tokens (entrada/saída/escrita e leitura de cache), `cost_usd`, `latency_ms`, desfecho, erro,
-  `request_id`. **Append-only** e sem conteúdo.
-
-Ambas têm RLS por tenant (`014_publication_suggestions.sql`). As tabelas são criadas pela migration
-EF `AddPublicationSuggestionsAndAiUsageLogs`; o SQL do Supabase cobre RLS, CHECK constraints e
-grants (mesma convenção das migrations 011–013).
+- **`publication_suggestions`** (módulo Legal, migration EF `AddPublicationSuggestions` + `014_publication_suggestions.sql`)
+  — uma por publicação (`ux_publication_suggestions_publication`): `act_type`,
+  `suggested_deadline_days`, `deadline_type` (`business`/`calendar`), `legal_basis`, `confidence`,
+  `requires_manual_review`, `content_truncated`, `ai_provider`, `ai_model`, `prompt_version`,
+  `raw_response` (jsonb com as respostas validadas), `created_at`. RLS por tenant.
+- **`ai_usage_logs`** (módulo Anthropic — ver [anthropic.md](../../integrations/anthropic.md) e ADR-069)
+  — uma linha por chamada, com `purpose = classification|deadline`, `prompt_version` e
+  `reference_id` = a publicação. Resposta cobrada mas descartada fica como `success = false`,
+  `error_code = AI_INVALID_RESPONSE`; é essa contagem que limita as tentativas por publicação.
+  **Append-only** e sem conteúdo.
 
 ## Operação
 
@@ -85,7 +84,7 @@ ANTHROPIC_API_KEY=... dotnet test --filter Category=PromptRegression
 
 20 chamadas reais (10 de classificação, 10 de prazo) em `tests/RegressionTests/Prompts`. Sem a
 chave os testes são pulados. **Não rodam no CI**; quando houver pipeline de testes, excluir a
-categoria (`--filter "Category!=PromptRegression"`). Os textos são sintéticos (ver ADR-068).
+categoria (`--filter "Category!=PromptRegression"`). Os textos são sintéticos (ver ADR-071).
 
 ## Limites conhecidos
 

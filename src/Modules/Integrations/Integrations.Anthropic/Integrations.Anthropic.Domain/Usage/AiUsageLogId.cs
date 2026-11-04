@@ -1,4 +1,4 @@
-namespace Advocacia.Modules.Legal.Domain.Ai;
+namespace Advocacia.Modules.Integrations.Anthropic.Domain.Usage;
 
 public readonly record struct AiUsageLogId(Guid Value)
 {

@@ -1,5 +1,6 @@
-using Advocacia.Modules.Integrations.Anthropic.Application.Models;
+using Advocacia.Modules.Integrations.Anthropic.Domain.Models;
 using Advocacia.Modules.Integrations.Anthropic.Infrastructure;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure.Usage;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -9,7 +10,7 @@ namespace Advocacia.Modules.Integrations.Anthropic.UnitTests;
 public class AiCostCalculatorTests
 {
     private static AiCostCalculator Create() => new(
-        Options.Create(new AnthropicOptions
+        Options.Create(new AnthropicSettings
         {
             Pricing =
             {

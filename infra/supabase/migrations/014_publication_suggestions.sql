@@ -1,14 +1,15 @@
 -- ============================================================================
 -- 014_publication_suggestions.sql — RLS, constraints e grants de publication_suggestions
--- e ai_usage_logs (Fase 3, Etapa 3.2 — classificação de publicações por IA).
+-- (Fase 3, Etapa 3.2 — classificação de publicações por IA).
 --
 -- Aplicar via: npx supabase db push (ou psql direto em dev local)
 -- Pré-requisitos:
 --   - 002_rls.sql (role app_user)
---   - Migration AddPublicationSuggestionsAndAiUsageLogs do LegalDbContext, que CRIA as duas
---     tabelas e seus índices (ux_publication_suggestions_publication único em publication_id,
---     ix_publication_suggestions_created_at, ix_ai_usage_logs_*).
--- Ver ADR-004 (RLS) e ADR-067 (classificação por IA).
+--   - Migration AddPublicationSuggestions do LegalDbContext, que CRIA a tabela e seus índices
+--     (ux_publication_suggestions_publication único em publication_id,
+--     ix_publication_suggestions_created_at).
+-- A auditoria de uso de IA (ai_usage_logs) é do módulo Anthropic: ver 015_ai_usage_logs.sql.
+-- Ver ADR-004 (RLS) e ADR-070 (classificação por IA).
 --
 -- Seguindo a convenção dos arquivos 011/012/013, a tabela é criada pelo EF Core e este arquivo
 -- cobre só o que o EF não expressa: RLS, CHECK constraints e grants. Criar a tabela aqui E na
@@ -45,18 +46,6 @@ BEGIN
       ADD CONSTRAINT ck_publication_suggestions_deadline_days
       CHECK (suggested_deadline_days IS NULL OR suggested_deadline_days BETWEEN 0 AND 365);
   END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_ai_usage_logs_status') THEN
-    ALTER TABLE ai_usage_logs
-      ADD CONSTRAINT ck_ai_usage_logs_status CHECK (status IN ('Succeeded', 'InvalidResponse', 'Failed'));
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_ai_usage_logs_non_negative') THEN
-    ALTER TABLE ai_usage_logs
-      ADD CONSTRAINT ck_ai_usage_logs_non_negative
-      CHECK (input_tokens >= 0 AND output_tokens >= 0 AND cache_creation_input_tokens >= 0
-             AND cache_read_input_tokens >= 0 AND cost_usd >= 0 AND latency_ms >= 0);
-  END IF;
 END
 $checks$;
 
@@ -76,17 +65,6 @@ CREATE POLICY tenant_isolation_publication_suggestions_write ON publication_sugg
   FOR INSERT
   WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
 
-ALTER TABLE ai_usage_logs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation_ai_usage_logs ON ai_usage_logs
-  USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
-
-CREATE POLICY tenant_isolation_ai_usage_logs_write ON ai_usage_logs
-  FOR INSERT
-  WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
-
--- Sugestões: a revisão humana (Etapa 3.3) vai atualizá-las, e a exclusão física atende o
--- direito ao esquecimento (LGPD). Log de uso: trilha de auditoria APPEND-ONLY — a aplicação
--- só lê e insere; retenção/expurgo, quando existir, será um job com papel próprio.
+-- A revisão humana (Etapa 3.3) vai atualizar a sugestão, e a exclusão física atende o direito
+-- ao esquecimento (LGPD).
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.publication_suggestions TO app_user;
-GRANT SELECT, INSERT ON public.ai_usage_logs TO app_user;

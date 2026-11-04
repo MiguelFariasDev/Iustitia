@@ -1,6 +1,5 @@
 using Advocacia.BuildingBlocks.Domain.Errors;
-using Advocacia.Modules.Integrations.Anthropic.Application.Models;
-using Advocacia.Modules.Legal.Domain.Ai;
+using Advocacia.Modules.Integrations.Anthropic.Domain.Models;
 using Advocacia.Modules.Legal.Domain.Suggestions;
 using FluentAssertions;
 
@@ -32,12 +31,11 @@ public class ClassificationServiceTests
 
         var log = kit.Recorder.Entries.Should().ContainSingle().Subject;
         log.Purpose.Should().Be("classification");
-        log.Status.Should().Be(AiCallStatus.Succeeded);
+        log.Success.Should().BeTrue();
         log.InputTokens.Should().Be(1200);
         log.OutputTokens.Should().Be(80);
         log.CacheCreationInputTokens.Should().Be(300);
         log.CacheReadInputTokens.Should().Be(700);
-        log.CostUsd.Should().Be(0.01m);
         log.RequestId.Should().Be("req_1");
         log.ErrorCode.Should().BeNull();
     }
@@ -108,27 +106,26 @@ public class ClassificationServiceTests
 
         // A chamada foi feita e COBRADA: precisa estar na auditoria mesmo com a resposta descartada.
         var log = kit.Recorder.Entries.Should().ContainSingle().Subject;
-        log.Status.Should().Be(AiCallStatus.InvalidResponse);
+        log.Success.Should().BeFalse();
         log.ErrorCode.Should().Be(nameof(ErrorCode.AI_INVALID_RESPONSE));
         log.InputTokens.Should().Be(1500);
         log.OutputTokens.Should().Be(40);
-        log.CostUsd.Should().Be(0.01m);
     }
 
     [Fact]
     public async Task ClassifyAsync_ProviderFailure_PropagatesTheErrorAndAuditsAFailedCall()
     {
         var kit = new AiTestKit();
-        kit.FailWith(ErrorFactory.From(ErrorCode.INTEGRATION_RATE_LIMITED, "Anthropic"));
+        kit.FailWith(ErrorFactory.From(ErrorCode.AI_RATE_LIMITED));
 
         var result = await kit.Classification.ClassifyAsync("texto", "TJCE", "Civel");
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(nameof(ErrorCode.INTEGRATION_RATE_LIMITED));
+        result.Error.Code.Should().Be(nameof(ErrorCode.AI_RATE_LIMITED));
 
         var log = kit.Recorder.Entries.Should().ContainSingle().Subject;
-        log.Status.Should().Be(AiCallStatus.Failed);
-        log.ErrorCode.Should().Be(nameof(ErrorCode.INTEGRATION_RATE_LIMITED));
+        log.Success.Should().BeFalse();
+        log.ErrorCode.Should().Be(nameof(ErrorCode.AI_RATE_LIMITED));
         log.InputTokens.Should().Be(0);
     }
 

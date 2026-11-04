@@ -3,7 +3,6 @@ using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Integrations.Anthropic.Application.Models;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Application.Ai;
-using Advocacia.Modules.Legal.Domain.Ai;
 using Advocacia.Modules.Legal.Domain.Suggestions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -56,12 +55,12 @@ public sealed class ClassificationService(
                 answer.Model, answer.PromptVersion, parsed.Reason);
 
             await executor.RecordOutcomeAsync(
-                answer, AiCallStatus.InvalidResponse, nameof(ErrorCode.AI_INVALID_RESPONSE), cancellationToken);
+                answer, false, nameof(ErrorCode.AI_INVALID_RESPONSE), cancellationToken);
 
             return Result.Failure<ClassificationResult>(ErrorFactory.From(ErrorCode.AI_INVALID_RESPONSE));
         }
 
-        await executor.RecordOutcomeAsync(answer, AiCallStatus.Succeeded, null, cancellationToken);
+        await executor.RecordOutcomeAsync(answer, true, null, cancellationToken);
 
         var value = parsed.Value!;
         var requiresManualReview = value.Confidence < PublicationSuggestion.ManualReviewConfidenceThreshold;

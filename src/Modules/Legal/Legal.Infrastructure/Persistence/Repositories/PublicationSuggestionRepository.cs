@@ -1,5 +1,4 @@
 using Advocacia.Modules.Legal.Application.Abstractions;
-using Advocacia.Modules.Legal.Domain.Ai;
 using Advocacia.Modules.Legal.Domain.Publications;
 using Advocacia.Modules.Legal.Domain.Suggestions;
 using Microsoft.EntityFrameworkCore;
@@ -30,30 +29,6 @@ public sealed class PublicationSuggestionRepository(LegalDbContext dbContext) : 
             .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);
-
-    public async Task<IReadOnlyDictionary<Guid, int>> CountInvalidResponseAttemptsAsync(
-        Guid tenantId, IReadOnlyCollection<Guid> publicationIds, CancellationToken cancellationToken = default)
-    {
-        if (publicationIds.Count == 0)
-        {
-            return new Dictionary<Guid, int>();
-        }
-
-        var ids = publicationIds.Select(id => (Guid?)id).ToList();
-
-        var counts = await dbContext.AiUsageLogs
-            .Where(log => log.TenantId == tenantId
-                && log.Purpose == "classification"
-                && log.Status == AiCallStatus.InvalidResponse
-                && ids.Contains(log.ReferenceId))
-            .GroupBy(log => log.ReferenceId)
-            .Select(group => new { PublicationId = group.Key, Attempts = group.Count() })
-            .ToListAsync(cancellationToken);
-
-        return counts
-            .Where(row => row.PublicationId.HasValue)
-            .ToDictionary(row => row.PublicationId!.Value, row => row.Attempts);
-    }
 
     /// <summary>
     /// IgnoreQueryFilters é necessário e correto aqui, como em ListTenantsComProcessosAtivosAsync:

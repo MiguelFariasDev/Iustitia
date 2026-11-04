@@ -22,14 +22,6 @@ public interface IPublicationSuggestionRepository
     Task<IReadOnlyList<Publication>> ListAwaitingSuggestionAsync(
         Guid tenantId, int skip, int take, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Quantas chamadas de classificação já voltaram com resposta INVÁLIDA (e foram cobradas)
-    /// para cada publicação, lidas de ai_usage_logs. O job usa para não reprocessar para sempre
-    /// — e pagar de novo — uma publicação cuja resposta o modelo nunca acerta.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, int>> CountInvalidResponseAttemptsAsync(
-        Guid tenantId, IReadOnlyCollection<Guid> publicationIds, CancellationToken cancellationToken = default);
-
     /// <summary>Escritórios com ao menos uma publicação pendente sem sugestão — o job itera sobre eles.</summary>
     Task<IReadOnlyList<Guid>> ListTenantsAwaitingSuggestionAsync(CancellationToken cancellationToken = default);
 }

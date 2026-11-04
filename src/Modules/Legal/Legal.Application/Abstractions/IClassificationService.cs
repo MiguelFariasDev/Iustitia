@@ -6,7 +6,7 @@ namespace Advocacia.Modules.Legal.Application.Abstractions;
 /// <summary>
 /// Classifica uma publicação do DJEN (tipo de ato + prazo inicial) com IA. O resultado é só
 /// uma SUGESTÃO: nada aqui altera a publicação nem cria prazo — isso depende da revisão
-/// humana (ADR-012). Falhas voltam como <see cref="Result"/> de erro (INTEGRATION_* quando o
+/// humana (ADR-012). Falhas voltam como <see cref="Result"/> de erro (AI_* quando o
 /// provedor falha, AI_INVALID_RESPONSE quando a resposta não passa na validação).
 /// </summary>
 public interface IClassificationService

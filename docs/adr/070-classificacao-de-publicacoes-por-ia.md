@@ -1,4 +1,4 @@
-# ADR-067 — Classificação de publicações e sugestão de prazo por IA
+# ADR-070 — Classificação de publicações e sugestão de prazo por IA
 
 **Status:** aceito · **Contexto:** Fase 3, Etapa 3.2
 

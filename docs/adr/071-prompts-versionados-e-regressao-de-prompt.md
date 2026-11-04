@@ -1,4 +1,4 @@
-# ADR-068 — Prompts versionados em arquivos .md e testes de regressão de prompt
+# ADR-071 — Prompts versionados em arquivos .md e testes de regressão de prompt
 
 **Status:** aceito · **Contexto:** Fase 3, Etapa 3.2
 

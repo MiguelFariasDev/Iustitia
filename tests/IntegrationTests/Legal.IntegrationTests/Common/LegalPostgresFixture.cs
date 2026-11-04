@@ -1,4 +1,5 @@
 using Advocacia.BuildingBlocks.Infrastructure.Tenancy;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure.Persistence;
 using Advocacia.Modules.Legal.Infrastructure.Persistence;
 using Advocacia.Platform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,8 @@ namespace Advocacia.Modules.Legal.IntegrationTests.Common;
 /// ambiente real é montado:
 ///   1. migrations do EF Core do Platform (tabelas do núcleo, incluindo outbox_messages);
 ///   2. migrations do EF Core do Legal (tabela publications);
-///   3. migrations SQL do Supabase (/infra/supabase/migrations), que dependem das tabelas já
+///   3. migrations do EF Core do Anthropic (tabela ai_usage_logs);
+///   4. migrations SQL do Supabase (/infra/supabase/migrations), que dependem das tabelas já
 ///      existirem — 010 adiciona índices GIN/BRIN em publications e 011 habilita o RLS dela.
 ///
 /// Expõe duas connection strings: uma como dono das tabelas (postgres, que BYPASSA RLS por
@@ -43,6 +45,9 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
 
         await MigrateAsync<LegalDbContext>(
             options => new LegalDbContext(options, new AsyncLocalTenantContext()));
+
+        await MigrateAsync<AnthropicDbContext>(
+            options => new AnthropicDbContext(options, new AsyncLocalTenantContext()));
 
         await ApplySupabaseSqlMigrationsAsync();
 

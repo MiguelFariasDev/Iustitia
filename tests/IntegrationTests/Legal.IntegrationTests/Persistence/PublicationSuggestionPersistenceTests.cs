@@ -1,4 +1,3 @@
-using Advocacia.Modules.Legal.Domain.Ai;
 using Advocacia.Modules.Legal.Domain.Publications;
 using Advocacia.Modules.Legal.Domain.Suggestions;
 using Advocacia.Modules.Legal.Infrastructure.Persistence;
@@ -11,7 +10,7 @@ using Npgsql;
 namespace Advocacia.Modules.Legal.IntegrationTests.Persistence;
 
 /// <summary>
-/// Persistência das sugestões de IA e da auditoria de uso (Etapa 3.2 — ver ADR-067 e
+/// Persistência das sugestões de IA e da auditoria de uso (Etapa 3.2 — ver ADR-070 e
 /// infra/supabase/migrations/014_publication_suggestions.sql). Os testes de RLS conectam como
 /// app_user: como dono das tabelas o RLS é bypassado e o teste passaria com as policies ausentes.
 /// </summary>
@@ -20,17 +19,14 @@ public class PublicationSuggestionPersistenceTests(LegalPostgresFixture fixture)
 {
     private static readonly DateTimeOffset Now = TestPublications.Now;
 
-    [Theory]
-    [InlineData("publication_suggestions")]
-    [InlineData("ai_usage_logs")]
-    public async Task RlsIsEnabled(string table)
+    [Fact]
+    public async Task RlsIsEnabled()
     {
         await using var connection = new NpgsqlConnection(fixture.SuperuserConnectionString);
         await connection.OpenAsync();
 
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT relrowsecurity FROM pg_class WHERE relname = @table";
-        command.Parameters.AddWithValue("table", table);
+        command.CommandText = "SELECT relrowsecurity FROM pg_class WHERE relname = 'publication_suggestions'";
 
         ((bool?)await command.ExecuteScalarAsync()).Should().BeTrue();
     }
@@ -168,34 +164,6 @@ public class PublicationSuggestionPersistenceTests(LegalPostgresFixture fixture)
     }
 
     [Fact]
-    public async Task CountInvalidResponseAttempts_CountsOnlyInvalidClassificationCallsOfThatPublication()
-    {
-        var tenantId = Guid.NewGuid();
-        var publication = await SeedPublicationAsync(tenantId, "ext-tentativas");
-        var other = await SeedPublicationAsync(tenantId, "ext-outra");
-
-        await using (var context = SuperuserContext(tenantId))
-        {
-            context.AiUsageLogs.AddRange(
-                NewUsageLog(tenantId, publication.Id.Value, "classification", AiCallStatus.InvalidResponse),
-                NewUsageLog(tenantId, publication.Id.Value, "classification", AiCallStatus.InvalidResponse),
-                NewUsageLog(tenantId, publication.Id.Value, "classification", AiCallStatus.Succeeded),
-                NewUsageLog(tenantId, publication.Id.Value, "classification", AiCallStatus.Failed),
-                NewUsageLog(tenantId, publication.Id.Value, "deadline", AiCallStatus.InvalidResponse),
-                NewUsageLog(tenantId, other.Id.Value, "classification", AiCallStatus.InvalidResponse));
-            await context.SaveChangesAsync();
-        }
-
-        await using var readContext = SuperuserContext(tenantId);
-        var counts = await new PublicationSuggestionRepository(readContext)
-            .CountInvalidResponseAttemptsAsync(tenantId, [publication.Id.Value, other.Id.Value, Guid.NewGuid()]);
-
-        counts[publication.Id.Value].Should().Be(2);
-        counts[other.Id.Value].Should().Be(1);
-        counts.Should().HaveCount(2);
-    }
-
-    [Fact]
     public async Task AsAppUser_ATenantNeverSeesAnotherTenantsSuggestions()
     {
         var tenantA = Guid.NewGuid();
@@ -229,45 +197,6 @@ public class PublicationSuggestionPersistenceTests(LegalPostgresFixture fixture)
         var exception = await act.Should().ThrowAsync<DbUpdateException>();
         exception.Which.InnerException.Should().BeOfType<PostgresException>()
             .Which.SqlState.Should().Be(PostgresErrorCodes.InsufficientPrivilege);
-    }
-
-    [Fact]
-    public async Task AsAppUser_UsageLogsAreIsolatedByTenant()
-    {
-        var tenantA = Guid.NewGuid();
-        var tenantB = Guid.NewGuid();
-
-        await SeedUsageLogAsync(tenantA);
-        await SeedUsageLogAsync(tenantB);
-
-        await using var contextA = AppUserContext(tenantA);
-        var visible = await contextA.AiUsageLogs.IgnoreQueryFilters().ToListAsync();
-
-        visible.Should().OnlyContain(log => log.TenantId == tenantA);
-    }
-
-    [Fact]
-    public async Task AsAppUser_UsageLogsAreAppendOnly()
-    {
-        var tenantId = Guid.NewGuid();
-        await SeedUsageLogAsync(tenantId);
-
-        await using var connection = new NpgsqlConnection(fixture.AppUserConnectionString);
-        await connection.OpenAsync();
-
-        await using (var setTenant = connection.CreateCommand())
-        {
-            setTenant.CommandText = $"SET app.current_tenant = '{tenantId}'";
-            await setTenant.ExecuteNonQueryAsync();
-        }
-
-        await using var update = connection.CreateCommand();
-        update.CommandText = "UPDATE ai_usage_logs SET cost_usd = 0";
-
-        var act = () => update.ExecuteNonQueryAsync();
-
-        var exception = await act.Should().ThrowAsync<PostgresException>();
-        exception.Which.SqlState.Should().Be(PostgresErrorCodes.InsufficientPrivilege);
     }
 
     [Fact]
@@ -315,13 +244,6 @@ public class PublicationSuggestionPersistenceTests(LegalPostgresFixture fixture)
         await context.SaveChangesAsync();
     }
 
-    private async Task SeedUsageLogAsync(Guid tenantId)
-    {
-        await using var context = SuperuserContext(tenantId);
-        context.AiUsageLogs.Add(NewUsageLog(tenantId, null, "classification", AiCallStatus.Succeeded));
-        await context.SaveChangesAsync();
-    }
-
     private static PublicationSuggestion NewSuggestion(
         Guid tenantId, Publication publication, int? days, DeadlineType? type, int confidence) =>
         PublicationSuggestion.Create(
@@ -338,11 +260,6 @@ public class PublicationSuggestionPersistenceTests(LegalPostgresFixture fixture)
             "1.0.0/1.0.0",
             "{\"classification\":{\"act_type\":\"intimacao\"},\"deadline\":null}",
             Now).Value;
-
-    private static AiUsageLog NewUsageLog(Guid tenantId, Guid? referenceId, string purpose, AiCallStatus status) =>
-        AiUsageLog.Create(
-            tenantId, purpose, "Anthropic", "claude-sonnet-5-5", "1.0.0", referenceId,
-            1000, 80, 0, 0, 0.0028m, 1200, status, status == AiCallStatus.Succeeded ? null : "ERRO", "req_1", Now);
 
     private LegalDbContext SuperuserContext(Guid tenantId) =>
         TestLegalDbContextFactory.Create(fixture.SuperuserConnectionString, TestLegalDbContextFactory.TenantContextFor(tenantId));

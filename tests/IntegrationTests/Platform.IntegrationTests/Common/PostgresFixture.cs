@@ -1,4 +1,5 @@
 using Advocacia.BuildingBlocks.Infrastructure.Tenancy;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure.Persistence;
 using Advocacia.Modules.Legal.Infrastructure.Persistence;
 using Advocacia.Platform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +61,16 @@ public sealed class PostgresFixture : IAsyncLifetime
         await using (var legalContext = new LegalDbContext(legalOptionsBuilder.Options, new AsyncLocalTenantContext()))
         {
             await legalContext.Database.MigrateAsync();
+        }
+
+        // ai_usage_logs (módulo Anthropic): 015_ai_usage_logs.sql precisa da tabela existente.
+        var anthropicOptionsBuilder = new DbContextOptionsBuilder<AnthropicDbContext>();
+        anthropicOptionsBuilder.UseNpgsql(SuperuserConnectionString);
+        anthropicOptionsBuilder.UseSnakeCaseNamingConvention();
+
+        await using (var anthropicContext = new AnthropicDbContext(anthropicOptionsBuilder.Options, new AsyncLocalTenantContext()))
+        {
+            await anthropicContext.Database.MigrateAsync();
         }
 
         await ApplySupabaseSqlMigrationsAsync();

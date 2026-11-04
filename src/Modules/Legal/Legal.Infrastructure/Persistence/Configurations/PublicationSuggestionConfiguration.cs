@@ -7,7 +7,7 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// Tabela <c>publication_suggestions</c>: a sugestão de IA (tipo do ato e prazo) de uma
-/// publicação — ver ADR-067. PublicationSuggestion implementa IHasTenant, então o filtro
+/// publicação — ver ADR-070. PublicationSuggestion implementa IHasTenant, então o filtro
 /// global de tenant vem do BaseDbContext; o RLS está em
 /// infra/supabase/migrations/014_publication_suggestions.sql.
 /// </summary>

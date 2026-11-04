@@ -4,12 +4,14 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Errors.Exceptions;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.BuildingBlocks.Domain.Time;
+using Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Application.Ai;
 using Advocacia.Modules.Legal.Domain.Processos;
 using Advocacia.Modules.Legal.Domain.Publications;
 using Advocacia.Modules.Legal.Domain.Suggestions;
 using Advocacia.Modules.Legal.Infrastructure.Persistence;
+using Advocacia.Modules.Legal.Infrastructure.Services;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -39,6 +41,7 @@ namespace Advocacia.Modules.Legal.Infrastructure.Jobs;
 /// </summary>
 public sealed class PublicationClassificationJob(
     IPublicationSuggestionRepository suggestionRepository,
+    IAnthropicUsageQuery usageQuery,
     IProcessoRepository processoRepository,
     IClassificationService classificationService,
     IDeadlineSuggestionService deadlineSuggestionService,
@@ -130,8 +133,12 @@ public sealed class PublicationClassificationJob(
 
             skip += page.Count;
 
-            var attempts = await suggestionRepository.CountInvalidResponseAttemptsAsync(
-                tenantId, page.Select(publication => publication.Id.Value).ToList(), cancellationToken);
+            var attempts = await usageQuery.CountFailuresByReferenceAsync(
+                tenantId,
+                ClassificationService.Purpose,
+                nameof(ErrorCode.AI_INVALID_RESPONSE),
+                page.Select(publication => publication.Id.Value).ToList(),
+                cancellationToken);
 
             foreach (var publication in page)
             {
@@ -314,13 +321,14 @@ public sealed class PublicationClassificationJob(
     }
 
     private static bool IsProviderOutage(string code) =>
-        code is nameof(ErrorCode.INTEGRATION_UNAVAILABLE)
-            or nameof(ErrorCode.INTEGRATION_TIMEOUT)
-            or nameof(ErrorCode.INTEGRATION_AUTH_FAILED)
-            or nameof(ErrorCode.INTEGRATION_RATE_LIMITED);
+        code is nameof(ErrorCode.AI_UNAVAILABLE)
+            or nameof(ErrorCode.AI_TIMEOUT)
+            or nameof(ErrorCode.AI_UNAUTHORIZED)
+            or nameof(ErrorCode.AI_RATE_LIMITED)
+            or nameof(ErrorCode.AI_OVERLOADED);
 
     private static ErrorCode ParseCode(string code) =>
-        Enum.TryParse<ErrorCode>(code, out var parsed) ? parsed : ErrorCode.INTEGRATION_UNAVAILABLE;
+        Enum.TryParse<ErrorCode>(code, out var parsed) ? parsed : ErrorCode.AI_UNAVAILABLE;
 
     private async Task<string?> ResolveAreaAsync(Publication publication, CancellationToken cancellationToken)
     {

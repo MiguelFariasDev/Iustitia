@@ -1,11 +1,11 @@
 using Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
-using Advocacia.Modules.Integrations.Anthropic.Application.Models;
+using Advocacia.Modules.Integrations.Anthropic.Domain.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Advocacia.Modules.Integrations.Anthropic.Infrastructure;
+namespace Advocacia.Modules.Integrations.Anthropic.Infrastructure.Usage;
 
-public sealed class AiCostCalculator(IOptions<AnthropicOptions> options, ILogger<AiCostCalculator> logger)
+public sealed class AiCostCalculator(IOptions<AnthropicSettings> options, ILogger<AiCostCalculator> logger)
     : IAiCostCalculator
 {
     private const decimal TokensPerMillion = 1_000_000m;
@@ -20,8 +20,8 @@ public sealed class AiCostCalculator(IOptions<AnthropicOptions> options, ILogger
 
         return (usage.InputTokens * pricing.InputPerMillion
                 + usage.OutputTokens * pricing.OutputPerMillion
-                + usage.CacheCreationInputTokens * pricing.CacheWritePerMillion
-                + usage.CacheReadInputTokens * pricing.CacheReadPerMillion)
+                + usage.CacheCreationTokens * pricing.CacheWritePerMillion
+                + usage.CacheReadTokens * pricing.CacheReadPerMillion)
             / TokensPerMillion;
     }
 }

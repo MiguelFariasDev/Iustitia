@@ -1,4 +1,4 @@
-using Advocacia.Modules.Integrations.Anthropic.Application.Models;
+using Advocacia.Modules.Integrations.Anthropic.Domain.Models;
 
 namespace Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
 

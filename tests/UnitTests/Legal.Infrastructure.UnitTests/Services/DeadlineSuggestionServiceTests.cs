@@ -1,5 +1,4 @@
 using Advocacia.BuildingBlocks.Domain.Errors;
-using Advocacia.Modules.Legal.Domain.Ai;
 using Advocacia.Modules.Legal.Domain.Suggestions;
 using FluentAssertions;
 
@@ -30,7 +29,7 @@ public class DeadlineSuggestionServiceTests
 
         var log = kit.Recorder.Entries.Should().ContainSingle().Subject;
         log.Purpose.Should().Be("deadline");
-        log.Status.Should().Be(AiCallStatus.Succeeded);
+        log.Success.Should().BeTrue();
     }
 
     [Fact]
@@ -67,7 +66,7 @@ public class DeadlineSuggestionServiceTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be(nameof(ErrorCode.AI_INVALID_RESPONSE));
-        kit.Recorder.Entries.Should().ContainSingle().Which.Status.Should().Be(AiCallStatus.InvalidResponse);
+        kit.Recorder.Entries.Should().ContainSingle().Which.Success.Should().BeFalse();
     }
 
     [Fact]
@@ -87,11 +86,11 @@ public class DeadlineSuggestionServiceTests
     public async Task SuggestAsync_ProviderFailure_PropagatesTheError()
     {
         var kit = new AiTestKit();
-        kit.FailWith(ErrorFactory.From(ErrorCode.INTEGRATION_UNAVAILABLE, "Anthropic"));
+        kit.FailWith(ErrorFactory.From(ErrorCode.AI_UNAVAILABLE));
 
         var result = await kit.Deadline.SuggestAsync("texto", "intimacao");
 
-        result.Error.Code.Should().Be(nameof(ErrorCode.INTEGRATION_UNAVAILABLE));
-        kit.Recorder.Entries.Should().ContainSingle().Which.Status.Should().Be(AiCallStatus.Failed);
+        result.Error.Code.Should().Be(nameof(ErrorCode.AI_UNAVAILABLE));
+        kit.Recorder.Entries.Should().ContainSingle().Which.Success.Should().BeFalse();
     }
 }

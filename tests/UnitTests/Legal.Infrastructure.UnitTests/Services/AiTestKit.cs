@@ -1,6 +1,7 @@
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
 using Advocacia.Modules.Integrations.Anthropic.Application.Models;
+using Advocacia.Modules.Integrations.Anthropic.Domain.Models;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Infrastructure.Services;
 using Advocacia.Modules.Workflow.Infrastructure;
@@ -10,7 +11,7 @@ using NSubstitute;
 
 namespace Advocacia.Modules.Legal.Infrastructure.UnitTests.Services;
 
-/// <summary>Monta os serviços de IA com o catálogo de prompts REAL e a API da Anthropic falsa.</summary>
+/// <summary>Monta os serviços de IA com o catálogo de prompts REAL e o cliente da Anthropic falso.</summary>
 internal sealed class AiTestKit
 {
     public const string ClassificationModel = "modelo-classificacao";
@@ -21,9 +22,6 @@ internal sealed class AiTestKit
         Client = Substitute.For<IAnthropicClient>();
         Recorder = new RecordingUsageRecorder();
 
-        var cost = Substitute.For<IAiCostCalculator>();
-        cost.Calculate(Arg.Any<string>(), Arg.Any<AnthropicUsage>()).Returns(0.01m);
-
         var models = Options.Create(new AnthropicModelsOptions
         {
             Classification = ClassificationModel,
@@ -32,7 +30,7 @@ internal sealed class AiTestKit
         });
 
         var executor = new AiPromptExecutor(
-            new EmbeddedPromptCatalog(), Client, cost, Recorder, models, NullLogger<AiPromptExecutor>.Instance);
+            new EmbeddedPromptCatalog(), Client, Recorder, models, NullLogger<AiPromptExecutor>.Instance);
 
         Classification = new ClassificationService(executor, models, NullLogger<ClassificationService>.Instance);
         Deadline = new DeadlineSuggestionService(executor, models, NullLogger<DeadlineSuggestionService>.Instance);
@@ -46,23 +44,33 @@ internal sealed class AiTestKit
 
     public DeadlineSuggestionService Deadline { get; }
 
-    public AnthropicRequest? LastRequest { get; private set; }
+    public CapturedCall? LastRequest { get; private set; }
 
     public void RespondWith(string text, string model = "modelo-respondeu", AnthropicUsage? usage = null)
     {
-        Client.SendAsync(Arg.Any<AnthropicRequest>(), Arg.Any<CancellationToken>())
+        Client.SendMessageAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<AnthropicOptions>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                LastRequest = call.Arg<AnthropicRequest>();
+                LastRequest = new CapturedCall(call.ArgAt<string>(0), call.ArgAt<string>(1), call.ArgAt<AnthropicOptions>(2));
                 return Result.Success(new AnthropicResponse(
-                    text, model, "end_turn", "req_1", usage ?? new AnthropicUsage(1000, 60, 0, 0)));
+                    "msg_1", model, text, usage ?? new AnthropicUsage(1000, 60, 0, 0), "end_turn", [], "req_1"));
             });
     }
 
     public void FailWith(Error error)
     {
-        Client.SendAsync(Arg.Any<AnthropicRequest>(), Arg.Any<CancellationToken>())
+        Client.SendMessageAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<AnthropicOptions>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<AnthropicResponse>(error));
+    }
+
+    /// <summary>O que o cliente recebeu: facilita asserções sobre o prompt e as opções.</summary>
+    internal sealed record CapturedCall(string UserPrompt, string SystemPrompt, AnthropicOptions Options)
+    {
+        public string? Model => Options.Model;
+
+        public bool CacheSystemPrompt => Options.CacheSystemPrompt;
     }
 
     internal sealed class RecordingUsageRecorder : IAiUsageRecorder

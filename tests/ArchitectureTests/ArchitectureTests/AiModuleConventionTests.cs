@@ -1,6 +1,7 @@
 using System.Reflection;
 using Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
-using Advocacia.Modules.Integrations.Anthropic.Infrastructure;
+using Advocacia.Modules.Integrations.Anthropic.Domain.Models;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure.Clients;
 using Advocacia.Modules.Legal.Application;
 using Advocacia.Modules.Legal.Infrastructure.Persistence;
 using Advocacia.Modules.Workflow.Infrastructure;
@@ -10,7 +11,7 @@ using NetArchTest.Rules;
 namespace Advocacia.ArchitectureTests;
 
 /// <summary>
-/// Fronteiras da classificação por IA (Etapa 3.2 — ver ADR-067): o módulo Legal fala com a
+/// Fronteiras da classificação por IA (Etapa 3.2 — ver ADR-070): o módulo Legal fala com a
 /// Anthropic e com o catálogo de prompts só pelas PORTAS (Integrations.Anthropic.Application);
 /// a integração é genérica e não conhece módulo de negócio.
 /// </summary>
@@ -18,8 +19,9 @@ public class AiModuleConventionTests
 {
     private static readonly Assembly LegalApplication = typeof(LegalApplicationAssembly).Assembly;
     private static readonly Assembly LegalInfrastructure = typeof(LegalDbContext).Assembly;
+    private static readonly Assembly AnthropicDomain = typeof(AnthropicMessage).Assembly;
     private static readonly Assembly AnthropicApplication = typeof(IAnthropicClient).Assembly;
-    private static readonly Assembly AnthropicInfrastructure = typeof(AnthropicClient).Assembly;
+    private static readonly Assembly AnthropicInfrastructure = typeof(AnthropicHttpClient).Assembly;
     private static readonly Assembly WorkflowInfrastructure = typeof(EmbeddedPromptCatalog).Assembly;
 
     [Fact]
@@ -46,6 +48,23 @@ public class AiModuleConventionTests
         var result = Types.InAssembly(LegalApplication)
             .ShouldNot()
             .HaveDependencyOn("Advocacia.Modules.Integrations.Anthropic")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(Failing(result));
+    }
+
+    [Fact]
+    public void AnthropicDomain_ShouldNotDependOn_ApplicationInfrastructureOrBusinessModules()
+    {
+        var result = Types.InAssembly(AnthropicDomain)
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "Advocacia.BuildingBlocks.Application",
+                "Advocacia.BuildingBlocks.Infrastructure",
+                "Advocacia.Modules.Integrations.Anthropic.Application",
+                "Advocacia.Modules.Integrations.Anthropic.Infrastructure",
+                "Advocacia.Modules.Legal",
+                "Advocacia.Modules.Workflow")
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue(Failing(result));

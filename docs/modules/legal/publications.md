@@ -189,4 +189,4 @@ Faixa **PUBLICATION (1300–1399)** — ver `docs/errors/catalog.md`.
 `publication_suggestions` guarda a sugestão de tipo de ato e prazo gerada pelo Claude para cada
 publicação pendente. É só uma sugestão — a revisão humana (Etapa 3.3) é quem altera a publicação.
 Fluxo, configuração, tabelas e operação em [ai-classification.md](ai-classification.md); decisões
-nas ADR-067, 068 e 069.
+nas ADR-070 e 071 (e 067 a 069 para a integração com a Anthropic).
