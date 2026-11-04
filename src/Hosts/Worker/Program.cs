@@ -1,7 +1,10 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.CRM.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
+using Advocacia.Modules.Workflow.Infrastructure;
+using Advocacia.Modules.Workflow.Infrastructure.Jobs;
 using Advocacia.Platform.Infrastructure;
 using Advocacia.Platform.Infrastructure.Jobs.RecurringJobs;
 
@@ -21,6 +24,8 @@ builder.Services.AddPlatformInfrastructure(builder.Configuration, builder.Enviro
 // Módulos de negócio (ver comentário equivalente em Hosts/Api/Program.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddLegalInfrastructure(builder.Configuration);
+builder.Services.AddCrmInfrastructure(builder.Configuration);
+builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 
 var host = builder.Build();
 
@@ -32,6 +37,7 @@ using (var scope = host.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<RecurringJobsRegistrar>().RegisterAll();
     scope.ServiceProvider.GetRequiredService<LegalRecurringJobsRegistrar>().RegisterAll();
+    scope.ServiceProvider.GetRequiredService<WorkflowRecurringJobsRegistrar>().RegisterAll();
 }
 
 host.Run();

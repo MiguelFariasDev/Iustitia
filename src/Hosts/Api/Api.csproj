@@ -22,6 +22,10 @@
     <ProjectReference Include="..\..\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Legal\Legal.Api\Legal.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\CRM\CRM.Api\CRM.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\CRM\CRM.Infrastructure\CRM.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflow\Workflow.Api\Workflow.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflow\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />
   </ItemGroup>
 

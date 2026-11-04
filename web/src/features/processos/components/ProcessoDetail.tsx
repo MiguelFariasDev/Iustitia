@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { AgendarNoProcessoButton } from '@/features/agenda/components/AgendarNoProcessoButton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -87,6 +88,8 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
               </SelectContent>
             </Select>
           )}
+
+          <AgendarNoProcessoButton processoId={processo.id} />
 
           <Button variant="outline" size="sm" asChild>
             <Link href={`${routes.processes}/${processo.id}/editar` as never}>

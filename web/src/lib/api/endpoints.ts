@@ -42,6 +42,16 @@ export const endpoints = {
    * O painel é composto NO CLIENTE, a partir dos endpoints de cada módulo. Ver
    * features/dashboard/api.ts.
    */
+  contatos: {
+    list: '/contatos',
+    byId: (id: string) => `/contatos/${id}`,
+    reactivate: (id: string) => `/contatos/${id}/reactivate`,
+  },
+  agenda: {
+    eventos: '/agenda/eventos',
+    eventoById: (id: string) => `/agenda/eventos/${id}`,
+    reschedule: (id: string) => `/agenda/eventos/${id}/reschedule`,
+  },
   clientes: {
     list: '/clientes',
     byId: (id: string) => `/clientes/${id}`,
@@ -79,9 +89,6 @@ export const endpoints = {
     read: (id: string) => `/alerts/${id}/read`,
     /** DELETE — descarta (some das listagens; o registro permanece). */
     dismiss: (id: string) => `/alerts/${id}`,
-  },
-  agenda: {
-    events: '/agenda/events',
   },
   search: {
     global: '/search',

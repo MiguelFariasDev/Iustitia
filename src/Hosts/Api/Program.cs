@@ -1,7 +1,11 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.CRM.Api;
+using Advocacia.Modules.CRM.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Api;
 using Advocacia.Modules.Legal.Infrastructure;
+using Advocacia.Modules.Workflow.Api;
+using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Platform.Api.Extensions;
 using Advocacia.Platform.Api.Middleware;
 using Advocacia.Platform.Application;
@@ -13,7 +17,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
-// TODO (Fase 2+): registrar os módulos de negócio restantes (Workflow, Documents, ...) conforme entram no roadmap
+// TODO (Fase 4): registrar os módulos de negócio restantes (Documents, Reporting, ...) conforme entram no roadmap
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +42,8 @@ builder.Services.AddAdvocaciaRateLimiting();
 // a implementação é registrada aqui, pelo host (ver Legal.Infrastructure/DependencyInjection.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddLegalInfrastructure(builder.Configuration);
+builder.Services.AddCrmInfrastructure(builder.Configuration);
+builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
@@ -87,6 +93,8 @@ app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
 app.MapPublicationsEndpoints();
+app.MapContactsEndpoints();
+app.MapCalendarEndpoints();
 
 var hangfireOptions = app.Services.GetRequiredService<IOptions<HangfireOptions>>().Value;
 if (hangfireOptions.DashboardEnabled)
