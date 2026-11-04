@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Advocacia.Modules.Legal.Api</RootNamespace>
+    <AssemblyName>Advocacia.Modules.Legal.Api</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Asp.Versioning.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Legal.Application\Legal.Application.csproj" />
+    <!--
+      Platform.Api e Platform.Infrastructure entram aqui pelo ENCANAMENTO web compartilhado
+      (MapVersionedGroup, ResultExtensions, Policies), não pelo modelo de negócio do Platform.
+      A regra que vale para este módulo está em LegalModuleConventionTests: Legal.Api pode
+      depender da plataforma, mas NUNCA de Platform.Domain/Platform.Application — o domínio
+      jurídico não conhece Tenant nem User como agregados.
+    -->
+    <ProjectReference Include="..\..\..\Platform\Platform.Api\Platform.Api.csproj" />
+    <ProjectReference Include="..\..\..\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
