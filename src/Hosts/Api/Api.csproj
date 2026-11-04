@@ -14,11 +14,15 @@
     </PackageReference>
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="Hangfire.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Platform\Platform.Api\Platform.Api.csproj" />
     <ProjectReference Include="..\..\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Legal\Legal.Api\Legal.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
