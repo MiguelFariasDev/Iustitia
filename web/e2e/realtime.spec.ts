@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { dismissOnboardingHints } from './helpers'
 
 /**
@@ -8,7 +8,7 @@ import { dismissOnboardingHints } from './helpers'
  * invalidação do cache. A assinatura do canal privado em si é coberta pelos testes unitários
  * do hook e pela migration 013 (policy de realtime.messages).
  */
-async function pushAlert(page: import('@playwright/test').Page, detail: Record<string, unknown>) {
+async function pushAlert(page: Page, detail: Record<string, unknown>) {
   await page.evaluate(
     (payload) => window.dispatchEvent(new CustomEvent('adv:alert-created', { detail: payload })),
     detail
