@@ -18,5 +18,10 @@ public enum ErrorGroup
     FeatureFlags,
     Backup,
     Integration,
+    Client,
+    Process,
+    Publication,
+    Alert,
+    Cnj,
     Internal,
 }

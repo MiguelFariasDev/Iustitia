@@ -14,8 +14,8 @@ Conceitos do módulo:
 | Conceito | Fase | Status |
 |---|---|---|
 | **Publicação** — comunicação capturada de um diário oficial | 1 | implementado |
-| **Cliente** — pessoa física ou jurídica atendida pelo escritório | 2 | pendente |
-| **Processo** — processo judicial acompanhado | 2 | pendente |
+| **Cliente** — pessoa física ou jurídica atendida pelo escritório | 2 | implementado |
+| **Processo** — processo judicial acompanhado | 2 | implementado |
 | **Sugestão** — classificação e prazo propostos por IA, sempre com revisão humana | 3 | pendente |
 
 A decisão de criar o módulo como bounded context separado, e as regras de

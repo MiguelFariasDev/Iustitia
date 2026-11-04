@@ -1,0 +1,163 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## Advocacia — Operacional\nSaúde da API/Worker, outbox, jobs e consumers. Métricas vêm do Meter `Advocacia` (ver docs/observability/metrics.md)."
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Requisições por minuto e taxa de erro (%)",
+        "query": "requests\n| summarize total = count(), errors = countif(toint(resultCode) >= 500) by bin(timestamp, 5m)\n| extend errorRatePercent = round(100.0 * errors / total, 2)\n| project timestamp, total, errorRatePercent",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Latência HTTP P50/P95/P99 (ms)",
+        "query": "requests\n| summarize p50 = percentile(duration, 50), p95 = percentile(duration, 95), p99 = percentile(duration, 99) by bin(timestamp, 5m)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Outbox pendente",
+        "query": "customMetrics\n| where name == 'outbox.pending.count'\n| summarize pending = max(value) by bin(timestamp, 5m)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Outbox publicada x falhas",
+        "query": "customMetrics\n| where name in ('outbox.processed.count', 'outbox.failed.count')\n| summarize total = sum(valueSum) by name, bin(timestamp, 15m)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Jobs com falha (por job)",
+        "query": "customMetrics\n| where name == 'jobs.failed.count'\n| extend job = tostring(customDimensions['job'])\n| summarize failures = sum(valueSum) by job, bin(timestamp, 1h)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Consumers com falha (por consumer)",
+        "query": "customMetrics\n| where name == 'consumers.failed.count'\n| extend consumer = tostring(customDimensions['consumer'])\n| summarize failures = sum(valueSum) by consumer, bin(timestamp, 1h)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Endpoints mais lentos (P95 ms)",
+        "query": "requests\n| summarize p95Ms = percentile(duration, 95), calls = count() by name\n| where calls > 10\n| top 15 by p95Ms desc",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Exceções por tipo",
+        "query": "exceptions\n| summarize count() by type, bin(timestamp, 1h)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Dependências com falha",
+        "query": "dependencies\n| where success == false\n| summarize failures = count() by target, type\n| top 20 by failures desc",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Disponibilidade (/health/ready)",
+        "query": "availabilityResults\n| summarize availabilityPercent = round(100.0 * countif(success == true) / count(), 2) by bin(timestamp, 15m)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      }
+    }
+  ],
+  "isLocked": false,
+  "fallbackResourceIds": []
+}

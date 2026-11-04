@@ -160,6 +160,93 @@ public static class ErrorCatalog
             [ErrorCode.INTEGRATION_INVALID_RESPONSE] = new(ErrorGroup.Integration, nameof(ErrorCode.INTEGRATION_INVALID_RESPONSE),
                 "Resposta inesperada do serviço externo '{0}'.", 500, ErrorType.Failure),
 
+            // CLIENT (módulo Legal)
+            [ErrorCode.CLIENT_NOT_FOUND] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_NOT_FOUND),
+                "Cliente não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.CLIENT_DOCUMENT_DUPLICATED] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_DOCUMENT_DUPLICATED),
+                "Já existe um cliente cadastrado com este CPF/CNPJ.", 409, ErrorType.Conflict),
+            [ErrorCode.CLIENT_DOCUMENT_INVALID] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_DOCUMENT_INVALID),
+                "CPF ou CNPJ inválido.", 400, ErrorType.Validation),
+            [ErrorCode.CLIENT_NAME_REQUIRED] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_NAME_REQUIRED),
+                "O nome do cliente é obrigatório.", 400, ErrorType.Validation),
+            [ErrorCode.CLIENT_ALREADY_ACTIVE] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_ALREADY_ACTIVE),
+                "Este cliente já está ativo.", 409, ErrorType.Conflict),
+            [ErrorCode.CLIENT_ALREADY_INACTIVE] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_ALREADY_INACTIVE),
+                "Este cliente já está inativo.", 409, ErrorType.Conflict),
+            [ErrorCode.CLIENT_EMAIL_INVALID] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_EMAIL_INVALID),
+                "E-mail do cliente inválido.", 400, ErrorType.Validation),
+            [ErrorCode.CLIENT_PHONE_INVALID] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_PHONE_INVALID),
+                "Telefone inválido. Informe DDD e número (10 ou 11 dígitos).", 400, ErrorType.Validation),
+            [ErrorCode.CLIENT_BIRTHDATE_INVALID] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_BIRTHDATE_INVALID),
+                "Data de nascimento inválida: não pode estar no futuro.", 400, ErrorType.Validation),
+
+            // PROCESS (módulo Legal)
+            [ErrorCode.PROCESS_NOT_FOUND] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_NOT_FOUND),
+                "Processo não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.PROCESS_CNJ_DUPLICATED] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CNJ_DUPLICATED),
+                "Já existe um processo cadastrado com este número CNJ.", 409, ErrorType.Conflict),
+            [ErrorCode.PROCESS_CNJ_INVALID] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CNJ_INVALID),
+                "Número de processo CNJ inválido.", 400, ErrorType.Validation),
+            [ErrorCode.PROCESS_CLIENT_REQUIRED] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_REQUIRED),
+                "O processo precisa estar vinculado a um cliente.", 400, ErrorType.Validation),
+            [ErrorCode.PROCESS_RESPONSIBLE_REQUIRED] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_RESPONSIBLE_REQUIRED),
+                "O processo precisa ter um advogado responsável.", 400, ErrorType.Validation),
+            [ErrorCode.PROCESS_ALREADY_ARCHIVED] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_ALREADY_ARCHIVED),
+                "Este processo já está arquivado.", 409, ErrorType.Conflict),
+            [ErrorCode.PROCESS_INVALID_STATUS_TRANSITION] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_INVALID_STATUS_TRANSITION),
+                "Não é possível mudar o processo de '{0}' para '{1}'.", 409, ErrorType.Conflict),
+            [ErrorCode.PROCESS_CLIENT_NOT_FOUND] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_NOT_FOUND),
+                "O cliente informado para o processo não existe.", 404, ErrorType.NotFound),
+
+            // PUBLICATION (módulo Legal — ver docs/modules/legal/publications.md)
+            [ErrorCode.PUBLICATION_NOT_FOUND] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_NOT_FOUND),
+                "Publicação não encontrada.", 404, ErrorType.NotFound),
+            [ErrorCode.PUBLICATION_ALREADY_EXISTS] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_ALREADY_EXISTS),
+                "Esta publicação já foi capturada.", 409, ErrorType.Conflict),
+            [ErrorCode.PUBLICATION_INVALID_CNJ] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_INVALID_CNJ),
+                "Número de processo CNJ inválido.", 400, ErrorType.Validation),
+            [ErrorCode.PUBLICATION_INVALID_DATE] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_INVALID_DATE),
+                "Data de publicação inválida: não pode estar no futuro.", 400, ErrorType.Validation),
+            [ErrorCode.PUBLICATION_EMPTY_CONTENT] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_EMPTY_CONTENT),
+                "O conteúdo da publicação não pode estar vazio.", 400, ErrorType.Validation),
+            // Conflict (não Validation): a captura é idempotente por ExternalId (ver ADR-056) —
+            // o handler trata a duplicata como sucesso com Existing=true e este código só
+            // aparece quando alguém tenta criar a mesma publicação por outra via.
+            [ErrorCode.PUBLICATION_DUPLICATED_EXTERNAL_ID] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_DUPLICATED_EXTERNAL_ID),
+                "Já existe uma publicação com este identificador do CNJ.", 409, ErrorType.Conflict),
+            [ErrorCode.PUBLICATION_INVALID_STATUS_TRANSITION] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_INVALID_STATUS_TRANSITION),
+                "Não é possível mudar a publicação de '{0}' para '{1}'.", 409, ErrorType.Conflict),
+            [ErrorCode.PUBLICATION_ALREADY_READ] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_ALREADY_READ),
+                "Esta publicação já foi marcada como lida.", 409, ErrorType.Conflict),
+
+            // ALERT (alertas in-app — ver docs/modules/alerts.md)
+            [ErrorCode.ALERT_NOT_FOUND] = new(ErrorGroup.Alert, nameof(ErrorCode.ALERT_NOT_FOUND),
+                "Alerta não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.ALERT_ALREADY_READ] = new(ErrorGroup.Alert, nameof(ErrorCode.ALERT_ALREADY_READ),
+                "Este alerta já foi marcado como lido.", 409, ErrorType.Conflict),
+            [ErrorCode.ALERT_ALREADY_DISMISSED] = new(ErrorGroup.Alert, nameof(ErrorCode.ALERT_ALREADY_DISMISSED),
+                "Este alerta já foi descartado.", 409, ErrorType.Conflict),
+
+            // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
+            [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),
+                "O serviço de publicações do CNJ está indisponível no momento.", 500, ErrorType.Failure),
+            [ErrorCode.CNJ_TIMEOUT] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_TIMEOUT),
+                "O serviço de publicações do CNJ demorou mais que o esperado para responder.", 500, ErrorType.Failure),
+            [ErrorCode.CNJ_RATE_LIMITED] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_RATE_LIMITED),
+                "Limite de consultas ao CNJ excedido. A captura será retomada automaticamente.", 500, ErrorType.Failure),
+            [ErrorCode.CNJ_INVALID_RESPONSE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_INVALID_RESPONSE),
+                "O CNJ devolveu uma resposta em formato inesperado.", 500, ErrorType.Failure),
+            [ErrorCode.CNJ_AUTH_FAILED] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_AUTH_FAILED),
+                "Falha de autenticação ao consultar o CNJ.", 401, ErrorType.Unauthorized),
+            [ErrorCode.CNJ_INVALID_REQUEST] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_INVALID_REQUEST),
+                "A consulta enviada ao CNJ foi rejeitada por parâmetros inválidos.", 400, ErrorType.Validation),
+            // 404 e não 500: o processo não estar no DataJud é desfecho normal — nem todo
+            // tribunal envia todos os processos, e o cadastro manual segue disponível.
+            [ErrorCode.CNJ_NOT_FOUND] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_NOT_FOUND),
+                "Processo não encontrado no DataJud. Preencha os dados manualmente.", 404, ErrorType.NotFound),
+            [ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED),
+                "O tribunal '{0}' não é atendido pela consulta pública do DataJud.", 400, ErrorType.Validation),
+
             // INTERNAL
             [ErrorCode.INTERNAL_UNEXPECTED] = new(ErrorGroup.Internal, nameof(ErrorCode.INTERNAL_UNEXPECTED),
                 "Ocorreu um erro interno inesperado.", 500, ErrorType.Failure),

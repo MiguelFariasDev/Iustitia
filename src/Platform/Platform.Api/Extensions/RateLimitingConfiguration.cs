@@ -19,6 +19,15 @@ namespace Advocacia.Platform.Api.Extensions;
 /// </summary>
 public static class RateLimitingConfiguration
 {
+    /// <summary>
+    /// Política nomeada para consultas a APIs públicas externas. Aplicada com
+    /// <c>RequireRateLimiting</c> no endpoint, SOMANDO-SE ao limitador global: o global
+    /// protege a nossa API, esta protege o serviço do CNJ — que pede expressamente que não
+    /// se façam consultas em massa (ver ADR-064).
+    /// </summary>
+    public const string ExternalQueryPolicy = "external-query";
+
+    private const int ExternalQueryPermitLimit = 10;
     private const int AuthPermitLimit = 10;
     private const int WritePermitLimit = 60;
     private const int ReadPermitLimit = 300;
@@ -50,6 +59,18 @@ public static class RateLimitingConfiguration
                 return isWrite
                     ? RateLimitPartition.GetFixedWindowLimiter($"write:{partitionKey}", _ => NewWindowOptions(WritePermitLimit))
                     : RateLimitPartition.GetFixedWindowLimiter($"read:{partitionKey}", _ => NewWindowOptions(ReadPermitLimit));
+            });
+
+            // Partição por usuário: o limite é do advogado que está cadastrando, não do
+            // escritório inteiro — dois advogados cadastrando ao mesmo tempo é uso normal.
+            options.AddPolicy(ExternalQueryPolicy, httpContext =>
+            {
+                var partitionKey = httpContext.User.FindFirst("sub")?.Value
+                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                    ?? "anonymous";
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    $"external:{partitionKey}", _ => NewWindowOptions(ExternalQueryPermitLimit));
             });
 
             options.OnRejected = async (context, cancellationToken) =>

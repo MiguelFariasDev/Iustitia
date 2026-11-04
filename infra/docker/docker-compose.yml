@@ -1,0 +1,57 @@
+name: advocacia
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: advocacia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: advocacia_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432" # host 5434 -> evita conflito com Postgres local (5432) e de outros projetos (5433)
+    volumes:
+      - advocacia-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d advocacia_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: advocacia-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379" # host 6380 -> evita conflito com Redis já em uso na máquina
+    volumes:
+      - advocacia-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: advocacia-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5673:5672"   # AMQP (usado pelo MassTransit) -> host 5673 evita conflito local
+      - "15673:15672" # painel de administração -> http://localhost:15673
+    volumes:
+      - advocacia-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  advocacia-postgres-data:
+  advocacia-redis-data:
+  advocacia-rabbitmq-data:

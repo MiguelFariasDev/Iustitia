@@ -24,21 +24,27 @@ ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
 -- definido na sessão (via TenantContextInterceptor.SET), retorna NULL em vez de
 -- lançar erro — e comparação com NULL nunca é verdadeira, então a policy nega por
 -- padrão (fail closed) em vez de vazar dados por esquecimento de configurar o tenant.
+--
+-- NULLIF(..., '') é obrigatório: em conexão de pool, DISCARD ALL RESETA a variável
+-- para STRING VAZIA, não para ausente. missing_ok não cobre esse caso, e ''::uuid
+-- estoura 22P02 (invalid input syntax for type uuid) na primeira query da conexão
+-- reciclada — erro intermitente, que só aparece sob carga. Mesma correção aplicada
+-- em 011_publications_rls.sql e 012_clientes_processos.sql.
 
 CREATE POLICY tenant_isolation_tenants ON tenants
-  USING (id = current_setting('app.current_tenant', true)::uuid);
+  USING (id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
 
 CREATE POLICY tenant_isolation_users ON users
-  USING (tenant_id = current_setting('app.current_tenant', true)::uuid);
+  USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
 
 CREATE POLICY tenant_isolation_audit_logs ON audit_logs
-  USING (tenant_id = current_setting('app.current_tenant', true)::uuid);
+  USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
 
 CREATE POLICY tenant_isolation_settings ON settings
-  USING (tenant_id = current_setting('app.current_tenant', true)::uuid);
+  USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
 
 CREATE POLICY tenant_isolation_feature_flags ON feature_flags
-  USING (tenant_id = current_setting('app.current_tenant', true)::uuid);
+  USING (tenant_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
 
 -- Role de aplicação com permissões restritas (sem CREATEDB/CREATEROLE/SUPERUSER).
 -- A senha é definida fora deste script (Azure Key Vault em produção; variável local

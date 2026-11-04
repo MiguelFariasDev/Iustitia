@@ -142,6 +142,16 @@ Módulo Legal — ver `docs/modules/legal/publications.md`.
 | `PUBLICATION_INVALID_STATUS_TRANSITION` | Não é possível mudar a publicação de '{0}' para '{1}'. | 409 | Conflict | `Publication.ChangeStatus` recusou a transição: voltar para `PendingReview` depois de revisada, mudar entre desfechos de revisão, ou sair de `Archived` (terminal). | Consultar o status atual; de um desfecho de revisão, só `Archived` é permitido. |
 | `PUBLICATION_ALREADY_READ` | Esta publicação já foi marcada como lida. | 409 | Conflict | `MarkAsRead` em publicação com `IsRead = true`. | Nenhuma ação necessária — a publicação já está lida. |
 
+## Alert (1400–1499)
+
+Alertas in-app (Platform) — ver `docs/modules/alerts.md`.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `ALERT_NOT_FOUND` | Alerta não encontrado. | 404 | NotFound | Id inexistente, de outro usuário ou de outro escritório (filtro global + RLS tornam invisível; 404 em vez de 403). | Confirmar o identificador. |
+| `ALERT_ALREADY_READ` | Este alerta já foi marcado como lido. | 409 | Conflict | `MarkAsRead` em alerta lido. | Nenhuma ação necessária. |
+| `ALERT_ALREADY_DISMISSED` | Este alerta já foi descartado. | 409 | Conflict | Ação sobre alerta descartado. | Nenhuma ação necessária. |
+
 ## CNJ (1700–1799)
 
 Integração com o DJEN — ver `docs/modules/legal/cnj-capture.md`. Todos são

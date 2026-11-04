@@ -1,0 +1,5 @@
+# Configuração mínima da Supabase CLI. Existe para que o pipeline rode
+#   supabase db push --workdir infra
+# usando infra/supabase/migrations (ver .github/workflows/cd-supabase.yml).
+# O desenvolvimento local continua usando o docker-compose (infra/docker).
+project_id = "advocacia"

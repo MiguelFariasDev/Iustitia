@@ -2,6 +2,21 @@
 
 Sistema de gestão para escritórios de advocacia, simplicidade de uso e IA integrada (assistente Athena).
 
+> ## Projeto de portfólio — não comercializado
+>
+> Este projeto usa a **API Pública do DataJud (CNJ)** para consultar metadados de processos
+> e auto-preencher o cadastro. O uso comercial dessa API é **proibido** pelo Termo de Uso do
+> CNJ (cláusulas 3.3 e 3.8), e consumir a API implica aceitar esses termos.
+>
+> O Iustitia **não é um produto comercial**: não é vendido, licenciado nem cobrado de
+> nenhuma forma. Se um dia for comercializado, a integração com o DataJud sai — a porta
+> `IConsultaProcessoTribunal` existe para tornar essa troca barata.
+>
+> Detalhes: [`docs/compliance/datajud-termo.md`](./docs/compliance/datajud-termo.md),
+> [`docs/compliance/portfolio.md`](./docs/compliance/portfolio.md) e a **ADR-064**.
+>
+> A captura de **publicações** usa o DJEN/Comunica, que é outra API, com outro termo de uso.
+
 >
 > **Requisitos detalhados:** [`docs/requisitos/00-indice.md`](./docs/requisitos/00-indice.md)
 > (não versionado neste repositório — uso interno).

@@ -1,0 +1,103 @@
+{
+  "version": "Notebook/1.0",
+  "isLocked": false,
+  "fallbackResourceIds": [],
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## Advocacia — Negócio\nIndicadores de uso da Plataforma (Fase 0), derivados das requisições HTTP bem-sucedidas por endpoint. Quando os módulos de negócio (Fase 1+) emitirem eventos próprios (`customEvents`), acrescentar aqui."
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Logins bem-sucedidos por hora",
+        "query": "requests\n| where name has 'auth/login' and toint(resultCode) between (200 .. 299)\n| summarize logins = count() by bin(timestamp, 1h)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 604800000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Logins com falha por hora (4xx)",
+        "query": "requests\n| where name has 'auth/login' and toint(resultCode) between (400 .. 499)\n| summarize failures = count() by bin(timestamp, 1h)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 604800000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Escritórios (tenants) criados por dia",
+        "query": "requests\n| where name startswith 'POST' and name endswith '/tenants' and toint(resultCode) between (200 .. 299)\n| summarize created = count() by bin(timestamp, 1d)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 604800000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Convites enviados/aceitos por dia",
+        "query": "requests\n| where name startswith 'POST' and name has '/users' and (name has 'invite' or name has 'accept') and toint(resultCode) between (200 .. 299)\n| summarize total = count() by name, bin(timestamp, 1d)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 604800000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Endpoints mais usados",
+        "query": "requests\n| summarize calls = count(), failures = countif(toint(resultCode) >= 500), p95Ms = percentile(duration, 95) by name\n| top 25 by calls desc",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 604800000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "title": "Usuários distintos ativos por dia",
+        "query": "requests\n| where isnotempty(user_AuthenticatedId)\n| summarize activeUsers = dcount(user_AuthenticatedId) by bin(timestamp, 1d)",
+        "size": 0,
+        "timeContext": {
+          "durationMs": 604800000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Valores sensíveis locais (os tfvars versionados em environments/ não têm segredos)
+*.auto.tfvars
+secrets.tfvars
