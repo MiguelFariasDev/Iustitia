@@ -91,3 +91,11 @@ continua construindo `Error.X(...)` diretamente ao repassar respostas de
 erro do Supabase Auth — a mensagem vem de uma API externa em tempo real,
 não é um texto fixo que caiba num molde do catálogo (ver ADR-032, seção
 "Escopo").
+
+## Faixas numéricas e valores únicos
+
+Cada grupo ocupa uma faixa própria de `ErrorCode` (ver `groups.md`). O C# aceita dois membros
+de enum com o mesmo valor, e o `ErrorCatalog` é indexado pelo código, então a segunda
+definição **sobrescreve a primeira sem erro**. Ao abrir uma faixa nova, confira no `master` e
+nas branches em andamento se ela está livre. O teste
+`ErrorCodes_HaveUniqueValues` (ArchitectureTests) falha se houver valores repetidos.

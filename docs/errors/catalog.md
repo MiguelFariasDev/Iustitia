@@ -152,7 +152,7 @@ Alertas in-app (Platform) — ver `docs/modules/alerts.md`.
 | `ALERT_ALREADY_READ` | Este alerta já foi marcado como lido. | 409 | Conflict | `MarkAsRead` em alerta lido. | Nenhuma ação necessária. |
 | `ALERT_ALREADY_DISMISSED` | Este alerta já foi descartado. | 409 | Conflict | Ação sobre alerta descartado. | Nenhuma ação necessária. |
 
-## Contact (1500–1599)
+## Contact (2100–2199)
 
 Contatos do CRM — ver ADR-067.
 
@@ -166,7 +166,7 @@ Contatos do CRM — ver ADR-067.
 | `CONTACT_ALREADY_INACTIVE` | Este contato já está inativo. | 409 | Conflict | `Deactivate` em contato inativo. | Nenhuma. |
 | `CONTACT_ALREADY_ACTIVE` | Este contato já está ativo. | 409 | Conflict | `Reactivate` em contato ativo. | Nenhuma. |
 
-## Calendar (1600–1699)
+## Calendar (2000–2099)
 
 Agenda do escritório — ver ADR-067.
 
