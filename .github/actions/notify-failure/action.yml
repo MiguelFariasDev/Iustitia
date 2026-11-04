@@ -1,0 +1,27 @@
+name: Notificar falha
+description: Envia uma mensagem para o webhook do Slack/Teams (SLACK_WEBHOOK_URL). Sem webhook configurado, só registra um aviso.
+
+inputs:
+  webhook-url:
+    description: URL do webhook (secrets.SLACK_WEBHOOK_URL)
+    required: false
+    default: ""
+  message:
+    description: Texto da mensagem (sem dados sensíveis — ver docs/compliance/security.md)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        MESSAGE: ${{ inputs.message }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        if [ -z "$WEBHOOK_URL" ]; then
+          echo "::warning::SLACK_WEBHOOK_URL não configurado — notificação não enviada: $MESSAGE"
+          exit 0
+        fi
+        payload="$(jq -nc --arg text "$MESSAGE — $RUN_URL" '{text: $text}')"
+        curl -fsS -X POST -H "Content-Type: application/json" --data "$payload" "$WEBHOOK_URL" > /dev/null

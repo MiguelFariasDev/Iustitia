@@ -1,0 +1,98 @@
+name: Backup do Banco (pg_dump -> Azure Blob)
+
+# Três agendamentos independentes na mesma pipeline — o passo "Determinar
+# camada" identifica qual cron disparou (via github.event.schedule) para
+# aplicar o container/retenção corretos. Ver ADR-027 e docs/compliance/backups.md.
+on:
+  schedule:
+    - cron: "0 3 * * *"   # diário  -> retenção 30 dias
+    - cron: "0 3 * * 0"   # semanal (domingo) -> retenção 1 ano
+    - cron: "0 3 1 * *"   # mensal (dia 1) -> retenção 5 anos
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Camada de backup (para execução manual)"
+        required: true
+        type: choice
+        options: [daily, weekly, monthly]
+        default: daily
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determinar camada e container de destino
+        id: tier
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TIER="${{ inputs.tier }}"
+          elif [ "${{ github.event.schedule }}" = "0 3 * * 0" ]; then
+            TIER="weekly"
+          elif [ "${{ github.event.schedule }}" = "0 3 1 * *" ]; then
+            TIER="monthly"
+          else
+            TIER="daily"
+          fi
+
+          case "$TIER" in
+            daily)   RETENTION_DAYS=30 ;;
+            weekly)  RETENTION_DAYS=365 ;;
+            monthly) RETENTION_DAYS=1825 ;; # 5 anos
+          esac
+
+          echo "tier=$TIER" >> "$GITHUB_OUTPUT"
+          echo "container=db-backups-$TIER" >> "$GITHUB_OUTPUT"
+          # retention_days é informativo aqui — a expiração de fato é aplicada por uma
+          # Lifecycle Management Policy no Storage Account (Terraform/infra), não por
+          # este workflow; cada container db-backups-{daily,weekly,monthly} tem sua
+          # própria regra de expiração configurada na infraestrutura.
+          echo "retention_days=$RETENTION_DAYS" >> "$GITHUB_OUTPUT"
+
+      - name: Instalar cliente PostgreSQL (pg_dump)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client age
+
+      - name: Executar pg_dump
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "DUMP_FILE=advocacia_db_${{ steps.tier.outputs.tier }}_${TIMESTAMP}.sql" >> "$GITHUB_ENV"
+          pg_dump "$SUPABASE_DB_URL" --format=plain --no-owner --no-privileges \
+            --file="advocacia_db_${{ steps.tier.outputs.tier }}_${TIMESTAMP}.sql"
+
+      - name: Comprimir
+        run: gzip "$DUMP_FILE"
+
+      - name: Verificar integridade do dump
+        run: |
+          gunzip -k "$DUMP_FILE.gz"
+          pg_restore --list "$DUMP_FILE" > /dev/null 2>&1 || \
+            (grep -q "CREATE TABLE" "$DUMP_FILE" && echo "Dump em formato plain, verificação por conteúdo OK") || \
+            (echo "::error::Dump corrompido ou vazio" && exit 1)
+          rm "$DUMP_FILE"
+
+      - name: Criptografar
+        env:
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+        run: |
+          echo "$BACKUP_ENCRYPTION_KEY" | age -p -o "$DUMP_FILE.gz.age" "$DUMP_FILE.gz"
+          rm "$DUMP_FILE.gz"
+
+      - name: Upload para Azure Blob Storage
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+        run: |
+          az storage blob upload \
+            --container-name "${{ steps.tier.outputs.container }}" \
+            --file "$DUMP_FILE.gz.age" \
+            --name "$DUMP_FILE.gz.age" \
+            --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+
+      - name: Notificar falha
+        if: failure()
+        run: |
+          curl -sf -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"❌ Backup (${{ steps.tier.outputs.tier }}) do Iustitia falhou — ver ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
