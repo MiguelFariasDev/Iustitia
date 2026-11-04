@@ -21,7 +21,7 @@ export function FluxoCaixaChart({ dados }: { dados: FluxoCaixaMes[] }) {
       className="h-72 w-full"
     >
       <ResponsiveContainer>
-        <BarChart data={dados}>
+        <BarChart data={dados} accessibilityLayer={false}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="mes" />
           <YAxis tickFormatter={(v: number) => `${v / 1000}k`} />

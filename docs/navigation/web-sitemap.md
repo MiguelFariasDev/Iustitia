@@ -31,3 +31,21 @@ já disponível, para quando a tela for construída.
 `/configuracoes/auditoria` (listagem/detalhe de audit log) também já tem
 backend pronto: `GET /api/v1/audit` e `GET /api/v1/audit/{id}` (requer
 Partner ou superior).
+
+## Telas de apoio com dados de demonstração (Fase 2, frontend adicional)
+
+Telas implementadas em `web/src/app/(app)`, **sem backend correspondente**: usam repositório em
+memória e exibem aviso permanente de demonstração. Decisão e checklist de migração em
+[ADR-066](../adr/066-telas-de-apoio-com-dados-de-demonstracao.md).
+
+| Rota | Tela | Backend | Observação |
+|---|---|---|---|
+| `/contatos` | Listagem (busca, filtro por tipo, ordenação, paginação) | pendente | Partes contrárias, testemunhas, fornecedores e outros — não são clientes |
+| `/contatos/novo` | Cadastro | pendente | CPF/CNPJ com máscara automática |
+| `/contatos/[id]/editar` | Edição | pendente | — |
+| `/documentos` | Central de arquivos em grid, upload, download, exclusão | pendente (`Documents.*` vazio) | Arquivos enviados só vivem na memória da aba |
+| `/indicadores` | KPIs, gráficos (área, status, publicações) e produtividade | pendente (módulo Reporting) | Prazos e tarefas só existem a partir das Fases 3 e 4 |
+| `/financeiro` | Resumo, abas (honorários, a pagar, a receber, fluxo de caixa), novo lançamento, exportar CSV | pendente (Fase 4/8) | Exportar em PDF ainda não existe |
+
+O painel (`/painel`) aponta para as quatro telas pelos atalhos de `DashboardAtalhos`, e o menu
+lateral as marca com o selo **Demo**.

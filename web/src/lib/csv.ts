@@ -5,6 +5,8 @@
  *    executada como fórmula pelo Excel/Sheets. Dados vindos de fora (nome de cliente, órgão)
  *    não são confiáveis — prefixar com apóstrofo impede que um valor vire comando.
  */
+
+import { downloadBlob } from './download'
 export function csvCell(value: string | number | boolean | null | undefined): string {
   let text = value === null || value === undefined ? '' : String(value)
 
@@ -21,12 +23,5 @@ export function toCsv(header: string[], rows: (string | number | boolean | null 
 
 /** Dispara o download no navegador sem passar por servidor. */
 export function downloadCsv(filename: string, content: string) {
-  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.append(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+  downloadBlob(filename, new Blob([content], { type: 'text/csv;charset=utf-8' }))
 }

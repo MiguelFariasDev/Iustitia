@@ -63,6 +63,14 @@ function ItemContent({
             Em breve
           </span>
         )
+      ) : item.demo ? (
+        collapsed ? (
+          <span className="sr-only"> (dados de demonstração)</span>
+        ) : (
+          <span className="ml-auto rounded-full border border-sidebar-border px-1.5 py-px text-[10px] font-medium tracking-wide text-sidebar-muted uppercase">
+            Demo
+          </span>
+        )
       ) : null}
     </>
   )
@@ -118,6 +126,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
                         <TooltipContent side="right">
                           {item.label}
                           {item.soon ? ' · em breve' : ''}
+                          {item.demo ? ' · demonstração' : ''}
                           {count ? ` · ${count} pendentes` : ''}
                         </TooltipContent>
                       </Tooltip>

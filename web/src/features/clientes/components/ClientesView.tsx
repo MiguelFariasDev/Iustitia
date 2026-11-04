@@ -5,6 +5,7 @@ import { Building2, Plus, User, UserX } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Pagination } from '@/components/shared/Pagination'
 import { SearchInput } from '@/components/shared/SearchInput'
@@ -171,29 +172,5 @@ export function ClientesView() {
         />
       )}
     </div>
-  )
-}
-
-interface FilterChipProps {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}
-
-function FilterChip({ active, onClick, children }: FilterChipProps) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-        active
-          ? 'border-secondary bg-secondary text-secondary-foreground'
-          : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
-      )}
-    >
-      {children}
-    </button>
   )
 }

@@ -1,21 +1,19 @@
 import type { Metadata } from 'next'
-import { FolderOpen } from 'lucide-react'
-import { ComingSoon } from '@/components/shared/ComingSoon'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { DocumentoUploadModal } from '@/features/documentos/components/DocumentoUploadModal'
+import { DocumentosView } from '@/features/documentos/components/DocumentosView'
 
 export const metadata: Metadata = { title: 'Documentos' }
 
 export default function DocumentosPage() {
   return (
-    <ComingSoon
-      title="Documentos"
-      description="Repositório de arquivos do escritório, por processo e por cliente."
-      icon={FolderOpen}
-      phase="Fase 4"
-      highlights={[
-        'Upload com organização por processo, cliente e tipo',
-        'Busca por conteúdo com reconhecimento de texto',
-        'Controle de versões e permissões por papel',
-      ]}
-    />
+    <>
+      <PageHeader
+        title="Documentos"
+        description="Central de arquivos do escritório: peças, procurações, contratos e comprovantes."
+        actions={<DocumentoUploadModal />}
+      />
+      <DocumentosView />
+    </>
   )
 }
