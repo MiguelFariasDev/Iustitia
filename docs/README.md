@@ -18,6 +18,7 @@ regras não-negociáveis, comece por [`/claude.md`](../claude.md).
 | [`poc/`](./poc) | Provas de conceito: relatório executivo, métricas medidas e lições aprendidas |
 | [`observability/`](./observability) | Logging, tracing, métricas e health checks |
 | [`compliance/`](./compliance) | LGPD, conformidade OAB, contrato de não-treinamento com a Anthropic |
+| [`mobile/`](./mobile) | App mobile Flutter: telas, notificações e lacunas do backend |
 | [`navigation/`](./navigation) | Sitemaps web e mobile mantidos sincronizados com o código real |
 | [`diagrams/`](./diagrams) | Diagramas de arquitetura, fluxo e modelo de dados |
 | [`requisitos/`](./requisitos) | Requisitos detalhados do produto por módulo/necessidade (não versionado — uso interno, ver `.gitignore`) |
