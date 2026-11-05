@@ -1,0 +1,12 @@
+{
+  "APP_NAME": "Advocacia",
+  "API_URL": "https://api.exemplo.com.br/api/v1",
+  "SUPABASE_URL": "https://SEU-PROJETO.supabase.co",
+  "SUPABASE_ANON_KEY": "chave-anon-publica",
+  "AUTH_MODE": "supabase",
+  "API_MOCKS": "false",
+  "FIREBASE_API_KEY": "",
+  "FIREBASE_APP_ID": "",
+  "FIREBASE_MESSAGING_SENDER_ID": "",
+  "FIREBASE_PROJECT_ID": ""
+}
