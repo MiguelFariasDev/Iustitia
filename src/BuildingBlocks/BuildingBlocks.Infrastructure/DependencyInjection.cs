@@ -4,6 +4,7 @@ using Advocacia.BuildingBlocks.Infrastructure.Caching;
 using Advocacia.BuildingBlocks.Infrastructure.Identity;
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Interceptors;
+using Advocacia.BuildingBlocks.Infrastructure.Security;
 using Advocacia.BuildingBlocks.Infrastructure.Tenancy;
 using Advocacia.BuildingBlocks.Infrastructure.Time;
 using Microsoft.Extensions.Configuration;
@@ -29,12 +30,16 @@ public static class DependencyInjection
         // substitui por implementações reais baseadas em HttpContext/JWT na Etapa 0.3.
         services.AddScoped<ICurrentUser, AnonymousCurrentUser>();
         services.AddScoped<ITenantContext, AsyncLocalTenantContext>();
+        services.AddScoped<IRequestOrigin, NoRequestOrigin>();
 
         services.AddStackExchangeRedisCache(options =>
         {
             options.Configuration = configuration.GetConnectionString("Redis") ?? "localhost:6380";
         });
         services.AddScoped<ICacheService, RedisCacheService>();
+
+        // Criptografia de campos pessoais em repouso (LGPD) — ver ADR-068.
+        services.AddAdvocaciaFieldEncryption(configuration, environment);
 
         services.AddScoped<AuditInterceptor>();
         services.AddScoped<OutboxInterceptor>();

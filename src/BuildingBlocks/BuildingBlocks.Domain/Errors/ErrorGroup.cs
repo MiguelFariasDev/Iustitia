@@ -24,5 +24,6 @@ public enum ErrorGroup
     Alert,
     Cnj,
     Atendimento,
+    Ai,
     Internal,
 }

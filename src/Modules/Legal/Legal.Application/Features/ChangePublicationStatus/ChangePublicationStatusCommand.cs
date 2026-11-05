@@ -7,4 +7,5 @@ namespace Advocacia.Modules.Legal.Application.Features.ChangePublicationStatus;
 /// <c>PendingReview</c>, e só por ação explícita do advogado. <paramref name="Status"/> é o nome
 /// de <c>PublicationStatus</c>; <paramref name="Notes"/> registra o porquê da decisão.
 /// </summary>
+[Audited("Reviewed", "Publication", EntityIdProperty = nameof(PublicationId), ActionFromProperty = nameof(Status), DetailProperties = [nameof(Status)])]
 public sealed record ChangePublicationStatusCommand(Guid PublicationId, string Status, string? Notes = null) : ICommand;

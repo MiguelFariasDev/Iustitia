@@ -38,6 +38,9 @@ public sealed class PlatformApiFactory : WebApplicationFactory<Program>, IAsyncL
 
     public TestJwtTokenFactory JwtTokenFactory { get; } = new();
 
+    /// <summary>Conexão como dono do banco — para os testes lerem o que está de fato gravado, sem passar pela API/EF.</summary>
+    public string DatabaseConnectionString => _postgresFixture.SuperuserConnectionString;
+
     public async Task InitializeAsync() => await _postgresFixture.InitializeAsync();
 
     async Task IAsyncLifetime.DisposeAsync()

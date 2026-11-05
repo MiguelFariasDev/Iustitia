@@ -1,6 +1,6 @@
 # ADR-019: SwiftData para persistência local no mobile
 
-**Status:** Proposto (placeholder — detalhar antes da fase correspondente)
+**Status:** Substituído por [ADR-067](./067-flutter-para-o-app-mobile.md) — SwiftData deixa de existir com a troca para Flutter. A persistência local offline-first segue em aberto (ver ADR-020).
 
 ## Contexto
 

@@ -18,6 +18,7 @@ public sealed record EnderecoRequest(
 /// Cadastro de cliente. <c>Tipo</c> é "PessoaFisica" ou "PessoaJuridica" e define se o
 /// documento esperado é CPF ou CNPJ.
 /// </summary>
+[Audited("Created", "Cliente")]
 public sealed record CreateClienteCommand(
     string Tipo,
     string Nome,
@@ -28,6 +29,7 @@ public sealed record CreateClienteCommand(
     string? Observacoes = null) : ICommand<ClienteResponse>;
 
 /// <summary>Tipo e documento NÃO entram: são a identidade do cliente e não são alteráveis (ver Cliente.Update).</summary>
+[Audited("Updated", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record UpdateClienteCommand(
     Guid ClienteId,
     string Nome,
@@ -36,10 +38,13 @@ public sealed record UpdateClienteCommand(
     DateOnly? DataNascimento = null,
     string? Observacoes = null) : ICommand;
 
+[Audited("Deactivated", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record DeactivateClienteCommand(Guid ClienteId) : ICommand;
 
+[Audited("Activated", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record ReactivateClienteCommand(Guid ClienteId) : ICommand;
 
+[Audited("Viewed", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record GetClienteByIdQuery(Guid ClienteId) : IQuery<ClienteResponse>;
 
 public sealed record ListClientesQuery(

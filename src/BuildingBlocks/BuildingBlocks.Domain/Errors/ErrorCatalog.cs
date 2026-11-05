@@ -271,6 +271,26 @@ public static class ErrorCatalog
             [ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED),
                 "O tribunal '{0}' não é atendido pela consulta pública do DataJud.", 400, ErrorType.Validation),
 
+            // AI (Anthropic — ver ADR-067 e docs/integrations/anthropic.md)
+            [ErrorCode.AI_INVALID_REQUEST] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_INVALID_REQUEST),
+                "A requisição enviada ao serviço de IA foi rejeitada.", 500, ErrorType.Failure),
+            [ErrorCode.AI_UNAUTHORIZED] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_UNAUTHORIZED),
+                "Falha de autenticação com o serviço de IA.", 500, ErrorType.Failure),
+            [ErrorCode.AI_RATE_LIMITED] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_RATE_LIMITED),
+                "Limite de requisições ao serviço de IA excedido. Tente novamente mais tarde.", 500, ErrorType.Failure),
+            [ErrorCode.AI_OVERLOADED] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_OVERLOADED),
+                "O serviço de IA está sobrecarregado no momento.", 500, ErrorType.Failure),
+            [ErrorCode.AI_TIMEOUT] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_TIMEOUT),
+                "O serviço de IA demorou mais que o esperado para responder.", 500, ErrorType.Failure),
+            [ErrorCode.AI_PARSE_ERROR] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_PARSE_ERROR),
+                "A resposta do serviço de IA não pôde ser lida.", 500, ErrorType.Failure),
+            [ErrorCode.AI_UNAVAILABLE] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_UNAVAILABLE),
+                "O serviço de IA está indisponível no momento.", 500, ErrorType.Failure),
+            [ErrorCode.AI_INVALID_RESPONSE] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_INVALID_RESPONSE),
+                "A resposta da IA não pôde ser validada e foi descartada.", 500, ErrorType.Failure),
+            [ErrorCode.AI_PROMPT_NOT_FOUND] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_PROMPT_NOT_FOUND),
+                "O prompt '{0}' não foi encontrado.", 500, ErrorType.Failure),
+
             // INTERNAL
             [ErrorCode.INTERNAL_UNEXPECTED] = new(ErrorGroup.Internal, nameof(ErrorCode.INTERNAL_UNEXPECTED),
                 "Ocorreu um erro interno inesperado.", 500, ErrorType.Failure),

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Advocacia.Modules.Integrations.Anthropic.Application</RootNamespace>
+    <AssemblyName>Advocacia.Modules.Integrations.Anthropic.Application</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Integrations.Anthropic.Domain\Integrations.Anthropic.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

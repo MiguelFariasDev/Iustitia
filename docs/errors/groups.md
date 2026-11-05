@@ -23,6 +23,7 @@ e a uma faixa numérica fixa (`BuildingBlocks.Domain/Errors/ErrorCode.cs`). Ver
 | `Atendimento` | 2500–2599 | Inbox e handoff do bot de WhatsApp: transições de estado, mensagens, chaves de API do bot. |
 | `Publication` | 1300–1399 | Publicações capturadas de diários oficiais: número CNJ inválido, data inválida, conteúdo vazio, transição de status de revisão proibida, deduplicação. |
 | `CNJ` | 1700–1799 | Integração com o DJEN/CNJ: indisponibilidade, timeout, rate limit, resposta em formato inesperado, consulta rejeitada. |
+| `Ai` | 1600–1699 | Integração com a Anthropic (autenticação, limite, sobrecarga, timeout, resposta ilegível) e validação do conteúdo devolvido pelo modelo. |
 | `Internal` | 9000–9999 | Erros internos genuinamente inesperados (bug, banco de dados, serialização) — normalmente originados de uma exceção não tratada, não de um `Result.Failure` deliberado. |
 
 ## Grupos reservados (fases futuras — nenhum `ErrorCode` implementado ainda)

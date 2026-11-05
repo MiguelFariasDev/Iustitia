@@ -31,7 +31,7 @@ Sistema de gestão para escritórios de advocacia, simplicidade de uso e IA inte
 - **Hospedagem:** Microsoft Azure (Container Apps + Static Web Apps)
 - **IA:** Anthropic Claude (Opus para o assistente Athena, Sonnet para
   classificação em lote, Haiku para tarefas simples)
-- **Mobile:** Swift 6 + SwiftUI (iOS 26+)
+- **Mobile:** Flutter (Dart) para iOS e Android — Riverpod, GoRouter, Dio, Supabase
 
 ## Arquitetura
 
@@ -64,7 +64,7 @@ advogado, handoff entre bot e humano e a API que o Bot consome — ver
   /IntegrationTests
   /ArchitectureTests
 /web                -> frontend React
-/mobile-ios         -> app Swift 6 / SwiftUI
+/mobile             -> app Flutter (iOS e Android)
 /infra              -> docker, terraform, supabase
 /docs               -> ADRs, compliance, navegação, diagramas
 /scripts            -> scripts de seed e migração
@@ -103,6 +103,17 @@ ADVOCACIA_TEST_PG_SERVER="Host=127.0.0.1;Port=5432;Username=postgres;Password=po
 
 Parte dos testes de fluxo de autenticação e de tenant também depende de Redis (`localhost:6380`) e
 RabbitMQ; sem eles esses testes falham ou expiram.
+### Mobile
+
+```bash
+cd mobile
+flutter pub get
+# Demonstração, sem Supabase nem API (login: ana.souza@escritorio.com.br / demo1234):
+flutter run --dart-define=AUTH_MODE=mock --dart-define=API_MOCKS=true
+flutter test
+```
+
+Configuração real e detalhes em [`mobile/README.md`](./mobile/README.md).
 
 ### Infraestrutura local
 
@@ -116,6 +127,7 @@ npx supabase start
 - [`docs/adr`](./docs/adr) — Architecture Decision Records
 - [`docs/compliance`](./docs/compliance) — LGPD, OAB, contrato Anthropic
 - [`docs/navigation`](./docs/navigation) — sitemaps web e mobile
+- [`docs/mobile`](./docs/mobile) — app mobile (telas, notificações, lacunas do backend)
 - [`docs/api`](./docs/api) — documentação da API (OpenAPI/Swagger)
 - [`docs/modules`](./docs/modules) — módulos de negócio (alertas, atendimento, legal)
 

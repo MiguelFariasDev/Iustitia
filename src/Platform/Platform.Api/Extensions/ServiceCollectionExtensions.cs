@@ -65,7 +65,13 @@ public static class ServiceCollectionExtensions
             });
         });
 
-        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        var allowedOrigins = SecurityConfiguration.ValidateCorsOrigins(
+            configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? []);
+
+        // Sem AllowAnyOrigin e sem AllowCredentials: a API autentica por Bearer no header
+        // Authorization (não por cookie), então nenhum request precisa de credenciais
+        // ambientes — e é exatamente isso que fecha a porta para CSRF via CORS. Sem origens
+        // configuradas, a política não libera nada (fail closed).
         services.AddCors(options =>
         {
             options.AddPolicy(CorsPolicyName, policy =>
@@ -75,8 +81,8 @@ public static class ServiceCollectionExtensions
                     policy.WithOrigins(allowedOrigins)
                         .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                         .WithHeaders("Authorization", "Content-Type", "X-Correlation-Id", "Idempotency-Key")
-                        .WithExposedHeaders("X-Correlation-Id")
-                        .AllowCredentials();
+                        .WithExposedHeaders("X-Correlation-Id", "Retry-After")
+                        .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
                 }
             });
         });

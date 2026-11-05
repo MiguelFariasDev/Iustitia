@@ -1,5 +1,6 @@
 using Advocacia.BuildingBlocks.Infrastructure.Tenancy;
 using Advocacia.Modules.Atendimentos.Infrastructure.Persistence;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure.Persistence;
 using Advocacia.Modules.Legal.Infrastructure.Persistence;
 using Advocacia.Platform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +55,13 @@ public sealed class PostgresFixture : IAsyncLifetime
     public string SuperuserConnectionString => _container is not null
         ? _container.GetConnectionString()
         : new NpgsqlConnectionStringBuilder(_externalServer!) { Database = _externalDatabase }.ConnectionString;
+    // Criado sob demanda: PostgreSqlBuilder.Build() exige Docker já no Build(), o que impediria
+    // usar o banco externo (ADVOCACIA_TEST_PG) em ambientes sem Docker.
+    private PostgreSqlContainer? _container;
+
+    private string? _externalDatabaseName;
+
+    public string SuperuserConnectionString { get; private set; } = null!;
 
     public string AppUserConnectionString { get; private set; } = null!;
 
@@ -66,6 +74,22 @@ public sealed class PostgresFixture : IAsyncLifetime
         else
         {
             await CreateExternalDatabaseAsync();
+        var external = await ExternalPostgres.TryCreateDatabaseAsync();
+        if (external is { } externalDatabase)
+        {
+            SuperuserConnectionString = externalDatabase.ConnectionString;
+            _externalDatabaseName = externalDatabase.DatabaseName;
+        }
+        else
+        {
+            _container = new PostgreSqlBuilder()
+                .WithImage("postgres:16-alpine")
+                .WithDatabase("advocacia_db")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+            await _container.StartAsync();
+            SuperuserConnectionString = _container.GetConnectionString();
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<PlatformDbContext>();
@@ -97,6 +121,14 @@ public sealed class PostgresFixture : IAsyncLifetime
         await using (var atendimentoContext = new AtendimentoDbContext(atendimentoOptionsBuilder.Options, new AsyncLocalTenantContext()))
         {
             await atendimentoContext.Database.MigrateAsync();
+        // ai_usage_logs (módulo Anthropic): 015_ai_usage_logs.sql precisa da tabela existente.
+        var anthropicOptionsBuilder = new DbContextOptionsBuilder<AnthropicDbContext>();
+        anthropicOptionsBuilder.UseNpgsql(SuperuserConnectionString);
+        anthropicOptionsBuilder.UseSnakeCaseNamingConvention();
+
+        await using (var anthropicContext = new AnthropicDbContext(anthropicOptionsBuilder.Options, new AsyncLocalTenantContext()))
+        {
+            await anthropicContext.Database.MigrateAsync();
         }
 
         await ApplySupabaseSqlMigrationsAsync();
@@ -142,6 +174,16 @@ public sealed class PostgresFixture : IAsyncLifetime
         await using var command = connection.CreateCommand();
         command.CommandText = $"DROP DATABASE IF EXISTS \"{_externalDatabase}\" WITH (FORCE)";
         await command.ExecuteNonQueryAsync();
+        if (_externalDatabaseName is not null)
+        {
+            await ExternalPostgres.DropDatabaseAsync(_externalDatabaseName);
+            return;
+        }
+
+        if (_container is not null)
+        {
+            await _container.DisposeAsync();
+        }
     }
 
     private async Task ApplySupabaseSqlMigrationsAsync()
@@ -172,6 +214,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         // tem o privilégio; aqui o container é descartável, então basta conceder CREATE no banco.
         await using var hangfireGrant = connection.CreateCommand();
         hangfireGrant.CommandText = $"GRANT CREATE ON DATABASE \"{new NpgsqlConnectionStringBuilder(SuperuserConnectionString).Database}\" TO app_user";
+        hangfireGrant.CommandText = "DO $$ BEGIN EXECUTE format('GRANT CREATE ON DATABASE %I TO app_user', current_database()); END $$";
         await hangfireGrant.ExecuteNonQueryAsync();
     }
 

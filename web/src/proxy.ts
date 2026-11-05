@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { isMockAuth } from '@/config/env'
+import { env, isMockAuth } from '@/config/env'
 import { isGuestOnlyPath, isPublicPath, routes } from '@/config/routes'
 import { MOCK_SESSION_COOKIE } from '@/lib/auth/mockAuth'
+import { buildCsp, generateNonce } from '@/lib/security/csp'
 import { updateSupabaseSession } from '@/lib/supabase/middleware'
 
 /**
@@ -12,30 +13,49 @@ import { updateSupabaseSession } from '@/lib/supabase/middleware'
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
 
+  // CSP com nonce por requisição (ADR-070). O header precisa ir na REQUISIÇÃO para o Next.js
+  // carimbar o nonce nos próprios scripts, e na RESPOSTA para o navegador aplicá-lo.
+  const nonce = generateNonce()
+  const csp = buildCsp({
+    nonce,
+    isDev: process.env.NODE_ENV !== 'production',
+    apiUrl: env.apiUrl,
+    supabaseUrl: env.supabaseUrl,
+  })
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', csp)
+
   let response: NextResponse
   let isAuthenticated: boolean
 
   if (isMockAuth) {
-    response = NextResponse.next({ request })
+    response = NextResponse.next({ request: { headers: requestHeaders } })
     isAuthenticated = Boolean(request.cookies.get(MOCK_SESSION_COOKIE)?.value)
   } else {
-    ;({ response, isAuthenticated } = await updateSupabaseSession(request))
+    ;({ response, isAuthenticated } = await updateSupabaseSession(request, requestHeaders))
   }
+  response.headers.set('Content-Security-Policy', csp)
 
   if (!isAuthenticated && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = routes.login
     url.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname + search)}`
-    return NextResponse.redirect(url)
+    return withCsp(NextResponse.redirect(url), csp)
   }
 
   if (isAuthenticated && isGuestOnlyPath(pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = routes.dashboard
     url.search = ''
-    return NextResponse.redirect(url)
+    return withCsp(NextResponse.redirect(url), csp)
   }
 
+  return response
+}
+
+function withCsp(response: NextResponse, csp: string) {
+  response.headers.set('Content-Security-Policy', csp)
   return response
 }
 

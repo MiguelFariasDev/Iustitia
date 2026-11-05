@@ -88,6 +88,7 @@ public partial class ErrorCatalogTests
     [InlineData(ErrorCode.ALERT_NOT_FOUND, 1400, 1499)]
     [InlineData(ErrorCode.CNJ_UNAVAILABLE, 1700, 1799)]
     [InlineData(ErrorCode.ATENDIMENTO_NOT_FOUND, 2500, 2599)]
+    [InlineData(ErrorCode.AI_INVALID_REQUEST, 1600, 1699)]
     [InlineData(ErrorCode.INTERNAL_UNEXPECTED, 9000, 9999)]
     public void ErrorCode_NumericValue_IsWithinItsGroupRange(ErrorCode code, int rangeStart, int rangeEnd)
     {
@@ -102,6 +103,7 @@ public partial class ErrorCatalogTests
             (0, 99), (100, 199), (200, 299), (300, 399), (400, 499), (500, 599),
             (600, 699), (700, 799), (800, 899), (900, 999), (1000, 1099),
             (1100, 1199), (1200, 1299), (1300, 1399), (1400, 1499), (1700, 1799), (2500, 2599), (9000, 9999),
+            (1100, 1199), (1200, 1299), (1300, 1399), (1400, 1499), (1600, 1699), (1700, 1799), (9000, 9999),
         };
 
         foreach (var code in Enum.GetValues<ErrorCode>())

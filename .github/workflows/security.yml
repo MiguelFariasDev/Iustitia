@@ -1,0 +1,88 @@
+name: security
+
+# Etapa 3.9 (ADR-067): varredura de vulnerabilidades em dependências e imagens.
+# Roda em todo PR, na main e semanalmente (CVE novo em dependência antiga não depende de commit).
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet-audit:
+    name: Dependências .NET (NuGet)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore Advocacia.sln
+      # `dotnet list package --vulnerable` sempre sai com 0: o gate é falhar se houver linha de vulnerabilidade.
+      - name: Falha se houver pacote vulnerável (diretos e transitivos)
+        run: |
+          dotnet list Advocacia.sln package --vulnerable --include-transitive 2>&1 | tee audit.txt
+          if grep -q "has the following vulnerable packages" audit.txt; then
+            echo "::error::Pacotes NuGet com vulnerabilidade conhecida. Veja o relatório acima."
+            exit 1
+          fi
+
+  npm-audit:
+    name: Dependências do frontend (npm)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --ignore-scripts
+      # Produção: vulnerabilidade só em devDependency não chega ao usuário. Falha em high/critical.
+      - run: npm audit --omit=dev --audit-level=high
+
+  trivy-images:
+    name: Trivy (imagens Docker)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api, dockerfile: src/Hosts/Api/Dockerfile }
+          - { name: worker, dockerfile: src/Hosts/Worker/Dockerfile }
+          - { name: migrator, dockerfile: infra/docker/migrator.Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build da imagem
+        run: docker build -f ${{ matrix.dockerfile }} -t advocacia-${{ matrix.name }}:scan .
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: advocacia-${{ matrix.name }}:scan
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          vuln-type: os,library
+
+  trivy-repo:
+    name: Trivy (segredos e IaC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
