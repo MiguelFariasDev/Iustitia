@@ -28,6 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { routes } from '@/config/routes'
+import { useAccess } from '@/hooks/useAccess'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { listUsers } from '../../settings/api'
@@ -51,6 +52,7 @@ type Visao = 'lista' | 'quadro'
 
 export function ProcessosView() {
   const searchParams = useSearchParams()
+  const { hasTeam } = useAccess()
 
   // Filtro inicial vindo da URL, para os cartões do painel levarem à lista já filtrada.
   // Só o estado INICIAL: daqui em diante quem manda são os controles da tela, e reagir à
@@ -70,7 +72,11 @@ export function ProcessosView() {
     searchParams.get('visao') === 'quadro' ? 'quadro' : 'lista'
   )
 
-  const { data: usuarios } = useQuery({ queryKey: ['users', 'list'], queryFn: listUsers })
+  const { data: usuarios } = useQuery({
+    queryKey: ['users', 'list'],
+    queryFn: listUsers,
+    enabled: hasTeam,
+  })
 
   const { data, isPending, isFetching } = useQuery({
     ...processosQuery(filters),
@@ -156,24 +162,26 @@ export function ProcessosView() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <Select
-          value={filters.responsavelUserId ?? TODOS}
-          onValueChange={(value) =>
-            updateFilters({ responsavelUserId: value === TODOS ? null : value })
-          }
-        >
-          <SelectTrigger className="w-48" aria-label="Filtrar por responsável">
-            <SelectValue placeholder="Responsável" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODOS}>Todos os responsáveis</SelectItem>
-            {(usuarios ?? []).map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {hasTeam ? (
+          <Select
+            value={filters.responsavelUserId ?? TODOS}
+            onValueChange={(value) =>
+              updateFilters({ responsavelUserId: value === TODOS ? null : value })
+            }
+          >
+            <SelectTrigger className="w-48" aria-label="Filtrar por responsável">
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todos os responsáveis</SelectItem>
+              {(usuarios ?? []).map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
 
         <div className="space-y-1">
           <Label htmlFor="filtro-tribunal" className="text-xs">

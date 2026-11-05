@@ -68,6 +68,9 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `TENANT_SUSPENDED` | O escritório está suspenso. | 409 | Conflict | Tentativa de suspender um tenant já suspenso. | Reativar o tenant antes, se a intenção era outra ação. |
 | `TENANT_CANCELLED` | O escritório está cancelado. | 409 | Conflict | Tentativa de suspender/cancelar um tenant já cancelado. | Um tenant cancelado não pode ser reaberto por esta API. |
 | `TENANT_NAME_REQUIRED` | O nome do escritório é obrigatório. | 400 | Validation | `Tenant.Create`/`Tenant.Update` recebeu nome vazio. | Informar um nome. |
+| `TENANT_CPF_INVALID` | CPF inválido. | 400 | Validation | `CPF.Create` rejeitou o valor (vazio, tamanho, dígitos repetidos ou dígito verificador). Só em conta Solo. | Corrigir o CPF. |
+| `TENANT_CPF_DUPLICATED` | Já existe uma conta cadastrada com este CPF. | 409 | Conflict | Índice único `ux_tenants_cpf`. | Entrar na conta existente. |
+| `TENANT_ACCOUNT_TYPE_INVALID` | Tipo de conta inválido. Valores aceitos: Firm, Solo. | 400 | Validation | `AccountType` fora dos valores conhecidos. | Enviar Firm ou Solo. |
 
 ## User (500–599)
 

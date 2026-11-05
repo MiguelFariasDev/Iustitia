@@ -52,7 +52,12 @@ export function buildCsp({ nonce, isDev, apiUrl, supabaseUrl }: CspOptions): str
   const directives: Record<string, string[]> = {
     'default-src': ["'self'"],
     // 'unsafe-eval' só em dev: o React usa eval para reconstruir stacks de depuração.
-    'script-src': ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(isDev ? ["'unsafe-eval'"] : [])],
+    'script-src': [
+      "'self'",
+      `'nonce-${nonce}'`,
+      "'strict-dynamic'",
+      ...(isDev ? ["'unsafe-eval'"] : []),
+    ],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https:'],
     'font-src': ["'self'"],

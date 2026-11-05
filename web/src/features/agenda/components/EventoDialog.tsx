@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { useAccess } from '@/hooks/useAccess'
 import { toDateTimeLocal } from '../dates'
 import { useCreateEvento, useDeleteEvento, useUpdateEvento } from '../hooks'
 import {
@@ -90,6 +91,7 @@ function defaultsFor(state: EventoDialogState): EventoFormValues {
 function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClose: () => void }) {
   const { evento } = state
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const { hasTeam } = useAccess()
 
   const create = useCreateEvento(onClose)
   const update = useUpdateEvento(evento?.id ?? '', onClose)
@@ -226,22 +228,24 @@ function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClos
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="responsavelId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Responsável</FormLabel>
-                <ResponsavelSelect
-                  value={field.value}
-                  onChange={field.onChange}
-                  emptyLabel="Eu"
-                  label="Responsável pelo evento"
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {hasTeam ? (
+            <FormField
+              control={form.control}
+              name="responsavelId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Responsável</FormLabel>
+                  <ResponsavelSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    emptyLabel="Eu"
+                    label="Responsável pelo evento"
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
 
           <FormField
             control={form.control}

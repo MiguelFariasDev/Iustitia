@@ -10,7 +10,13 @@ public sealed class Tenant : AggregateRoot<TenantId>, IAuditable, ISoftDeletable
 {
     public string Name { get; private set; } = null!;
 
-    public CNPJ Cnpj { get; private set; } = null!;
+    public AccountType AccountType { get; private set; }
+
+    /// <summary>CNPJ do escritório. Nulo em conta Solo, que é identificada pelo <see cref="Cpf"/>.</summary>
+    public CNPJ? Cnpj { get; private set; }
+
+    /// <summary>CPF do titular. Só existe em conta Solo; é dado pessoal (LGPD).</summary>
+    public CPF? Cpf { get; private set; }
 
     public TenantStatus Status { get; private set; }
 
@@ -37,11 +43,13 @@ public sealed class Tenant : AggregateRoot<TenantId>, IAuditable, ISoftDeletable
         // EF Core.
     }
 
-    private Tenant(TenantId id, string name, CNPJ cnpj)
+    private Tenant(TenantId id, string name, AccountType accountType, CNPJ? cnpj, CPF? cpf)
         : base(id)
     {
         Name = name;
+        AccountType = accountType;
         Cnpj = cnpj;
+        Cpf = cpf;
         Status = TenantStatus.Active;
     }
 
@@ -52,7 +60,21 @@ public sealed class Tenant : AggregateRoot<TenantId>, IAuditable, ISoftDeletable
             return Result.Failure<Tenant>(ErrorFactory.From(ErrorCode.TENANT_NAME_REQUIRED));
         }
 
-        var tenant = new Tenant(TenantId.New(), name.Trim(), cnpj);
+        var tenant = new Tenant(TenantId.New(), name.Trim(), AccountType.Firm, cnpj, cpf: null);
+        tenant.RaiseDomainEvent(new TenantCreatedEvent(tenant.Id));
+
+        return Result.Success(tenant);
+    }
+
+    /// <summary>Conta de advogado(a) autônomo(a): um usuário, identificado(a) por CPF.</summary>
+    public static Result<Tenant> CreateSolo(string name, CPF cpf)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Result.Failure<Tenant>(ErrorFactory.From(ErrorCode.TENANT_NAME_REQUIRED));
+        }
+
+        var tenant = new Tenant(TenantId.New(), name.Trim(), AccountType.Solo, cnpj: null, cpf);
         tenant.RaiseDomainEvent(new TenantCreatedEvent(tenant.Id));
 
         return Result.Success(tenant);

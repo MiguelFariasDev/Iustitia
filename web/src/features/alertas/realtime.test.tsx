@@ -63,6 +63,7 @@ function signIn() {
       name: 'Ana',
       avatarUrl: null,
       role: 'Lawyer',
+      accountType: 'Firm',
       tenantId: 'tenant-1',
     },
   })

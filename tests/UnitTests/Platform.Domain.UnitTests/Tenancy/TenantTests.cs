@@ -20,6 +20,39 @@ public class TenantTests
     }
 
     [Fact]
+    public void Create_IsAFirmAccountWithCnpjAndNoCpf()
+    {
+        var tenant = Tenant.Create("Escritório Teste", ValidCnpj).Value;
+
+        tenant.AccountType.Should().Be(AccountType.Firm);
+        tenant.Cnpj.Should().NotBeNull();
+        tenant.Cpf.Should().BeNull();
+    }
+
+    [Fact]
+    public void CreateSolo_IsIdentifiedByCpfAndHasNoCnpj()
+    {
+        var result = Tenant.CreateSolo("Ana Souza", CPF.Create("52998224725").Value);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AccountType.Should().Be(AccountType.Solo);
+        result.Value.Cpf.Should().NotBeNull();
+        result.Value.Cnpj.Should().BeNull();
+        result.Value.Status.Should().Be(TenantStatus.Active);
+        result.Value.DomainEvents.Should().ContainSingle(e => e is TenantCreatedEvent);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreateSolo_WithoutName_Fails(string name)
+    {
+        var result = Tenant.CreateSolo(name, CPF.Create("52998224725").Value);
+
+        result.Error.Code.Should().Be(nameof(ErrorCode.TENANT_NAME_REQUIRED));
+    }
+
+    [Fact]
     public void Create_RaisesTenantCreatedEvent()
     {
         var result = Tenant.Create("Escritório Teste", ValidCnpj);

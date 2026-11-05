@@ -34,6 +34,7 @@ import {
   type SearchResult,
   type SearchResultKind,
 } from '@/features/search/types'
+import { useAccess } from '@/hooks/useAccess'
 import { useAuth } from '@/hooks/useAuth'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useTheme } from '@/hooks/useTheme'
@@ -75,6 +76,7 @@ export default function CommandPalette() {
   const router = useRouter()
   const { toggleTheme } = useTheme()
   const { signOut } = useAuth()
+  const access = useAccess()
   const runCreateAction = useRunCreateAction()
   const [term, setTerm] = useState('')
   const debouncedTerm = useDebounce(term.trim(), 250)
@@ -123,11 +125,13 @@ export default function CommandPalette() {
 
   const pages = [
     { label: 'Painel de gestão', href: routes.dashboard, icon: LayoutDashboard },
-    ...settingsNavigation.map((s) => ({
-      label: `Configurações › ${s.label}`,
-      href: s.href,
-      icon: Settings,
-    })),
+    ...settingsNavigation
+      .filter((s) => !access.isReady || access.can(s.screen))
+      .map((s) => ({
+        label: `Configurações › ${access.label(s.screen, s.label)}`,
+        href: s.href,
+        icon: Settings,
+      })),
   ].filter((p) => matchesSearch(p.label, term))
 
   const grouped = searchEnabled ? groupResults(results) : []

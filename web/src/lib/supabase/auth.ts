@@ -3,7 +3,7 @@ import type {
   Session,
   AuthError as SupabaseAuthError,
 } from '@supabase/supabase-js'
-import { decodeAccessTokenClaims, parseUserRole } from '@/lib/auth/claims'
+import { decodeAccessTokenClaims, parseAccountType, parseUserRole } from '@/lib/auth/claims'
 import { AuthError, type AuthEvent, type AuthService, type AuthSession } from '@/lib/auth/types'
 import { getSupabaseBrowserClient } from './client'
 
@@ -27,6 +27,7 @@ export function toAuthSession(session: Session): AuthSession {
       avatarUrl: typeof metadata.avatar_url === 'string' ? metadata.avatar_url : null,
       role: parseUserRole(claims.user_role),
       tenantId: claims.tenant_id ?? null,
+      accountType: parseAccountType(claims.account_type),
     },
   }
 }
@@ -69,19 +70,6 @@ export const supabaseAuthService: AuthService = {
     })
     if (error) throw toAuthError(error)
     return toAuthSession(data.session)
-  },
-
-  async signUp({ email, password, name }) {
-    const { data, error } = await getSupabaseBrowserClient().auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: name },
-        emailRedirectTo: `${window.location.origin}/painel`,
-      },
-    })
-    if (error) throw toAuthError(error)
-    return data.session ? toAuthSession(data.session) : null
   },
 
   async signOut() {

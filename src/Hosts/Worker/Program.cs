@@ -31,7 +31,6 @@ builder.Services.AddPlatformInfrastructure(
 // Módulos de negócio (ver comentário equivalente em Hosts/Api/Program.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddAnthropicIntegration(builder.Configuration);
-builder.Services.AddWorkflowInfrastructure();
 builder.Services.AddLegalInfrastructure(builder.Configuration);
 builder.Services.AddCrmInfrastructure(builder.Configuration);
 builder.Services.AddWorkflowInfrastructure(builder.Configuration);

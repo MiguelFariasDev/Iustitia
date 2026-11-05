@@ -4,7 +4,14 @@ import { LifeBuoy, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { footerNavigation, isActivePath, mainNavigation, type NavItem } from '@/config/navigation'
+import {
+  filterNavigation,
+  footerNavigation,
+  isActivePath,
+  mainNavigation,
+  type NavItem,
+} from '@/config/navigation'
+import { useAccess } from '@/hooks/useAccess'
 import { useNavCounts } from '@/hooks/useNavCounts'
 import { notify } from '@/lib/notify'
 import { cn } from '@/lib/utils'
@@ -79,11 +86,17 @@ function ItemContent({
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname()
   const counts = useNavCounts()
+  const access = useAccess()
+  // Antes de o usuário carregar não há como decidir; mostra tudo por um instante em vez de piscar
+  // um menu vazio. A API segue barrando o que o papel não pode.
+  const navigation = access.isReady
+    ? filterNavigation(mainNavigation, access.can, access.label)
+    : mainNavigation
 
   return (
     <nav aria-label="Navegação principal" className="flex h-full flex-col px-3 py-4">
       <div className="flex flex-1 flex-col gap-5">
-        {mainNavigation.map((group, groupIndex) => (
+        {navigation.map((group, groupIndex) => (
           <div key={group.label ?? `group-${groupIndex}`} className="space-y-1">
             {group.label ? (
               <p

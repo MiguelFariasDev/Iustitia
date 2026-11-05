@@ -61,7 +61,6 @@ builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 // a implementação é registrada aqui, pelo host (ver Legal.Infrastructure/DependencyInjection.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddAnthropicIntegration(builder.Configuration);
-builder.Services.AddWorkflowInfrastructure();
 builder.Services.AddLegalInfrastructure(builder.Configuration);
 builder.Services.AddCrmInfrastructure(builder.Configuration);
 builder.Services.AddWorkflowInfrastructure(builder.Configuration);

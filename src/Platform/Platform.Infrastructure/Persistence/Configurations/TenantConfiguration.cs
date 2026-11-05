@@ -27,11 +27,25 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         // CNPJ.Create valida os dígitos verificadores em toda escrita; a leitura confia
         // que o dado já foi validado (.Value lança se um dado corrompido chegar ao banco).
+        // Nulo em conta Solo. Índice único em coluna anulável: o Postgres aceita vários NULL,
+        // então só os valores preenchidos precisam ser únicos.
         builder.Property(t => t.Cnpj)
-            .HasConversion(cnpj => cnpj.Value, value => CNPJ.Create(value).Value)
+            .HasConversion(cnpj => cnpj!.Value, value => CNPJ.Create(value).Value)
             .HasColumnName("cnpj")
-            .HasMaxLength(14)
-            .IsRequired();
+            .HasMaxLength(14);
+
+        builder.Property(t => t.Cpf)
+            .HasConversion(cpf => cpf!.Value, value => CPF.Create(value).Value)
+            .HasColumnName("cpf")
+            .HasMaxLength(11);
+
+        // O padrão 'Firm' é o que preenche os tenants já existentes na migration (ADR-068).
+        builder.Property(t => t.AccountType)
+            .HasConversion<string>()
+            .HasColumnName("account_type")
+            .HasMaxLength(10)
+            .IsRequired()
+            .HasDefaultValue(AccountType.Firm);
 
         builder.Property(t => t.Status)
             .HasConversion<string>()
@@ -50,6 +64,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.DeletedBy).HasMaxLength(100);
 
         builder.HasIndex(t => t.Cnpj).IsUnique().HasDatabaseName("ux_tenants_cnpj");
+        builder.HasIndex(t => t.Cpf).IsUnique().HasDatabaseName("ux_tenants_cpf");
         builder.HasIndex(t => t.Status).HasDatabaseName("ix_tenants_status");
     }
 }

@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { FilterChip } from '@/components/shared/FilterChip'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useAccess } from '@/hooks/useAccess'
 import { periodFor, shiftAnchor, titleFor, weekDays } from '../dates'
 import { useAgenda, useRescheduleEvento } from '../hooks'
 import {
@@ -25,6 +26,7 @@ import { MonthGrid } from './MonthGrid'
 import { TimeGrid } from './TimeGrid'
 
 export function AgendaView() {
+  const { hasTeam } = useAccess()
   const [view, setView] = useState<VisaoAgenda>('mes')
   const [anchor, setAnchor] = useState(() => new Date())
   const [responsavelId, setResponsavelId] = useState('')
@@ -102,13 +104,15 @@ export function AgendaView() {
       </div>
 
       <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap items-center gap-2">
-        <ResponsavelSelect
-          value={responsavelId}
-          onChange={setResponsavelId}
-          emptyLabel="Todos os responsáveis"
-          label="Filtrar por responsável"
-          className="h-8 w-52"
-        />
+        {hasTeam ? (
+          <ResponsavelSelect
+            value={responsavelId}
+            onChange={setResponsavelId}
+            emptyLabel="Todos os responsáveis"
+            label="Filtrar por responsável"
+            className="h-8 w-52"
+          />
+        ) : null}
         {tiposEvento.map((tipo) => (
           <FilterChip key={tipo} active={tipos.has(tipo)} onClick={() => toggleTipo(tipo)}>
             <span className="flex items-center gap-1.5">
