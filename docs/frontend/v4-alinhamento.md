@@ -52,3 +52,32 @@ pulso vira opacidade fixa e os hovers não deslocam. Só `opacity` e `transform`
   do protótipo se mapeiam nos papéis reais (Secretária ≈ Admin? Estagiário?). Não foi alterado.
 - **Nome da marca.** O app mostra `NEXT_PUBLIC_APP_NAME` (padrão "Advocacia", pela regra de Marca
   Desacoplada). Para o texto "Iustitia" do protótipo, definir `NEXT_PUBLIC_APP_NAME=Iustitia`.
+
+## Painel (item 5.1) — o que é real e o que é demonstração
+
+O painel muda por perfil (`web/src/features/dashboard/persona.ts`): **Sócio** (Owner, Partner),
+**Advogado(a)** (Lawyer **e** a conta Solo, que trabalha os próprios casos), **Secretária** (Admin,
+Intern) e **Financeiro** (Financial). Papel desconhecido cai na visão de menor privilégio.
+
+| Bloco | Origem |
+| --- | --- |
+| Prazos hoje, prazos da semana, fila de prazos, agenda de hoje, riscos de prazo | **Real** (agenda) |
+| Para revisar, Alertas, publicações "Sugeridas pela IA" | **Real** (publicações e alertas) |
+| Tarefas atrasadas, Prazos cumpridos | **"—"** — sem módulo de tarefas; não se inventa número |
+| Receita, em atraso, aprovações, carga da equipe, financeiro inteiro, painel da Secretária | **Demonstração** (selo na tela; dados em `dashboard/demo.ts`) |
+
+Divergências do protótipo:
+
+- **Sem "Atrasado" na fila.** A agenda não guarda se um compromisso foi cumprido: um prazo de
+  ontem sem baixa é indistinguível de um prazo perdido, e marcar tudo o que passou como atrasado
+  inventaria um alarme. O nível `overdue` existe nos tipos para quando houver tarefas com conclusão.
+- **Só prazo "vence hoje".** Audiência, reunião e tarefa aparecem como "Hoje".
+- **Coluna do processo com 190px** (no protótipo, 150px): um número CNJ em mono tem ~180px e
+  cortado deixa de ser útil. A coluna do prazo ficou com 72px.
+- **Sem coluna de cliente na fila:** o evento da agenda só guarda o processo.
+- **Saudação dinâmica** ("Bom dia/Boa tarde/Boa noite"), em vez de "Bom dia" fixo.
+- **"Athena monitora o CNJ desde as 06:00"** virou "A Athena acompanha as publicações do CNJ": não
+  há horário fixo de captura que a tela possa afirmar.
+- **Cada perfil só busca o que a API lhe permite ler.** Secretária e Financeiro não disparam
+  nenhuma consulta (a API lhes recusaria publicações e processos); o Sócio só busca a agenda.
+- A variação A/B do advogado é guardada no navegador (`uiStore`).

@@ -2,7 +2,6 @@ import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { QueryBoundary } from '@/components/shared/QueryBoundary'
 import { DashboardSkeleton } from '@/features/dashboard/components/DashboardSkeleton'
 import { DashboardView } from '@/features/dashboard/components/DashboardView'
@@ -10,7 +9,7 @@ import { dashboardSummaryQuery } from '@/features/dashboard/queries'
 import { createServerApiClient } from '@/lib/api/server'
 import { makeQueryClient } from '@/lib/query/queryClient'
 
-export const metadata: Metadata = { title: 'Painel de gestão' }
+export const metadata: Metadata = { title: 'Painel' }
 
 /**
  * Prefetch no servidor + HydrationBoundary: o HTML já chega com os dados e o cliente
@@ -38,14 +37,9 @@ async function DashboardData() {
 
 export default function DashboardPage() {
   return (
-    <>
-      <PageHeader
-        title="Painel de gestão"
-        description="Visão geral de prazos, publicações e agenda do escritório."
-      />
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardData />
-      </Suspense>
-    </>
+    // O cabeçalho (saudação e data) é do DashboardView: depende de quem está logado e da hora local.
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardData />
+    </Suspense>
   )
 }

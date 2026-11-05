@@ -25,13 +25,26 @@ describe('uiStore', () => {
     expect(useUiStore.getState().commandPaletteOpen).toBe(false)
   })
 
-  it('persiste apenas tema, sidebar e avisos dispensados (chave lida pelo script anti-flash)', () => {
+  it('persiste apenas tema, variação do painel, sidebar e avisos dispensados (chave lida pelo script anti-flash)', () => {
     useUiStore.getState().setTheme('dark')
     useUiStore.getState().setCommandPaletteOpen(true)
     const stored = JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? '{}') as {
       state: Record<string, unknown>
     }
-    expect(stored.state).toEqual({ theme: 'dark', sidebarCollapsed: false, dismissedHints: [] })
+    expect(stored.state).toEqual({
+      theme: 'dark',
+      dashboardVariant: 'A',
+      sidebarCollapsed: false,
+      dismissedHints: [],
+    })
+  })
+
+  it('lembra a variação B do painel entre sessões', async () => {
+    useUiStore.getState().setDashboardVariant('B')
+    const stored = JSON.parse(localStorage.getItem(THEME_STORAGE_KEY) ?? '{}') as {
+      state: { dashboardVariant: string }
+    }
+    expect(stored.state.dashboardVariant).toBe('B')
   })
 
   it('reidrata o tema salvo e marca o estado como hidratado', async () => {
