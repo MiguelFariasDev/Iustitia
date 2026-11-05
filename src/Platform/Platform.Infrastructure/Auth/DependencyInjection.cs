@@ -28,6 +28,7 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUserAccessor>();
+        services.AddScoped<IRequestOrigin, HttpRequestOrigin>();
         services.AddScoped<IAuditService, AuditService>();
 
         services

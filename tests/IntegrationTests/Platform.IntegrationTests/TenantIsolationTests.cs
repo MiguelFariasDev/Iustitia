@@ -92,7 +92,9 @@ public class TenantIsolationTests(PostgresFixture fixture)
     [Theory]
     [InlineData("tenants", "tenant_isolation_tenants")]
     [InlineData("users", "tenant_isolation_users")]
-    [InlineData("audit_logs", "tenant_isolation_audit_logs")]
+    // audit_logs é imutável: policies separadas de SELECT e INSERT (014_audit_immutability.sql).
+    [InlineData("audit_logs", "audit_logs_select")]
+    [InlineData("audit_logs", "audit_logs_insert")]
     [InlineData("settings", "tenant_isolation_settings")]
     [InlineData("feature_flags", "tenant_isolation_feature_flags")]
     public async Task RlsPolicy_Exists(string table, string policyName)

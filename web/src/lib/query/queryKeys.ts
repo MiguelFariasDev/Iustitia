@@ -31,6 +31,12 @@ export const queryKeys = {
     summary: () => [...queryKeys.publications.all, 'summary'] as const,
     byId: (id: string) => [...queryKeys.publications.all, 'detail', id] as const,
   },
+  atendimentos: {
+    all: ['atendimentos'] as const,
+    list: (filters: unknown) => [...queryKeys.atendimentos.all, 'list', filters] as const,
+    byId: (id: string) => [...queryKeys.atendimentos.all, 'detail', id] as const,
+    mensagens: (id: string) => [...queryKeys.atendimentos.all, 'mensagens', id] as const,
+  },
   alerts: {
     all: ['alerts'] as const,
     list: (filters: unknown) => [...queryKeys.alerts.all, 'list', filters] as const,

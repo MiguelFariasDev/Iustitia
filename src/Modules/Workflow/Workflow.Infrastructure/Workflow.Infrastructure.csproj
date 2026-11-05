@@ -22,6 +22,16 @@
   <ItemGroup>
     <ProjectReference Include="..\Workflow.Application\Workflow.Application.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Os prompts viajam DENTRO do assembly: sem depender do diretório de trabalho do host. -->
+    <EmbeddedResource Include="Prompts\*.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Integrations\Integrations.Anthropic\Integrations.Anthropic.Application\Integrations.Anthropic.Application.csproj" />
   </ItemGroup>
 
 </Project>

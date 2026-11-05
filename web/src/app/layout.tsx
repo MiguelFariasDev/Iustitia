@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
 import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google'
 import { env } from '@/config/env'
 import { themeColor } from '@/config/theme'
@@ -33,7 +34,10 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Nonce da CSP desta requisição (gerado em src/proxy.ts). Sem ele o script de tema seria bloqueado.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     <html
       lang="pt-BR"
@@ -42,7 +46,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <head>
         {/* Aplica o tema antes da primeira pintura (sem flash). */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
         <a
