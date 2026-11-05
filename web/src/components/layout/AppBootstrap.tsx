@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useAlertasRealtime } from '@/features/alertas/realtime'
+import { useAtendimentosRealtime } from '@/features/atendimentos/realtime'
 import { getCurrentTenant } from '@/features/tenant/api'
 import { useGlobalHotkeys } from '@/hooks/useGlobalHotkeys'
 import { queryKeys } from '@/lib/query/queryKeys'
@@ -28,6 +29,9 @@ export function AppBootstrap() {
 
   // Notificação in-app em tempo real (canal privado do usuário no Supabase Realtime).
   useAlertasRealtime()
+
+  // Atendimentos (WhatsApp) em tempo real: canal do escritório, só para quem pode ler conversas.
+  useAtendimentosRealtime()
 
   return null
 }

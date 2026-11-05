@@ -36,8 +36,10 @@ export interface AuthUser {
   /**
    * Claim `account_type` do tenant. `null` = o backend ainda não emitiu a claim (tenants
    * anteriores ao ADR-068): tratado como Firm, que é o comportamento que sempre existiu.
+   * Opcional de propósito: quem monta um AuthUser sem conhecer o tipo de conta (testes, mocks)
+   * continua válido, e o significado de "ausente" é o mesmo de `null`.
    */
-  accountType: AccountType | null
+  accountType?: AccountType | null
 }
 
 export interface AuthSession {

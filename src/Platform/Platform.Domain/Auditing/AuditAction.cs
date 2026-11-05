@@ -14,4 +14,8 @@ public enum AuditAction
     Reviewed,
     Approved,
     Rejected,
+    Corrected,
+    Viewed,
+    Uploaded,
+    Downloaded,
 }

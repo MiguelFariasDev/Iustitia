@@ -60,9 +60,10 @@ public sealed class ClienteRepository(LegalDbContext dbContext)
     /// Busca por nome ou por documento, sempre sobre a coluna DERIVADA correspondente —
     /// nunca sobre o value object convertido (ver Cliente.NomeBusca para o porquê).
     ///
-    /// Um termo com 3+ dígitos é tratado como documento; qualquer outra coisa, como nome.
-    /// Documento usa igualdade por prefixo (StartsWith) e não "contém": ninguém procura um
-    /// CPF pelo miolo, e o prefixo aproveita o índice B-tree.
+    /// Um termo com 11 ou 14 dígitos (CPF/CNPJ completo) é tratado como documento; qualquer outra
+    /// coisa, como nome. O documento é cifrado em repouso e só existe como índice cego (HMAC):
+    /// a busca é por IGUALDADE com o documento inteiro. Busca por prefixo de CPF foi removida de
+    /// propósito — exigiria guardar o prefixo em claro, anulando a criptografia (ver ADR-068).
     /// </summary>
     private static IQueryable<Cliente> ApplyBusca(IQueryable<Cliente> query, string? busca)
     {
@@ -74,8 +75,8 @@ public sealed class ClienteRepository(LegalDbContext dbContext)
         var termo = busca.Trim().ToLowerInvariant();
         var digitos = new string(termo.Where(char.IsDigit).ToArray());
 
-        return digitos.Length >= 3
-            ? query.Where(cliente => cliente.DocumentoBusca.StartsWith(digitos))
+        return digitos.Length is 11 or 14
+            ? query.Where(cliente => cliente.DocumentoBusca == digitos)
             : query.Where(cliente => cliente.NomeBusca.Contains(termo));
     }
 }

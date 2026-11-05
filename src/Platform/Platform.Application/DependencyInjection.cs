@@ -1,4 +1,5 @@
 using Advocacia.BuildingBlocks.Application.Behaviors;
+using Advocacia.Platform.Application.Behaviors;
 using FluentValidation;
 using Mapster;
 using MapsterMapper;
@@ -27,6 +28,8 @@ public static class DependencyInjection
             mediatrConfiguration.AddOpenBehavior(typeof(LoggingBehavior<,>));
             mediatrConfiguration.AddOpenBehavior(typeof(ValidationBehavior<,>));
             mediatrConfiguration.AddOpenBehavior(typeof(PerformanceBehavior<,>));
+            // Audit por FORA da transação: só registra o que foi de fato confirmado (ADR-069).
+            mediatrConfiguration.AddOpenBehavior(typeof(AuditBehavior<,>));
             mediatrConfiguration.AddOpenBehavior(typeof(TransactionBehavior<,>));
         });
 

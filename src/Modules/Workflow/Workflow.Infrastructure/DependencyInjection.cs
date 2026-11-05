@@ -1,4 +1,5 @@
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Interceptors;
+using Advocacia.Modules.Integrations.Anthropic.Application.Abstractions;
 using Advocacia.Modules.Workflow.Application;
 using Advocacia.Modules.Workflow.Application.Abstractions;
 using Advocacia.Modules.Workflow.Infrastructure.Integrations;
@@ -11,7 +12,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Advocacia.Modules.Workflow.Infrastructure;
 
-/// <summary>Composition root do módulo Workflow. Deve ser chamado DEPOIS de <c>AddPlatformInfrastructure</c>.</summary>
+/// <summary>
+/// Composition root do módulo Workflow. Deve ser chamado DEPOIS de <c>AddPlatformInfrastructure</c>.
+/// Hospeda a agenda (DbContext, repositório, lembretes) e o catálogo de prompts versionados da
+/// classificação por IA; a revisão humana e a fila de trabalho (Etapas 3.3 e 3.4) entram no
+/// mesmo <c>WorkflowDbContext</c> (ver ADR-067).
+/// </summary>
 public static class DependencyInjection
 {
     public static IServiceCollection AddWorkflowInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -37,6 +43,8 @@ public static class DependencyInjection
         services.Configure<CalendarReminderJobOptions>(configuration.GetSection(CalendarReminderJobOptions.SectionName));
         services.AddScoped<CalendarReminderJob>();
         services.AddScoped<WorkflowRecurringJobsRegistrar>();
+
+        services.AddSingleton<IPromptCatalog, EmbeddedPromptCatalog>();
 
         return services;
     }

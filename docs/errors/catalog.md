@@ -179,6 +179,23 @@ Agenda do escritório — ver ADR-067.
 | `CALENDAR_EVENT_TITLE_REQUIRED` | O título do evento é obrigatório. | 400 | Validation | Título vazio ou acima de 200 caracteres. | Informar o título. |
 | `CALENDAR_EVENT_INVALID_PERIOD` | Período inválido: o término do evento não pode ser anterior ao início. | 400 | Validation | `EndAt` anterior a `StartAt`. | Corrigir as datas. |
 | `CALENDAR_EVENT_PROCESS_NOT_FOUND` | O processo informado para o evento não existe neste escritório. | 404 | NotFound | `ProcessId` de processo inexistente ou de outro escritório. | Escolher um processo do escritório. |
+## Atendimento (2500–2599)
+
+Módulo Atendimento (inbox e handoff do bot de WhatsApp) — ver `docs/modules/atendimento.md`.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `ATENDIMENTO_NOT_FOUND` | Atendimento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório (filtro global + RLS tornam invisível; 404 em vez de 403). | Confirmar o identificador. |
+| `ATENDIMENTO_PHONE_INVALID` | Telefone inválido. Informe o número com DDI e DDD (10 a 15 dígitos). | 400 | Validation | `TelefoneWhatsApp.Normalize` recebeu valor vazio ou com menos de 10 / mais de 15 dígitos. | Enviar o número no formato `wa_id` da Meta (ex.: `5585999998888`). |
+| `ATENDIMENTO_CLOSED` | Este atendimento está encerrado. | 409 | Conflict | Qualquer ação sobre um atendimento `Closed` (terminal). | Uma nova mensagem do telefone abre outro atendimento. |
+| `ATENDIMENTO_INVALID_STATUS_TRANSITION` | Não é possível mudar o atendimento de '{0}' para '{1}'. | 409 | Conflict | `ReturnToBot` num atendimento que já está com o bot. | Consultar o status atual. |
+| `ATENDIMENTO_ALREADY_ASSIGNED` | Este atendimento já está sendo conduzido por outro advogado. | 409 | Conflict | Outro advogado tentou assumir ou enviar mensagem numa conversa em `Human` que não é dele. | Pedir ao advogado responsável que devolva ao bot. |
+| `ATENDIMENTO_MESSAGE_EMPTY` | A mensagem não pode ser vazia. | 400 | Validation | Corpo vazio ou só espaços. | Informar o texto. |
+| `ATENDIMENTO_MESSAGE_TOO_LONG` | A mensagem excede o limite de {0} caracteres do WhatsApp. | 400 | Validation | Corpo com mais de 4096 caracteres. | Dividir em mensagens menores. |
+| `ATENDIMENTO_MESSAGE_INVALID_SENDER` | Combinação inválida de direção e remetente da mensagem. | 400 | Validation | Entrada que não seja do cliente, saída do cliente, ou fala de humano sem ter assumido a conversa. | Corrigir direção/remetente; o advogado precisa assumir antes de falar. |
+| `ATENDIMENTO_BOT_BLOCKED` | O bot não pode responder: o atendimento está com um humano. | 409 | Conflict | O Bot tentou registrar uma resposta automática com o atendimento em `Human`. **Regra inegociável do handoff.** | O Bot deve consultar `GET .../status` antes de responder e ficar em silêncio. |
+| `ATENDIMENTO_DELIVERY_FAILED` | A mensagem foi registrada, mas não foi possível enviá-la ao WhatsApp. Tente novamente. | 500 | Failure | O Bot estava fora do ar ou recusou o envio. A mensagem fica no histórico com `delivery = Failed`. | Reenviar; verificar a saúde do Bot. |
+| `ATENDIMENTO_BOT_API_KEY_NOT_FOUND` | Chave de API do bot não encontrada. | 404 | NotFound | Revogação de uma chave inexistente ou de outro escritório. | Listar as chaves com `GET /api/v1/bot/api-keys`. |
 
 ## CNJ (1700–1799)
 
@@ -194,6 +211,15 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `CNJ_INVALID_RESPONSE` | O CNJ devolveu uma resposta em formato inesperado. | 500 | Failure | Corpo não desserializável como o contrato do DJEN — geralmente indica mudança na API. | Investigar: provável mudança de contrato. Itens individuais malformados são descartados com aviso, sem gerar este código. |
 | `CNJ_AUTH_FAILED` | Falha de autenticação ao consultar o CNJ. | 401 | Unauthorized | `401`/`403` do CNJ. A API de comunicações é pública hoje, então isso indica bloqueio por origem ou mudança de política. | Investigar com o CNJ / verificar bloqueio de IP. |
 | `CNJ_INVALID_REQUEST` | A consulta enviada ao CNJ foi rejeitada por parâmetros inválidos. | 400 | Validation | `400`/`422` do CNJ — sigla de tribunal inexistente, intervalo de datas inválido. **Não é retentado** (4xx é erro nosso; repetir só gasta quota). | Conferir `Jobs:CnjCapture:Tribunais` e o intervalo de datas. |
+| `AI_INVALID_REQUEST` | A requisição enviada ao serviço de IA foi rejeitada. | 500 | Failure | `400`/`404`/`413`/`422` da Anthropic: parâmetro inválido, modelo inexistente (ex.: aposentado) ou requisição grande demais. **Não é retentado.** | Erro de configuração/código — conferir `Anthropic:Models` e o corpo da chamada (o log traz o `type` do erro, nunca o conteúdo). |
+| `AI_UNAUTHORIZED` | Falha de autenticação com o serviço de IA. | 500 | Failure | `401`/`403` da Anthropic, ou `Anthropic:ApiKey` não configurada. | Verificar a chave (user-secrets em dev, Key Vault `Anthropic--ApiKey` em produção). |
+| `AI_RATE_LIMITED` | Limite de requisições ao serviço de IA excedido. Tente novamente mais tarde. | 500 | Failure | `429` que sobreviveu ao retry. | Nenhuma ação: o job retenta. Se recorrente, reduzir `BatchSizePerTenant` ou pedir aumento de limite. |
+| `AI_OVERLOADED` | O serviço de IA está sobrecarregado no momento. | 500 | Failure | `529` (overloaded) da Anthropic que sobreviveu ao retry. | Nenhuma ação: o job retenta. |
+| `AI_TIMEOUT` | O serviço de IA demorou mais que o esperado para responder. | 500 | Failure | Timeout do pipeline (`Anthropic:TimeoutSeconds`) ou `408`/`504`. | Nenhuma ação (retry). Se recorrente, aumentar `TimeoutSeconds` ou reduzir `MaxOutputTokens`. |
+| `AI_PARSE_ERROR` | A resposta do serviço de IA não pôde ser lida. | 500 | Failure | O corpo HTTP da Anthropic não é o JSON esperado (não confundir com `AI_INVALID_RESPONSE`, que é o *conteúdo* do modelo fora do contrato). | Investigar: provável mudança de contrato da API. |
+| `AI_UNAVAILABLE` | O serviço de IA está indisponível no momento. | 500 | Failure | Falha de rede, `5xx` que sobreviveu ao retry, ou circuit breaker aberto. | Nenhuma ação (retry). |
+| `AI_INVALID_RESPONSE` | A resposta da IA não pôde ser validada e foi descartada. | 500 | Failure | O Claude devolveu texto que não é JSON, não segue o contrato do prompt (campo ausente, tipo errado, `act_type` fora da lista, `confidence` fora de 0–100). Os tokens consumidos continuam registrados em `ai_usage_logs`. | Nenhuma ação do usuário: a publicação segue sem sugestão; após 3 tentativas deixa de ser reprocessada. Se recorrente, revisar o prompt/versão. |
+| `AI_PROMPT_NOT_FOUND` | O prompt '{0}' não foi encontrado. | 500 | Failure | O arquivo `.md` versionado não está embarcado no assembly ou não tem as seções `SYSTEM`/`USER`. | Erro de empacotamento — reportar ao suporte. |
 
 ## Internal (9000–9999)
 

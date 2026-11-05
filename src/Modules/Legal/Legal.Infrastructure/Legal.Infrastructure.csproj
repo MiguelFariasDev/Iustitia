@@ -23,6 +23,7 @@
     <ProjectReference Include="..\Legal.Application\Legal.Application.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Integrations\Integrations.CNJ\Integrations.CNJ.Application\Integrations.CNJ.Application.csproj" />
+    <ProjectReference Include="..\..\Integrations\Integrations.Anthropic\Integrations.Anthropic.Application\Integrations.Anthropic.Application.csproj" />
   </ItemGroup>
 
 </Project>

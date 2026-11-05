@@ -103,7 +103,9 @@ public class PublicationSearchTests(LegalPostgresFixture fixture)
         (await repository.SearchAsync(tenantId, new(Busca: "aparecida"), 0, 10)).Should().ContainSingle().Which.Id.Should().Be(daMaria.Id);
         (await repository.SearchAsync(tenantId, new(Busca: "7654321"), 0, 10)).Should().ContainSingle().Which.Id.Should().Be(deOutro.Id);
         (await repository.SearchAsync(tenantId, new(Busca: "1234567-48"), 0, 10)).Should().ContainSingle().Which.Id.Should().Be(daMaria.Id);
-        (await repository.SearchAsync(tenantId, new(Busca: "111.444"), 0, 10)).Should().ContainSingle().Which.Id.Should().Be(daMaria.Id);
+        // Documento: só CPF/CNPJ COMPLETO (índice cego, ADR-068); prefixo não acha, de propósito.
+        (await repository.SearchAsync(tenantId, new(Busca: "111.444.777-35"), 0, 10)).Should().ContainSingle().Which.Id.Should().Be(daMaria.Id);
+        (await repository.SearchAsync(tenantId, new(Busca: "111.444"), 0, 10)).Should().BeEmpty();
     }
 
     [Fact]

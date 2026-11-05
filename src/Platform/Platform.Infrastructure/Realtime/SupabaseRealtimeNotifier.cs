@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using Advocacia.Platform.Application.Abstractions;
+using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.Platform.Infrastructure.Auth;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

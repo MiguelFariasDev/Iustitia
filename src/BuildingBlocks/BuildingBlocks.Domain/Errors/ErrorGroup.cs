@@ -25,5 +25,7 @@ public enum ErrorGroup
     Contact,
     Calendar,
     Cnj,
+    Atendimento,
+    Ai,
     Internal,
 }

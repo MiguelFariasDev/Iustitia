@@ -27,11 +27,15 @@ public class ApiConventionTests
 
         var order = new[]
         {
+            "UseForwardedHeaders",
+            "UseMiddleware<SecurityHeadersMiddleware>",
             "UseMiddleware<CorrelationIdMiddleware>",
             "UseMiddleware<ExceptionHandlingMiddleware>",
             "UseMiddleware<RequestLoggingMiddleware>",
-            "UseRateLimiter",
+            // Authentication ANTES do rate limiter: o limite de escrita/leitura é por usuário
+            // (claim "sub") e antes da autenticação HttpContext.User está vazio — ver ADR-067.
             "UseAuthentication",
+            "UseRateLimiter",
             "UseMiddleware<TenantContextMiddleware>",
             "UseAuthorization",
             "UseMiddleware<IdempotencyMiddleware>",

@@ -19,4 +19,7 @@ public static class ActivitySourceNames
 
     /// <summary>Captura de publicações do DJEN/CNJ (módulo Legal — ver CnjCaptureTelemetry).</summary>
     public const string CnjCapture = "Advocacia.CNJ.Capture";
+
+    /// <summary>Chamadas à Messages API da Anthropic (span anthropic.send_message).</summary>
+    public const string Anthropic = "Advocacia.Anthropic";
 }

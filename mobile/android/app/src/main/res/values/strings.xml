@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nome exibido sob o ícone. Marca desacoplada: fica só aqui (e em CFBundleDisplayName no
+         iOS), nunca em pacote ou applicationId. -->
+    <string name="app_name">Advocacia</string>
+</resources>

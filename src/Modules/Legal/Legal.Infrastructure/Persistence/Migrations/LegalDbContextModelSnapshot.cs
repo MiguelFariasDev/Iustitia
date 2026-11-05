@@ -113,14 +113,14 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Documento")
                         .IsRequired()
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("documento");
 
                     b.Property<string>("DocumentoBusca")
                         .IsRequired()
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("documento_busca");
 
                     b.Property<bool>("IsActive")
@@ -172,7 +172,7 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_clientes");
 
-                    b.HasIndex("TenantId", "Documento")
+                    b.HasIndex("TenantId", "DocumentoBusca")
                         .IsUnique()
                         .HasDatabaseName("ux_clientes_tenant_documento")
                         .HasFilter("is_deleted = false");
@@ -480,6 +480,91 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                     b.ToTable("publications", (string)null);
                 });
 
+            modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Suggestions.PublicationSuggestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("act_type");
+
+                    b.Property<string>("AiModel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ai_model");
+
+                    b.Property<string>("AiProvider")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("ai_provider");
+
+                    b.Property<int>("Confidence")
+                        .HasColumnType("integer")
+                        .HasColumnName("confidence");
+
+                    b.Property<bool>("ContentTruncated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("content_truncated");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DeadlineType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("deadline_type");
+
+                    b.Property<string>("LegalBasis")
+                        .HasColumnType("text")
+                        .HasColumnName("legal_basis");
+
+                    b.Property<string>("PromptVersion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("prompt_version");
+
+                    b.Property<Guid>("PublicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("publication_id");
+
+                    b.Property<string>("RawResponse")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_response");
+
+                    b.Property<bool>("RequiresManualReview")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_manual_review");
+
+                    b.Property<int?>("SuggestedDeadlineDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("suggested_deadline_days");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_publication_suggestions");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_publication_suggestions_created_at");
+
+                    b.HasIndex("PublicationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_publication_suggestions_publication");
+
+                    b.ToTable("publication_suggestions", (string)null);
+                });
+
             modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Clientes.Cliente", b =>
                 {
                     b.OwnsOne("Advocacia.Modules.Legal.Domain.Clientes.Contato", "Contato", b1 =>
@@ -489,13 +574,13 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                                 .HasColumnName("id");
 
                             b1.Property<string>("Email")
-                                .HasMaxLength(320)
-                                .HasColumnType("character varying(320)")
+                                .HasMaxLength(600)
+                                .HasColumnType("character varying(600)")
                                 .HasColumnName("email");
 
                             b1.Property<string>("Telefone")
-                                .HasMaxLength(11)
-                                .HasColumnType("character varying(11)")
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
                                 .HasColumnName("telefone");
 
                             b1.HasKey("ClienteId");
@@ -598,6 +683,16 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Foro")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Suggestions.PublicationSuggestion", b =>
+                {
+                    b.HasOne("Advocacia.Modules.Legal.Domain.Publications.Publication", null)
+                        .WithMany()
+                        .HasForeignKey("PublicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_publication_suggestions_publications_publication_id");
                 });
 #pragma warning restore 612, 618
         }

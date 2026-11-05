@@ -82,7 +82,6 @@ export const mainNavigation: NavGroup[] = [
         label: 'Atendimentos',
         icon: Headset,
         href: routes.serviceDesk,
-        soon: true,
       },
       { screen: 'finance', label: 'Financeiro', icon: Banknote, href: routes.finance, demo: true },
     ],
