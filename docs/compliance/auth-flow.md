@@ -42,6 +42,7 @@ Cliente ── Authorization: Bearer <access_token> ──▶ Backend (.NET)
 | `role` | Supabase Auth (padrão, sempre `"authenticated"`) | **Não usado pelo backend** — reservado ao Postgres (`auth.role()`) |
 | `tenant_id` | Custom Access Token Hook | `ICurrentUser.TenantId` → `ITenantContext` (RLS + filtro global do EF Core) |
 | `user_role` | Custom Access Token Hook | `ICurrentUser.Roles` / `RoleClaimType` → `[Authorize(Roles=...)]`, policies |
+| `account_type` | Custom Access Token Hook (`015_account_type_claim.sql`) | **Só a interface** (`Solo` ou `Firm`): decide o que o menu mostra. Nunca autoriza nada — ver ADR-068 |
 
 `tenant_id` e `user_role` **não existem** nos JWTs padrão do Supabase — são
 injetados pelo Custom Access Token Hook (`infra/supabase/migrations/
@@ -62,7 +63,8 @@ no Postgres. Usar um nome próprio evita esse conflito (ver ADR-029).
 novo se cadastra; não existe usuário autenticado ainda nesse ponto).
 
 `CreateTenantHandler`:
-1. Valida CNPJ e e-mail do administrador.
+1. Valida o documento da conta — **CNPJ** (`AccountType=Firm`, padrão) ou **CPF**
+   (`AccountType=Solo`, advogado autônomo; ver ADR-068) — e o e-mail do administrador.
 2. Cria o agregado `Tenant` (em memória, ainda não persistido).
 3. Chama `ISupabaseAuthService.SignUpAsync` — **antes** de tocar no
    repositório, para não deixar entidades rastreadas pendentes de

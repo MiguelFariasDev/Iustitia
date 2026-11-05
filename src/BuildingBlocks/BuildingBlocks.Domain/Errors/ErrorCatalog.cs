@@ -93,6 +93,12 @@ public static class ErrorCatalog
                 "O escritório está cancelado.", 409, ErrorType.Conflict),
             [ErrorCode.TENANT_NAME_REQUIRED] = new(ErrorGroup.Tenant, nameof(ErrorCode.TENANT_NAME_REQUIRED),
                 "O nome do escritório é obrigatório.", 400, ErrorType.Validation),
+            [ErrorCode.TENANT_CPF_INVALID] = new(ErrorGroup.Tenant, nameof(ErrorCode.TENANT_CPF_INVALID),
+                "CPF inválido.", 400, ErrorType.Validation),
+            [ErrorCode.TENANT_CPF_DUPLICATED] = new(ErrorGroup.Tenant, nameof(ErrorCode.TENANT_CPF_DUPLICATED),
+                "Já existe uma conta cadastrada com este CPF.", 409, ErrorType.Conflict),
+            [ErrorCode.TENANT_ACCOUNT_TYPE_INVALID] = new(ErrorGroup.Tenant, nameof(ErrorCode.TENANT_ACCOUNT_TYPE_INVALID),
+                "Tipo de conta inválido. Valores aceitos: Firm, Solo.", 400, ErrorType.Validation),
 
             // USER
             [ErrorCode.USER_NOT_FOUND] = new(ErrorGroup.User, nameof(ErrorCode.USER_NOT_FOUND),

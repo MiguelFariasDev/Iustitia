@@ -16,6 +16,7 @@ export const mockUser: AuthUser = {
   avatarUrl: null,
   role: 'Owner',
   tenantId: '00000000-0000-4000-8000-0000000000aa',
+  accountType: 'Firm',
 }
 
 type Listener = (event: AuthEvent, session: AuthSession | null) => void

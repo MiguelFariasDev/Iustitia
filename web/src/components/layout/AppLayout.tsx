@@ -1,4 +1,5 @@
 import { env } from '@/config/env'
+import { AccessGuard } from './AccessGuard'
 import { AppBootstrap } from './AppBootstrap'
 import { CommandPaletteLoader } from './CommandPaletteLoader'
 import { MobileNav } from './MobileNav'
@@ -14,7 +15,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
         <main id="conteudo" tabIndex={-1} className="flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+          <div className="mx-auto w-full max-w-7xl">
+            <AccessGuard>{children}</AccessGuard>
+          </div>
         </main>
         <footer className="border-t px-4 py-4 text-xs text-muted-foreground sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-7xl flex-col gap-2">

@@ -3,7 +3,7 @@ import type {
   Session,
   AuthError as SupabaseAuthError,
 } from '@supabase/supabase-js'
-import { decodeAccessTokenClaims, parseUserRole } from '@/lib/auth/claims'
+import { decodeAccessTokenClaims, parseAccountType, parseUserRole } from '@/lib/auth/claims'
 import { AuthError, type AuthEvent, type AuthService, type AuthSession } from '@/lib/auth/types'
 import { getSupabaseBrowserClient } from './client'
 
@@ -27,6 +27,7 @@ export function toAuthSession(session: Session): AuthSession {
       avatarUrl: typeof metadata.avatar_url === 'string' ? metadata.avatar_url : null,
       role: parseUserRole(claims.user_role),
       tenantId: claims.tenant_id ?? null,
+      accountType: parseAccountType(claims.account_type),
     },
   }
 }

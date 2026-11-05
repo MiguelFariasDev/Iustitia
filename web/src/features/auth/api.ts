@@ -60,9 +60,14 @@ export interface OnboardingInput {
 /** Cria o escritório (tenant) após o cadastro do responsável no Supabase Auth. */
 export async function createTenant(input: OnboardingInput) {
   if (env.useMocks) return mockResponse({ tenantId: crypto.randomUUID() }, 500)
+  const isSolo = input.office.accountType === 'Solo'
   const { data } = await apiClient.post<{ tenantId: string }>(endpoints.tenants.create, {
-    name: input.office.officeName,
-    cnpj: input.office.cnpj.replace(/\D/g, '') || null,
+    accountType: input.office.accountType,
+    // Conta solo leva o nome do titular; o escritório, o nome informado.
+    name: isSolo ? input.owner.ownerName : input.office.officeName,
+    // O documento da conta é CPF (solo) ou CNPJ (escritório) — nunca os dois.
+    cnpj: isSolo ? null : input.office.cnpj.replace(/\D/g, '') || null,
+    cpf: isSolo ? input.office.cpf.replace(/\D/g, '') : null,
     oabState: input.office.oabState,
     phone: input.office.phone || null,
     ownerName: input.owner.ownerName,

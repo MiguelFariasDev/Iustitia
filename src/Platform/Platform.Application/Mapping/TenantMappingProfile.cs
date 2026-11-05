@@ -16,7 +16,8 @@ public sealed class TenantMappingProfile : IRegister
     {
         config.NewConfig<Tenant, GetTenantByIdResponse>()
             .Map(dest => dest.Id, src => src.Id.Value)
-            .Map(dest => dest.Cnpj, src => src.Cnpj.Value)
-            .Map(dest => dest.Status, src => src.Status.ToString());
+            .Map(dest => dest.Cnpj, src => src.Cnpj == null ? null : src.Cnpj.Value)
+            .Map(dest => dest.Status, src => src.Status.ToString())
+            .Map(dest => dest.AccountType, src => src.AccountType.ToString());
     }
 }

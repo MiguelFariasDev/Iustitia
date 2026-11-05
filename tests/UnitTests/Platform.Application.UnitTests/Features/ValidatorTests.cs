@@ -68,6 +68,42 @@ public class ValidatorTests
     }
 
     [Fact]
+    public void CreateTenantValidator_SoloWithCpfAndNoCnpj_Passes()
+    {
+        var command = new CreateTenantCommand(
+            "Ana Souza", null, "Ana Souza", "ana@teste.com", "Senha123!", "Solo", "52998224725");
+
+        new CreateTenantValidator().Validate(command).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateTenantValidator_SoloWithoutCpf_Fails()
+    {
+        var command = new CreateTenantCommand(
+            "Ana Souza", null, "Ana Souza", "ana@teste.com", "Senha123!", "Solo");
+
+        new CreateTenantValidator().Validate(command).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateTenantValidator_FirmWithoutCnpj_Fails()
+    {
+        var command = new CreateTenantCommand(
+            "Escritorio", null, "Fulano", "fulano@teste.com", "Senha123!");
+
+        new CreateTenantValidator().Validate(command).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateTenantValidator_WithUnknownAccountType_Fails()
+    {
+        var command = new CreateTenantCommand(
+            "Escritorio", "11444777000161", "Fulano", "fulano@teste.com", "Senha123!", "Franquia");
+
+        new CreateTenantValidator().Validate(command).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
     public void UpdateTenantValidator_WithEmptyName_Fails()
     {
         var result = new UpdateTenantValidator().Validate(new UpdateTenantCommand(Guid.NewGuid(), "", null, null));

@@ -1,5 +1,6 @@
 using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Application.Messaging;
+using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Platform.Application.Abstractions;
 using Advocacia.Platform.Domain.Auditing;
@@ -34,22 +35,21 @@ public sealed class CreateTenantHandler(
 {
     public async Task<Result<CreateTenantResponse>> Handle(CreateTenantCommand request, CancellationToken cancellationToken)
     {
-        var cnpjResult = CNPJ.Create(request.Cnpj);
-        if (cnpjResult.IsFailure)
+        if (!Enum.TryParse<AccountType>(request.AccountType, ignoreCase: true, out var accountType))
         {
-            return Result.Failure<CreateTenantResponse>(cnpjResult.Error);
+            return Result.Failure<CreateTenantResponse>(ErrorFactory.From(ErrorCode.TENANT_ACCOUNT_TYPE_INVALID));
+        }
+
+        var tenantResult = CreateTenantFor(accountType, request);
+        if (tenantResult.IsFailure)
+        {
+            return Result.Failure<CreateTenantResponse>(tenantResult.Error);
         }
 
         var emailResult = Email.Create(request.AdminEmail);
         if (emailResult.IsFailure)
         {
             return Result.Failure<CreateTenantResponse>(emailResult.Error);
-        }
-
-        var tenantResult = Tenant.Create(request.Name, cnpjResult.Value);
-        if (tenantResult.IsFailure)
-        {
-            return Result.Failure<CreateTenantResponse>(tenantResult.Error);
         }
 
         var tenant = tenantResult.Value;
@@ -110,6 +110,25 @@ public sealed class CreateTenantHandler(
     ///
     /// Falha ao compensar não vira erro para quem chamou: o erro que importa é o original.
     /// </summary>
+    /// <summary>Cada tipo de conta valida o seu documento; o do outro tipo é ignorado.</summary>
+    private static Result<Tenant> CreateTenantFor(AccountType accountType, CreateTenantCommand request)
+    {
+        if (accountType == AccountType.Solo)
+        {
+            var cpfResult = CPF.Create(request.Cpf);
+
+            return cpfResult.IsFailure
+                ? Result.Failure<Tenant>(cpfResult.Error)
+                : Tenant.CreateSolo(request.Name, cpfResult.Value);
+        }
+
+        var cnpjResult = CNPJ.Create(request.Cnpj);
+
+        return cnpjResult.IsFailure
+            ? Result.Failure<Tenant>(cnpjResult.Error)
+            : Tenant.Create(request.Name, cnpjResult.Value);
+    }
+
     private async Task CompensateSignUpAsync(Guid supabaseUserId)
     {
         var result = await supabaseAuthService.DeleteUserAsync(supabaseUserId, CancellationToken.None);

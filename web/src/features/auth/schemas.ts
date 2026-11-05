@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isValidCnpj } from '@/lib/validation/cnpj'
+import { isValidCpf } from '@/lib/validation/documento'
 import {
   brazilianStates,
   emailField,
@@ -38,15 +39,52 @@ export const acceptInviteSchema = z
   .refine(passwordsMatch.check, passwordsMatch.params)
 export type AcceptInviteValues = z.infer<typeof acceptInviteSchema>
 
-export const onboardingOfficeSchema = z.object({
+/**
+ * Primeira etapa do cadastro. O tipo de conta decide quais campos valem:
+ *  - Firm (escritório): nome do escritório obrigatório, CNPJ opcional (como sempre foi);
+ *  - Solo (advogado autônomo): identificado por CPF, que é OBRIGATÓRIO — sem ele a conta não
+ *    teria documento nenhum —, e sem nome de escritório (a conta leva o nome do titular).
+ *
+ * União discriminada, e não um `superRefine` sobre um objeto único, de propósito: o Zod só roda
+ * refinamentos de objeto depois que os campos básicos passam, então um erro no CPF só apareceria
+ * depois de corrigir a seccional da OAB — duas tentativas para ver todos os erros. Aqui cada
+ * tipo valida os próprios campos de uma vez. Os campos do outro tipo são ignorados em vez de
+ * recusados: trocar de tipo no meio do preenchimento não obriga a limpar o que foi digitado.
+ */
+const officeCommon = {
+  oabState: z.enum(brazilianStates, { message: 'Selecione a seccional da OAB.' }),
+  phone: phoneField,
+}
+
+const firmOfficeSchema = z.object({
+  accountType: z.literal('Firm'),
   officeName: z.string().trim().min(3, 'Informe o nome do escritório.').max(120),
   cnpj: z
     .string()
     .trim()
     .refine((v) => v === '' || isValidCnpj(v), 'CNPJ inválido.'),
-  oabState: z.enum(brazilianStates, { message: 'Selecione a seccional da OAB.' }),
-  phone: phoneField,
+  cpf: z.string(),
+  ...officeCommon,
 })
+
+const soloOfficeSchema = z.object({
+  accountType: z.literal('Solo'),
+  officeName: z.string(),
+  cnpj: z.string(),
+  cpf: z
+    .string()
+    .trim()
+    .superRefine((value, ctx) => {
+      if (value === '') ctx.addIssue({ code: 'custom', message: 'Informe o seu CPF.' })
+      else if (!isValidCpf(value)) ctx.addIssue({ code: 'custom', message: 'CPF inválido.' })
+    }),
+  ...officeCommon,
+})
+
+export const onboardingOfficeSchema = z.discriminatedUnion('accountType', [
+  firmOfficeSchema,
+  soloOfficeSchema,
+])
 
 export const onboardingOwnerSchema = z
   .object({
