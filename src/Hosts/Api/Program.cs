@@ -2,6 +2,8 @@ using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Api;
 using Advocacia.Modules.Legal.Infrastructure;
+using Advocacia.Modules.Workflow.Api;
+using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Platform.Api.Extensions;
 using Advocacia.Platform.Api.Middleware;
 using Advocacia.Platform.Application;
@@ -13,7 +15,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
-// TODO (Fase 2+): registrar os módulos de negócio restantes (Workflow, Documents, ...) conforme entram no roadmap
+// TODO (Fase 2+): registrar os módulos de negócio restantes (Documents, ...) conforme entram no roadmap
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +40,7 @@ builder.Services.AddAdvocaciaRateLimiting();
 // a implementação é registrada aqui, pelo host (ver Legal.Infrastructure/DependencyInjection.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddLegalInfrastructure(builder.Configuration);
+builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
@@ -75,6 +78,10 @@ app.UseAuthentication();
 //    resolvido).
 app.UseMiddleware<TenantContextMiddleware>();
 
+// 6b. RevokedDevice — recusa (401 DEVICE_REVOKED) o dispositivo revogado que envia X-Device-Id.
+//     Depois do TenantContext (precisa do tenant) e antes da Authorization (ADR-069).
+app.UseMiddleware<RevokedDeviceMiddleware>();
+
 app.UseAuthorization();
 
 // 8. Idempotency — roda só nos POSTs críticos, depois de Authorization (a chave de
@@ -87,6 +94,8 @@ app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
 app.MapPublicationsEndpoints();
+app.MapWorkTasksEndpoints();
+app.MapAgendaEndpoints();
 
 var hangfireOptions = app.Services.GetRequiredService<IOptions<HangfireOptions>>().Value;
 if (hangfireOptions.DashboardEnabled)

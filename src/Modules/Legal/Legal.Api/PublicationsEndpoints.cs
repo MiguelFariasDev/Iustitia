@@ -98,4 +98,5 @@ public sealed record ListPublicationsRequest(
     [FromQuery] string? Ordem);
 
 /// <param name="Status">Approved, Corrected, Rejected ou Archived.</param>
+/// <param name="Notes">Observação opcional do revisor, guardada com a decisão.</param>
 public sealed record ChangePublicationStatusRequest(string Status, string? Notes);

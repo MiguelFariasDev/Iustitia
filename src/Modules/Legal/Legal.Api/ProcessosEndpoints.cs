@@ -66,6 +66,18 @@ public static class ProcessosEndpoints
             .WithSummary("Detalhe do processo.")
             .RequireAuthorization(Policies.LawyerOrAbove);
 
+        group.MapGet("/{id:guid}/movimentacoes", async (
+                Guid id, [FromQuery] int? page, [FromQuery] int? pageSize, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new ListMovimentacoesQuery(id, page ?? 1, pageSize ?? 50), cancellationToken)).ToHttpResult())
+            .WithName("ListProcessoMovimentacoes")
+            .WithSummary("Movimentações do processo (da mais recente à mais antiga).")
+            .WithDescription(
+                "Derivadas das PUBLICAÇÕES capturadas do diário (DJEN) para o processo — não do andamento completo " +
+                "do tribunal. Cada item traz data, tipo e um trecho (até 280 caracteres) do texto; o inteiro teor " +
+                "nunca sai aqui (sigilo profissional). `fonte` indica a origem. PROCESS_NOT_FOUND (404) para processo " +
+                "inexistente ou de outro escritório.")
+            .RequireAuthorization(Policies.LawyerOrAbove);
+
         group.MapPut("/{id:guid}", async (Guid id, UpdateProcessoRequest request, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(
                     new UpdateProcessoCommand(

@@ -31,6 +31,9 @@ public interface IAlertRepository : IRepository<Alert, AlertId>
 }
 
 /// <param name="Types">Um ou mais tipos (a aba "Outros" reúne tudo que não é publicação). Vazio = todos.</param>
+/// <param name="IsRead">Só lidos (true), só não lidos (false) ou ambos (null).</param>
+/// <param name="From">Criados a partir deste instante (inclusive).</param>
+/// <param name="To">Criados até este instante (inclusive).</param>
 public sealed record AlertFilter(
     IReadOnlyCollection<AlertType>? Types = null,
     bool? IsRead = null,

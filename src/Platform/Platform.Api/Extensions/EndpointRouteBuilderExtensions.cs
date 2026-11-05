@@ -13,6 +13,7 @@ public static class EndpointRouteBuilderExtensions
         app.MapAuditEndpoints();
         app.MapSettingsEndpoints();
         app.MapAlertsEndpoints();
+        app.MapDevicesEndpoints();
         app.MapFeatureFlagsEndpoints();
         app.MapStatusEndpoints();
 

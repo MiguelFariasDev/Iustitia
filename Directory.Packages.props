@@ -9,6 +9,9 @@
     <!-- CQRS / Mediator -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
 
+    <!-- Push (FCM) — ver ADR-069 -->
+    <PackageVersion Include="FirebaseAdmin" Version="3.7.0" />
+
     <!-- Validação -->
     <PackageVersion Include="FluentValidation" Version="11.11.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />

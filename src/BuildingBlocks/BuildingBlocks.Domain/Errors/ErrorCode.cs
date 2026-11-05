@@ -139,6 +139,24 @@ public enum ErrorCode
     ALERT_ALREADY_READ = 1401,
     ALERT_ALREADY_DISMISSED = 1402,
 
+    // DEVICE (1500-1599) — dispositivos móveis e push (Platform)
+    DEVICE_NOT_FOUND = 1500,
+    DEVICE_ALREADY_REVOKED = 1501,
+
+    /// <summary>A requisição veio de um dispositivo revogado: o app deve encerrar a sessão local.</summary>
+    DEVICE_REVOKED = 1502,
+    DEVICE_TOKEN_INVALID = 1503,
+    DEVICE_PLATFORM_INVALID = 1504,
+
+    // TASK / AGENDA (1600-1699) — módulo Workflow
+    TASK_NOT_FOUND = 1600,
+    TASK_ALREADY_COMPLETED = 1601,
+    TASK_DUE_DATE_INVALID = 1602,
+    TASK_FILTER_INVALID = 1603,
+    AGENDA_EVENT_NOT_FOUND = 1650,
+    AGENDA_PERIOD_INVALID = 1651,
+    AGENDA_EVENT_PERIOD_INVALID = 1652,
+
     // CNJ (1700-1799) — integração com o DJEN/CNJ
     CNJ_UNAVAILABLE = 1700,
     CNJ_TIMEOUT = 1701,

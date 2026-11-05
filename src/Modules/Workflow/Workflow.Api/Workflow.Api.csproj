@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Advocacia.Modules.Workflow.Api</RootNamespace>
+    <AssemblyName>Advocacia.Modules.Workflow.Api</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Asp.Versioning.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Workflow.Application\Workflow.Application.csproj" />
+    <!--
+      Platform.Api e Platform.Infrastructure entram só pelo ENCANAMENTO web compartilhado
+      (MapVersionedGroup, ResultExtensions, Policies), como em Legal.Api. O Workflow NUNCA
+      depende de Platform.Domain/Platform.Application nem de outro módulo de negócio (Legal).
+    -->
+    <ProjectReference Include="..\..\..\Platform\Platform.Api\Platform.Api.csproj" />
+    <ProjectReference Include="..\..\..\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

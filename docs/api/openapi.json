@@ -6,6 +6,227 @@
     "version": "v1"
   },
   "paths": {
+    "/api/v1/agenda": {
+      "get": {
+        "tags": [
+          "Agenda"
+        ],
+        "summary": "Eventos e prazos do usuário entre start e end (AAAA-MM-DD, ambos inclusivos).",
+        "description": "Cada item traz Date (o dia no fuso do escritório), para o app agrupar por dia. Prazos vêm com Kind=Task, Type=Deadline e AllDay=true; eventos, com horário (StartsAt/EndsAt em UTC). O intervalo tem no máximo 62 dias: AGENDA_PERIOD_INVALID (400) se faltar start/end, se end < start ou se passar disso.",
+        "operationId": "GetAgenda",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/agenda/events": {
+      "post": {
+        "tags": [
+          "Agenda"
+        ],
+        "summary": "Cria um compromisso (audiência, reunião ou outro) para o próprio usuário.",
+        "description": "Type: Hearing, Meeting ou Other. Erros: AGENDA_EVENT_PERIOD_INVALID (fim antes do início), campos obrigatórios (400).",
+        "operationId": "CreateCalendarEvent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCalendarEventCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/summary": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Contadores de alertas do usuário: total, não lidos e não lidos por tipo.",
+        "operationId": "GetAlertsSummary",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Lista paginada de alertas (mais recentes primeiro), sem os descartados.",
+        "operationId": "ListAlerts",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "IsRead",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "From",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{id}": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Detalhe de um alerta. ALERT_NOT_FOUND (404) também para alerta de outro usuário.",
+        "operationId": "GetAlertById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Descarta o alerta (some das listagens; o registro permanece para auditoria).",
+        "operationId": "DismissAlert",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/read-all": {
+      "patch": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Marca todos os alertas não lidos do usuário como lidos. Devolve a quantidade alterada.",
+        "operationId": "MarkAllAlertsAsRead",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{id}/read": {
+      "patch": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Marca o alerta como lido. 409 ALERT_ALREADY_READ se já estava.",
+        "operationId": "MarkAlertAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/audit": {
       "get": {
         "tags": [
@@ -140,6 +361,253 @@
         }
       }
     },
+    "/api/v1/clientes": {
+      "post": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Cadastra um cliente (pessoa física ou jurídica).",
+        "operationId": "CreateCliente",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClienteCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Lista paginada de clientes, com busca por nome ou documento.",
+        "operationId": "ListClientes",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Tipo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ApenasAtivos",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "Busca",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{id}": {
+      "get": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Detalhe do cliente.",
+        "operationId": "GetClienteById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Atualiza os dados cadastrais. Tipo e documento não são alteráveis.",
+        "operationId": "UpdateCliente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClienteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Desativa o cliente. Não exclui — o histórico permanece consultável.",
+        "operationId": "DeactivateCliente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{id}/reactivate": {
+      "post": {
+        "tags": [
+          "Clientes"
+        ],
+        "summary": "Reativa um cliente desativado.",
+        "operationId": "ReactivateCliente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/register": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Registra (ou renova) o dispositivo do usuário para receber push.",
+        "description": "Idempotente por token: o app registra a cada login e a cada renovação do token FCM. Devolve o deviceId, que o app deve enviar no cabeçalho X-Device-Id das demais requisições. Um token REVOGADO não é reativado: responde 401 DEVICE_REVOKED e o app encerra a sessão local. Erros: DEVICE_TOKEN_INVALID, DEVICE_PLATFORM_INVALID (400), DEVICE_REVOKED (401).",
+        "operationId": "RegisterDevice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Dispositivos do usuário (revogados inclusive), do mais recente ao mais antigo.",
+        "description": "Não devolve o token. isCurrent marca o aparelho que fez a requisição (X-Device-Id).",
+        "operationId": "ListDevices",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{id}": {
+      "delete": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Revoga um dispositivo do usuário (permanente): o push para e a API passa a recusá-lo.",
+        "description": "A revogação vale em até 15 s. Não invalida o token do Supabase (ver ADR-069). Erros: DEVICE_NOT_FOUND (404, inclusive para o dispositivo de outro usuário), DEVICE_ALREADY_REVOKED (409).",
+        "operationId": "RevokeDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/feature-flags": {
       "get": {
         "tags": [
@@ -172,6 +640,510 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateFeatureFlagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/processos": {
+      "post": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Cadastra um processo e passa a acompanhar suas publicações no DJEN.",
+        "operationId": "CreateProcesso",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProcessoCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Lista paginada de processos, com filtros e busca por número ou parte contrária.",
+        "operationId": "ListProcessos",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "ClienteId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "ResponsavelUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Area",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Busca",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Tribunal",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "DistribuicaoDe",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "DistribuicaoAte",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/processos/consultar-tribunal": {
+      "post": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Consulta os metadados do processo no tribunal para auto-preencher o cadastro.",
+        "description": "Usa a API Pública do DataJud (CNJ). O tribunal é derivado do próprio número CNJ. Responde 200 com found=false quando o tribunal não conhece o processo — o cadastro manual continua disponível. Erros possíveis: PROCESS_CNJ_INVALID (número inválido), CNJ_TRIBUNAL_NOT_SUPPORTED (tribunal fora do DataJud), CNJ_UNAVAILABLE, CNJ_TIMEOUT, CNJ_RATE_LIMITED, COMMON_RATE_LIMITED (10 consultas/min por usuário). USO RESTRITO A PORTFÓLIO — ver docs/compliance/datajud-termo.md.",
+        "operationId": "ConsultarProcessoTribunal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsultarProcessoTribunalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/processos/{id}": {
+      "get": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Detalhe do processo.",
+        "operationId": "GetProcessoById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Atualiza os dados do processo. O número CNJ não é alterável.",
+        "operationId": "UpdateProcesso",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProcessoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/processos/{id}/movimentacoes": {
+      "get": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Movimentações do processo (da mais recente à mais antiga).",
+        "description": "Derivadas das PUBLICAÇÕES capturadas do diário (DJEN) para o processo — não do andamento completo do tribunal. Cada item traz data, tipo e um trecho (até 280 caracteres) do texto; o inteiro teor nunca sai aqui (sigilo profissional). `fonte` indica a origem. PROCESS_NOT_FOUND (404) para processo inexistente ou de outro escritório.",
+        "operationId": "ListProcessoMovimentacoes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/processos/{id}/status": {
+      "patch": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Muda a situação do processo. Encerrado e arquivado interrompem a captura.",
+        "operationId": "ChangeProcessoStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeProcessoStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/processos/{id}/archive": {
+      "post": {
+        "tags": [
+          "Processos"
+        ],
+        "summary": "Arquiva o processo — estado terminal, interrompe o acompanhamento.",
+        "operationId": "ArchiveProcesso",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/publications/summary": {
+      "get": {
+        "tags": [
+          "Publications"
+        ],
+        "summary": "Contadores de publicações do escritório (total, pendentes de revisão, não lidas).",
+        "operationId": "GetPublicationsSummary",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/publications": {
+      "get": {
+        "tags": [
+          "Publications"
+        ],
+        "summary": "Lista paginada de publicações. Devolve um trecho do conteúdo, nunca o inteiro teor.",
+        "operationId": "ListPublications",
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "IsRead",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "ProcessId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "OnlyPendingReview",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "ClienteId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Tribunal",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "DataInicio",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "DataFim",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "Busca",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Ordem",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/publications/{id}": {
+      "get": {
+        "tags": [
+          "Publications"
+        ],
+        "summary": "Publicação completa, incluindo o inteiro teor — é a tela de leitura do advogado.",
+        "operationId": "GetPublicationById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/publications/{id}/read": {
+      "patch": {
+        "tags": [
+          "Publications"
+        ],
+        "summary": "Marca a publicação como lida. Não altera o status de revisão. 409 PUBLICATION_ALREADY_READ se já estava.",
+        "operationId": "MarkPublicationAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/publications/{id}/status": {
+      "patch": {
+        "tags": [
+          "Publications"
+        ],
+        "summary": "Revisão humana: PendingReview → Approved/Corrected/Rejected/Archived. Transições inválidas dão 409 PUBLICATION_INVALID_STATUS_TRANSITION.",
+        "operationId": "ChangePublicationStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePublicationStatusRequest"
               }
             }
           },
@@ -264,7 +1236,117 @@
           "Status"
         ],
         "summary": "Usuário autenticado",
-        "description": "Dados do usuário logado, extraídos do JWT validado (nenhuma consulta ao banco).",
+        "description": "Identidade do JWT validado (id, e-mail, escritório, papéis) mais o perfil do cadastro: nome, número e UF da OAB e especialidade. Os campos de perfil são nulos quando não informados ou quando o cadastro não existe.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/summary": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Contadores das tarefas do usuário: pendentes, vencendo hoje, atrasadas, próximos 7 dias e concluídas no mês.",
+        "description": "Só tarefas PENDENTES entram em pendentes, hoje, atrasadas e próximos 7 dias. \"Hoje\" é o dia no fuso do escritório. Próximos 7 dias vai de hoje até hoje + 7, inclusive.",
+        "operationId": "GetWorkTasksSummary",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Lista paginada das tarefas do usuário, por vencimento (as mais próximas primeiro).",
+        "description": "status: Pending ou Completed (vazio = ambos). filter: all, today, overdue ou next_7_days (vazio = all). overdue só devolve tarefas pendentes. Valor inválido: TASK_FILTER_INVALID (400).",
+        "operationId": "ListWorkTasks",
+        "parameters": [
+          {
+            "name": "Status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Filter",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Cria uma tarefa/prazo para o próprio usuário.",
+        "description": "Erros: TASK_DUE_DATE_INVALID, campos obrigatórios ou acima do tamanho (400).",
+        "operationId": "CreateWorkTask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkTaskCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{id}/complete": {
+      "patch": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Marca a tarefa como concluída. 409 TASK_ALREADY_COMPLETED se já estava; 404 TASK_NOT_FOUND se não é do usuário.",
+        "operationId": "CompleteWorkTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -618,6 +1700,171 @@
         },
         "additionalProperties": false
       },
+      "ChangeProcessoStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChangePublicationStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsultarProcessoTribunalRequest": {
+        "type": "object",
+        "properties": {
+          "cnjNumber": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContatoRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateCalendarEventCommand": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "processoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateClienteCommand": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "nullable": true
+          },
+          "nome": {
+            "type": "string",
+            "nullable": true
+          },
+          "documento": {
+            "type": "string",
+            "nullable": true
+          },
+          "contato": {
+            "$ref": "#/components/schemas/ContatoRequest"
+          },
+          "endereco": {
+            "$ref": "#/components/schemas/EnderecoRequest"
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateProcessoCommand": {
+        "type": "object",
+        "properties": {
+          "cnjNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "clienteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "area": {
+            "type": "string",
+            "nullable": true
+          },
+          "responsavelUserId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "foro": {
+            "$ref": "#/components/schemas/ForoRequest"
+          },
+          "assunto": {
+            "type": "string",
+            "nullable": true
+          },
+          "parteContraria": {
+            "type": "string",
+            "nullable": true
+          },
+          "valorCausa": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "dataDistribuicao": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateTenantCommand": {
         "type": "object",
         "properties": {
@@ -638,6 +1885,81 @@
             "nullable": true
           },
           "adminPassword": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateWorkTaskCommand": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "processoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EnderecoRequest": {
+        "type": "object",
+        "properties": {
+          "logradouro": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "uf": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ForoRequest": {
+        "type": "object",
+        "properties": {
+          "tribunal": {
+            "type": "string",
+            "nullable": true
+          },
+          "comarca": {
+            "type": "string",
+            "nullable": true
+          },
+          "vara": {
             "type": "string",
             "nullable": true
           }
@@ -700,11 +2022,93 @@
         },
         "additionalProperties": false
       },
+      "RegisterDeviceCommand": {
+        "type": "object",
+        "properties": {
+          "deviceToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "platform": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateClienteRequest": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "nullable": true
+          },
+          "contato": {
+            "$ref": "#/components/schemas/ContatoRequest"
+          },
+          "endereco": {
+            "$ref": "#/components/schemas/EnderecoRequest"
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "UpdateFeatureFlagRequest": {
         "type": "object",
         "properties": {
           "isEnabled": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateProcessoRequest": {
+        "type": "object",
+        "properties": {
+          "clienteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "responsavelUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "area": {
+            "type": "string",
+            "nullable": true
+          },
+          "foro": {
+            "$ref": "#/components/schemas/ForoRequest"
+          },
+          "assunto": {
+            "type": "string",
+            "nullable": true
+          },
+          "parteContraria": {
+            "type": "string",
+            "nullable": true
+          },
+          "valorCausa": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "dataDistribuicao": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "observacoes": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

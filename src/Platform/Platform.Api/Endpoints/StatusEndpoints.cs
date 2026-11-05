@@ -46,7 +46,7 @@ public static class StatusEndpoints
         group.MapGet("/me", async (ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new GetMeQuery(), cancellationToken)).ToHttpResult())
             .WithSummary("Usuário autenticado")
-            .WithDescription("Dados do usuário logado, extraídos do JWT validado (nenhuma consulta ao banco).")
+            .WithDescription("Identidade do JWT validado (id, e-mail, escritório, papéis) mais o perfil do cadastro: nome, número e UF da OAB e especialidade. Os campos de perfil são nulos quando não informados ou quando o cadastro não existe.")
             .RequireAuthorization(Policies.AnyAuthenticatedUser);
 
         return app;

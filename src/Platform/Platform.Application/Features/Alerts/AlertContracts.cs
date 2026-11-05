@@ -20,6 +20,8 @@ public sealed record AlertResponse(
 
 public sealed record AlertsPageResponse(IReadOnlyList<AlertResponse> Items, int Page, int PageSize, int TotalCount, int TotalPages);
 
+/// <param name="Total">Todos os alertas do usuário, lidos ou não (sem os descartados).</param>
+/// <param name="Unread">Quantidade de não lidos.</param>
 /// <param name="UnreadByType">Não lidos por tipo (as abas "Importantes" e "Publicações").</param>
 /// <param name="TotalByType">Todos por tipo, incluindo lidos (a aba "Outros").</param>
 public sealed record AlertsSummaryResponse(

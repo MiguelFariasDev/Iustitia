@@ -22,6 +22,7 @@ public static partial class LogMaskingPolicy
         var masked = CnpjRegex().Replace(value, "**.***.***/****-**");
         masked = CpfRegex().Replace(masked, "***.***.***-**");
         masked = BearerTokenRegex().Replace(masked, "Bearer ***");
+        masked = FcmTokenRegex().Replace(masked, "***FCM-TOKEN***");
         masked = PhoneRegex().Replace(masked, match => $"({match.Groups["ddd"].Value}) *****-****");
         masked = EmailRegex().Replace(masked, MaskEmailMatch);
 
@@ -47,6 +48,11 @@ public static partial class LogMaskingPolicy
 
     [GeneratedRegex(@"(?i)\bBearer\s+[A-Za-z0-9\-_.]+")]
     private static partial Regex BearerTokenRegex();
+
+    // Rede de segurança: o token de push NUNCA deve chegar a um logger (o código não o passa), mas se
+    // algum dia vazar por uma exceção ou interpolação, o formato clássico do FCM é reconhecido.
+    [GeneratedRegex(@"\b[A-Za-z0-9_-]{11,}:APA91[A-Za-z0-9_-]{60,}")]
+    private static partial Regex FcmTokenRegex();
 
     [GeneratedRegex(@"\((?<ddd>\d{2})\)\s?\d{4,5}-\d{4}")]
     private static partial Regex PhoneRegex();

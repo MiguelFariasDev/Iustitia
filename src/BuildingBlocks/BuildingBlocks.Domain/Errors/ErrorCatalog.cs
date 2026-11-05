@@ -227,6 +227,34 @@ public static class ErrorCatalog
             [ErrorCode.ALERT_ALREADY_DISMISSED] = new(ErrorGroup.Alert, nameof(ErrorCode.ALERT_ALREADY_DISMISSED),
                 "Este alerta já foi descartado.", 409, ErrorType.Conflict),
 
+            // DEVICE (dispositivos móveis e push)
+            [ErrorCode.DEVICE_NOT_FOUND] = new(ErrorGroup.Device, nameof(ErrorCode.DEVICE_NOT_FOUND),
+                "Dispositivo não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.DEVICE_ALREADY_REVOKED] = new(ErrorGroup.Device, nameof(ErrorCode.DEVICE_ALREADY_REVOKED),
+                "Este dispositivo já foi revogado.", 409, ErrorType.Conflict),
+            [ErrorCode.DEVICE_REVOKED] = new(ErrorGroup.Device, nameof(ErrorCode.DEVICE_REVOKED),
+                "Este dispositivo foi revogado. Entre novamente para continuar.", 401, ErrorType.Unauthorized),
+            [ErrorCode.DEVICE_TOKEN_INVALID] = new(ErrorGroup.Device, nameof(ErrorCode.DEVICE_TOKEN_INVALID),
+                "O token do dispositivo é inválido.", 400, ErrorType.Validation),
+            [ErrorCode.DEVICE_PLATFORM_INVALID] = new(ErrorGroup.Device, nameof(ErrorCode.DEVICE_PLATFORM_INVALID),
+                "Plataforma inválida. Use 'iOS' ou 'Android'.", 400, ErrorType.Validation),
+
+            // TASK / AGENDA (módulo Workflow)
+            [ErrorCode.TASK_NOT_FOUND] = new(ErrorGroup.Task, nameof(ErrorCode.TASK_NOT_FOUND),
+                "Tarefa não encontrada.", 404, ErrorType.NotFound),
+            [ErrorCode.TASK_ALREADY_COMPLETED] = new(ErrorGroup.Task, nameof(ErrorCode.TASK_ALREADY_COMPLETED),
+                "Esta tarefa já foi concluída.", 409, ErrorType.Conflict),
+            [ErrorCode.TASK_DUE_DATE_INVALID] = new(ErrorGroup.Task, nameof(ErrorCode.TASK_DUE_DATE_INVALID),
+                "A data de vencimento da tarefa é inválida.", 400, ErrorType.Validation),
+            [ErrorCode.TASK_FILTER_INVALID] = new(ErrorGroup.Task, nameof(ErrorCode.TASK_FILTER_INVALID),
+                "Filtro inválido. Valores aceitos: {0}.", 400, ErrorType.Validation),
+            [ErrorCode.AGENDA_EVENT_NOT_FOUND] = new(ErrorGroup.Agenda, nameof(ErrorCode.AGENDA_EVENT_NOT_FOUND),
+                "Evento não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.AGENDA_PERIOD_INVALID] = new(ErrorGroup.Agenda, nameof(ErrorCode.AGENDA_PERIOD_INVALID),
+                "Período inválido: informe início e fim, com o fim depois do início e no máximo {0} dias.", 400, ErrorType.Validation),
+            [ErrorCode.AGENDA_EVENT_PERIOD_INVALID] = new(ErrorGroup.Agenda, nameof(ErrorCode.AGENDA_EVENT_PERIOD_INVALID),
+                "O fim do evento não pode ser antes do início.", 400, ErrorType.Validation),
+
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),
                 "O serviço de publicações do CNJ está indisponível no momento.", 500, ErrorType.Failure),

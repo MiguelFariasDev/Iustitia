@@ -1,3 +1,4 @@
+using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Messaging;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Idempotency;
 using Advocacia.Platform.Application.Abstractions;
@@ -19,7 +20,7 @@ public sealed class UserInvitedConsumerTests
         var processedEventStore = Substitute.For<IProcessedEventStore>();
         processedEventStore.HasBeenProcessedAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
 
-        var sut = new UserInvitedConsumer(notificationService, processedEventStore, NullLogger<ConsumerBase<UserInvitedEvent>>.Instance);
+        var sut = new UserInvitedConsumer(notificationService, processedEventStore, Substitute.For<IAppMetrics>(), NullLogger<ConsumerBase<UserInvitedEvent>>.Instance);
 
         var message = new UserInvitedEvent(UserId.New(), Guid.NewGuid(), "advogado@escritorio.com.br");
         var context = Substitute.For<ConsumeContext<UserInvitedEvent>>();
@@ -38,7 +39,7 @@ public sealed class UserInvitedConsumerTests
         var processedEventStore = Substitute.For<IProcessedEventStore>();
         processedEventStore.HasBeenProcessedAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
-        var sut = new UserInvitedConsumer(notificationService, processedEventStore, NullLogger<ConsumerBase<UserInvitedEvent>>.Instance);
+        var sut = new UserInvitedConsumer(notificationService, processedEventStore, Substitute.For<IAppMetrics>(), NullLogger<ConsumerBase<UserInvitedEvent>>.Instance);
 
         var message = new UserInvitedEvent(UserId.New(), Guid.NewGuid(), "advogado@escritorio.com.br");
         var context = Substitute.For<ConsumeContext<UserInvitedEvent>>();

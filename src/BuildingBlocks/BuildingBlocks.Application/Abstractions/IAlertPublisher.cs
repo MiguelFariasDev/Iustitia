@@ -13,7 +13,12 @@ public interface IAlertPublisher
     Task<bool> PublishAsync(AlertRequest request, CancellationToken cancellationToken = default);
 }
 
+/// <param name="TenantId">Escritório do destinatário.</param>
+/// <param name="UserId">Usuário que recebe o alerta (alerta é pessoal).</param>
 /// <param name="Type">Nome do tipo de alerta: Publication, Task, Birthday ou Other.</param>
+/// <param name="Title">Título curto exibido no sino e no push.</param>
+/// <param name="Description">Texto de apoio; nunca o inteiro teor de uma publicação.</param>
+/// <param name="ReferenceId">Entidade de origem (ex.: id da publicação), para o "ver detalhe".</param>
 public sealed record AlertRequest(
     Guid TenantId,
     Guid UserId,

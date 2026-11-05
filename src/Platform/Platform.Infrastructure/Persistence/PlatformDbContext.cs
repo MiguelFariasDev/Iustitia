@@ -4,6 +4,7 @@ using Advocacia.BuildingBlocks.Infrastructure.Persistence.Idempotency;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Outbox;
 using Advocacia.Platform.Domain.Alerts;
 using Advocacia.Platform.Domain.Auditing;
+using Advocacia.Platform.Domain.Devices;
 using Advocacia.Platform.Domain.FeatureFlags;
 using Advocacia.Platform.Domain.Identity;
 using Advocacia.Platform.Domain.Settings;
@@ -28,6 +29,8 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<Alert> Alerts => Set<Alert>();
+
+    public DbSet<Device> Devices => Set<Device>();
 
     public DbSet<Setting> Settings => Set<Setting>();
 

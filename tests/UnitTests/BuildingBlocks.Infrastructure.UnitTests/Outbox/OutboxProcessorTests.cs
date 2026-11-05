@@ -1,3 +1,4 @@
+using Advocacia.BuildingBlocks.Application.Abstractions;
 using System.Text.Json;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Outbox;
 using FluentAssertions;
@@ -16,7 +17,7 @@ public sealed class OutboxProcessorTests
     private readonly OutboxProcessorOptions _options = new() { BatchSize = 100, MaxRetries = 3, BackoffBaseSeconds = 1 };
 
     private OutboxProcessor CreateSut(TestDbContext dbContext) =>
-        new(dbContext, _publishEndpoint, _eventTypeResolver, Options.Create(_options), NullLogger<OutboxProcessor>.Instance);
+        new(dbContext, _publishEndpoint, _eventTypeResolver, Options.Create(_options), Substitute.For<IAppMetrics>(), NullLogger<OutboxProcessor>.Instance);
 
     private static OutboxMessage CreatePendingMessage(TestDomainEvent domainEvent) =>
         new(Guid.NewGuid(), typeof(TestDomainEvent).FullName!, JsonSerializer.Serialize(domainEvent), DateTimeOffset.UtcNow);

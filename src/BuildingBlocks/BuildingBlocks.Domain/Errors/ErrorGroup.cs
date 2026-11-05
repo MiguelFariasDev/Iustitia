@@ -22,6 +22,9 @@ public enum ErrorGroup
     Process,
     Publication,
     Alert,
+    Device,
+    Task,
+    Agenda,
     Cnj,
     Internal,
 }

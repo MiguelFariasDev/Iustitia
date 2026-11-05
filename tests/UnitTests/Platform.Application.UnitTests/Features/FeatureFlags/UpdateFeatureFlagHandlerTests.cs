@@ -2,6 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Specifications;
 using Advocacia.BuildingBlocks.Domain.Time;
+using Advocacia.Platform.Application.Abstractions;
 using Advocacia.Platform.Application.Features.FeatureFlags.UpdateFeatureFlag;
 using Advocacia.Platform.Domain.FeatureFlags;
 using FluentAssertions;
@@ -24,7 +25,7 @@ public class UpdateFeatureFlagHandlerTests
         _dateTimeProvider.UtcNow.Returns(DateTimeOffset.UtcNow);
     }
 
-    private UpdateFeatureFlagHandler CreateHandler() => new(_featureFlagRepository, _unitOfWork, _currentUser, _dateTimeProvider);
+    private UpdateFeatureFlagHandler CreateHandler() => new(_featureFlagRepository, _unitOfWork, _currentUser, _dateTimeProvider, Substitute.For<IFeatureFlagService>());
 
     [Fact]
     public async Task Handle_WhenFlagDoesNotExist_CreatesIt()

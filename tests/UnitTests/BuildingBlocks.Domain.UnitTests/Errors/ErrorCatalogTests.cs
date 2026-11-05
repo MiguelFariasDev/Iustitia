@@ -59,7 +59,7 @@ public partial class ErrorCatalogTests
     public void Definition_HttpStatus_IsAKnownValue(ErrorCode errorCode, ErrorDefinition definition)
     {
         _ = errorCode;
-        definition.HttpStatus.Should().BeOneOf(400, 401, 403, 404, 409, 500);
+        definition.HttpStatus.Should().BeOneOf(400, 401, 403, 404, 409, 429, 500);
     }
 
     [Theory]
@@ -86,7 +86,8 @@ public partial class ErrorCatalogTests
         var ranges = new (int Start, int End)[]
         {
             (0, 99), (100, 199), (200, 299), (300, 399), (400, 499), (500, 599),
-            (600, 699), (700, 799), (800, 899), (900, 999), (1000, 1099), (9000, 9999),
+            (600, 699), (700, 799), (800, 899), (900, 999), (1000, 1099), (1100, 1199), (1200, 1299),
+            (1300, 1399), (1400, 1499), (1500, 1599), (1600, 1699), (1700, 1799), (9000, 9999),
         };
 
         foreach (var code in Enum.GetValues<ErrorCode>())

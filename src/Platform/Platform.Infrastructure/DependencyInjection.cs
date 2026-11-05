@@ -17,6 +17,7 @@ using Advocacia.Platform.Infrastructure.Messaging.Consumers;
 using Advocacia.Platform.Infrastructure.Notifications.EmailService;
 using Advocacia.Platform.Infrastructure.Persistence;
 using Advocacia.Platform.Infrastructure.Persistence.Repositories;
+using Advocacia.Platform.Infrastructure.Push;
 using Advocacia.Platform.Infrastructure.Realtime;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -84,6 +85,14 @@ public static class DependencyInjection
         services.AddScoped<IAlertPublisher, AlertPublisher>();
         services.AddHttpClient<IRealtimeNotifier, SupabaseRealtimeNotifier>(client =>
             client.Timeout = TimeSpan.FromSeconds(10));
+
+        // Dispositivos móveis e push (ADR-069). O envio via FCM só liga com credenciais do Firebase
+        // (Push:Fcm); sem elas, o serviço é o Noop e o restante do sistema segue igual. O cache em
+        // memória serve o guarda de dispositivo revogado (RevokedDeviceMiddleware).
+        services.AddScoped<IDeviceRepository, DeviceRepository>();
+        services.AddMemoryCache();
+        services.Configure<PushOptions>(configuration.GetSection(PushOptions.SectionName));
+        services.AddPushNotifications(configuration.GetSection(PushOptions.SectionName).Get<PushOptions>() ?? new PushOptions());
 
         // Jobs (ver ADR-017): Hangfire com storage no PostgreSQL. RecurringJobsRegistrar é
         // chamado explicitamente pelo Worker após o host subir (precisa do storage já

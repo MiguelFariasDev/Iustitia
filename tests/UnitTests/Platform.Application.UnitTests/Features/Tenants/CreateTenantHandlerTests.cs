@@ -6,6 +6,7 @@ using Advocacia.Platform.Application.Features.Tenants.CreateTenant;
 using Advocacia.Platform.Domain.Identity;
 using Advocacia.Platform.Domain.Tenancy;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Advocacia.Platform.Application.UnitTests.Features.Tenants;
@@ -23,7 +24,7 @@ public class CreateTenantHandlerTests
     private readonly IAuditService _auditService = Substitute.For<IAuditService>();
 
     private CreateTenantHandler CreateHandler() =>
-        new(_supabaseAuthService, _tenantRepository, _userRepository, _unitOfWork, _auditService);
+        new(_supabaseAuthService, _tenantRepository, _userRepository, _unitOfWork, _auditService, NullLogger<CreateTenantHandler>.Instance);
 
     private static CreateTenantCommand ValidCommand() =>
         new("Escritorio Teste", ValidCnpj, "Fulano", "fulano@teste.com", "Senha123!");
@@ -33,7 +34,7 @@ public class CreateTenantHandlerTests
     {
         var supabaseUserId = Guid.NewGuid();
         _supabaseAuthService.SignUpAsync("fulano@teste.com", "Senha123!", Arg.Any<CancellationToken>())
-            .Returns(Result.Success(new SupabaseSession(supabaseUserId, "fulano@teste.com", "at", "rt", 3600)));
+            .Returns(Result.Success(new SupabaseSignUp(supabaseUserId, "fulano@teste.com", new SupabaseSession(supabaseUserId, "fulano@teste.com", "at", "rt", 3600))));
 
         var result = await CreateHandler().Handle(ValidCommand(), CancellationToken.None);
 
@@ -61,7 +62,7 @@ public class CreateTenantHandlerTests
     {
         var error = Error.Conflict("auth.email_already_registered", "E-mail já cadastrado.");
         _supabaseAuthService.SignUpAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Result.Failure<SupabaseSession>(error));
+            .Returns(Result.Failure<SupabaseSignUp>(error));
 
         var result = await CreateHandler().Handle(ValidCommand(), CancellationToken.None);
 
