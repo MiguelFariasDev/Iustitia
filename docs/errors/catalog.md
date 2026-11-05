@@ -152,6 +152,24 @@ Alertas in-app (Platform) — ver `docs/modules/alerts.md`.
 | `ALERT_ALREADY_READ` | Este alerta já foi marcado como lido. | 409 | Conflict | `MarkAsRead` em alerta lido. | Nenhuma ação necessária. |
 | `ALERT_ALREADY_DISMISSED` | Este alerta já foi descartado. | 409 | Conflict | Ação sobre alerta descartado. | Nenhuma ação necessária. |
 
+## Atendimento (2500–2599)
+
+Módulo Atendimento (inbox e handoff do bot de WhatsApp) — ver `docs/modules/atendimento.md`.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `ATENDIMENTO_NOT_FOUND` | Atendimento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório (filtro global + RLS tornam invisível; 404 em vez de 403). | Confirmar o identificador. |
+| `ATENDIMENTO_PHONE_INVALID` | Telefone inválido. Informe o número com DDI e DDD (10 a 15 dígitos). | 400 | Validation | `TelefoneWhatsApp.Normalize` recebeu valor vazio ou com menos de 10 / mais de 15 dígitos. | Enviar o número no formato `wa_id` da Meta (ex.: `5585999998888`). |
+| `ATENDIMENTO_CLOSED` | Este atendimento está encerrado. | 409 | Conflict | Qualquer ação sobre um atendimento `Closed` (terminal). | Uma nova mensagem do telefone abre outro atendimento. |
+| `ATENDIMENTO_INVALID_STATUS_TRANSITION` | Não é possível mudar o atendimento de '{0}' para '{1}'. | 409 | Conflict | `ReturnToBot` num atendimento que já está com o bot. | Consultar o status atual. |
+| `ATENDIMENTO_ALREADY_ASSIGNED` | Este atendimento já está sendo conduzido por outro advogado. | 409 | Conflict | Outro advogado tentou assumir ou enviar mensagem numa conversa em `Human` que não é dele. | Pedir ao advogado responsável que devolva ao bot. |
+| `ATENDIMENTO_MESSAGE_EMPTY` | A mensagem não pode ser vazia. | 400 | Validation | Corpo vazio ou só espaços. | Informar o texto. |
+| `ATENDIMENTO_MESSAGE_TOO_LONG` | A mensagem excede o limite de {0} caracteres do WhatsApp. | 400 | Validation | Corpo com mais de 4096 caracteres. | Dividir em mensagens menores. |
+| `ATENDIMENTO_MESSAGE_INVALID_SENDER` | Combinação inválida de direção e remetente da mensagem. | 400 | Validation | Entrada que não seja do cliente, saída do cliente, ou fala de humano sem ter assumido a conversa. | Corrigir direção/remetente; o advogado precisa assumir antes de falar. |
+| `ATENDIMENTO_BOT_BLOCKED` | O bot não pode responder: o atendimento está com um humano. | 409 | Conflict | O Bot tentou registrar uma resposta automática com o atendimento em `Human`. **Regra inegociável do handoff.** | O Bot deve consultar `GET .../status` antes de responder e ficar em silêncio. |
+| `ATENDIMENTO_DELIVERY_FAILED` | A mensagem foi registrada, mas não foi possível enviá-la ao WhatsApp. Tente novamente. | 500 | Failure | O Bot estava fora do ar ou recusou o envio. A mensagem fica no histórico com `delivery = Failed`. | Reenviar; verificar a saúde do Bot. |
+| `ATENDIMENTO_BOT_API_KEY_NOT_FOUND` | Chave de API do bot não encontrada. | 404 | NotFound | Revogação de uma chave inexistente ou de outro escritório. | Listar as chaves com `GET /api/v1/bot/api-keys`. |
+
 ## CNJ (1700–1799)
 
 Integração com o DJEN — ver `docs/modules/legal/cnj-capture.md`. Todos são

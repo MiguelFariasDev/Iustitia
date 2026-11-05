@@ -20,6 +20,7 @@ e a uma faixa numérica fixa (`BuildingBlocks.Domain/Errors/ErrorCode.cs`). Ver
 | `Backup` | 900–999 | Falhas no processo de backup (execução, criptografia, upload). |
 | `Integration` | 1000–1099 | Falhas de integrações externas genéricas (indisponibilidade, timeout, autenticação, rate limit, resposta inválida). Integrações com contrato próprio têm grupo dedicado — ver `CNJ`. |
 | `Alert` | 1400–1499 | Alertas in-app dos usuários: não encontrado, já lido, já descartado. |
+| `Atendimento` | 2500–2599 | Inbox e handoff do bot de WhatsApp: transições de estado, mensagens, chaves de API do bot. |
 | `Publication` | 1300–1399 | Publicações capturadas de diários oficiais: número CNJ inválido, data inválida, conteúdo vazio, transição de status de revisão proibida, deduplicação. |
 | `CNJ` | 1700–1799 | Integração com o DJEN/CNJ: indisponibilidade, timeout, rate limit, resposta em formato inesperado, consulta rejeitada. |
 | `Ai` | 1600–1699 | Integração com a Anthropic (autenticação, limite, sobrecarga, timeout, resposta ilegível) e validação do conteúdo devolvido pelo modelo. |

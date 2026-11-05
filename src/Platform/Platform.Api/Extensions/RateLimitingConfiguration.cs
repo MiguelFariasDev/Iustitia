@@ -58,6 +58,12 @@ public static class RateLimitingConfiguration
     private const int WritePermitLimit = 60;
     private const int ReadPermitLimit = 300;
 
+    // O Bot é UM cliente HTTP (um IP) que atende todos os contatos do escritório: com o limite
+    // de escrita por IP (60/min), ~20 mensagens por minuto já o estrangulariam. A partição dele
+    // é a própria chave de API, com folga proporcional ao volume de um escritório.
+    private const int BotPermitLimit = 1200;
+    private const string BotPathMarker = "/bot/atendimentos";
+    private static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan OneMinute = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan LoginWindow = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ForgotPasswordWindow = TimeSpan.FromHours(1);
@@ -106,6 +112,34 @@ public static class RateLimitingConfiguration
 
                 return category switch
                 {
+                    var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    return RateLimitPartition.GetFixedWindowLimiter($"auth:{ip}", _ => NewWindowOptions(AuthPermitLimit));
+                }
+
+                // O limitador roda ANTES da autenticação (ver Program.cs), então a identidade do
+                // Bot ainda não existe: particiona pelo hash da chave apresentada, nunca por ela
+                // em claro. Chave inválida só gasta a cota da própria partição.
+                if (path.Contains(BotPathMarker, StringComparison.OrdinalIgnoreCase)
+                    && httpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey)
+                    && !string.IsNullOrWhiteSpace(apiKey))
+                {
+                    var keyHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(apiKey.ToString())))[..16];
+                    return RateLimitPartition.GetFixedWindowLimiter($"bot:{keyHash}", _ => NewWindowOptions(BotPermitLimit));
+                }
+
+                var partitionKey = httpContext.User.FindFirst("sub")?.Value
+                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                    ?? "anonymous";
+
+                var isWrite = HttpMethods.IsPost(httpContext.Request.Method)
+                    || HttpMethods.IsPut(httpContext.Request.Method)
+                    || HttpMethods.IsDelete(httpContext.Request.Method)
+                    || HttpMethods.IsPatch(httpContext.Request.Method);
+
+                return isWrite
+                    ? RateLimitPartition.GetFixedWindowLimiter($"write:{partitionKey}", _ => NewWindowOptions(WritePermitLimit))
+                    : RateLimitPartition.GetFixedWindowLimiter($"read:{partitionKey}", _ => NewWindowOptions(ReadPermitLimit));
                     // Janela deslizante nas rotas de credencial: a janela fixa permite 2x o
                     // limite colado na virada (5 no fim de uma janela + 5 no começo da outra).
                     RateLimitCategory.Login => RateLimitPartition.GetSlidingWindowLimiter(

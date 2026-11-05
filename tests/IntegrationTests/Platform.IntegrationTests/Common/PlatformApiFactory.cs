@@ -28,6 +28,12 @@ public sealed class PlatformApiFactory : WebApplicationFactory<Program>, IAsyncL
 {
     private readonly PostgresFixture _postgresFixture = new();
 
+    /// <summary>Conexão como dono das tabelas (bypassa RLS) — para os testes inspecionarem o estado gravado.</summary>
+    public string SuperuserConnectionString => _postgresFixture.SuperuserConnectionString;
+
+    /// <summary>Conexão como <c>app_user</c> — a que a aplicação usa em produção, sujeita a RLS e a grants mínimos.</summary>
+    public string AppUserConnectionString => _postgresFixture.AppUserConnectionString;
+
     public FakeSupabaseAuthService SupabaseAuthService { get; } = new();
 
     public TestJwtTokenFactory JwtTokenFactory { get; } = new();

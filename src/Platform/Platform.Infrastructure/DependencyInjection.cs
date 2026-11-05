@@ -30,8 +30,16 @@ namespace Advocacia.Platform.Infrastructure;
 /// <summary>Composition root da infraestrutura de Platform, chamado pelos Hosts (Api/Worker).</summary>
 public static class DependencyInjection
 {
+    /// <param name="configureModuleConsumers">
+    /// Gancho para os módulos de negócio registrarem os seus consumers no MESMO bus do
+    /// MassTransit (AddMassTransit só pode ser chamado uma vez por container). O host passa,
+    /// por exemplo, <c>bus =&gt; bus.AddAtendimentoConsumers()</c> — o Platform não conhece os módulos.
+    /// </param>
     public static IServiceCollection AddPlatformInfrastructure(
-        this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        Action<MassTransit.IBusRegistrationConfigurator>? configureModuleConsumers = null)
     {
         services.AddBuildingBlocksInfrastructure(configuration, environment);
 
@@ -92,6 +100,8 @@ public static class DependencyInjection
             bus.AddConsumer<TenantCreatedConsumer>();
             bus.AddConsumer<AuditLogCreatedConsumer>();
             bus.AddConsumer<AlertCreatedConsumer>();
+
+            configureModuleConsumers?.Invoke(bus);
         });
 
         services.AddScoped<INotificationService, EmailService>();
