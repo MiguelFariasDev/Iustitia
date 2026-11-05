@@ -227,6 +227,31 @@ public static class ErrorCatalog
             [ErrorCode.ALERT_ALREADY_DISMISSED] = new(ErrorGroup.Alert, nameof(ErrorCode.ALERT_ALREADY_DISMISSED),
                 "Este alerta já foi descartado.", 409, ErrorType.Conflict),
 
+            // CONTACT (módulo CRM — contatos que não são clientes)
+            [ErrorCode.CONTACT_NOT_FOUND] = new(ErrorGroup.Contact, nameof(ErrorCode.CONTACT_NOT_FOUND),
+                "Contato não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.CONTACT_NAME_REQUIRED] = new(ErrorGroup.Contact, nameof(ErrorCode.CONTACT_NAME_REQUIRED),
+                "O nome do contato é obrigatório.", 400, ErrorType.Validation),
+            [ErrorCode.CONTACT_EMAIL_INVALID] = new(ErrorGroup.Contact, nameof(ErrorCode.CONTACT_EMAIL_INVALID),
+                "E-mail do contato inválido.", 400, ErrorType.Validation),
+            [ErrorCode.CONTACT_PHONE_INVALID] = new(ErrorGroup.Contact, nameof(ErrorCode.CONTACT_PHONE_INVALID),
+                "Telefone do contato inválido. Informe DDD e número (10 ou 11 dígitos).", 400, ErrorType.Validation),
+            [ErrorCode.CONTACT_DOCUMENT_INVALID] = new(ErrorGroup.Contact, nameof(ErrorCode.CONTACT_DOCUMENT_INVALID),
+                "Documento do contato inválido. Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).", 400, ErrorType.Validation),
+            [ErrorCode.CONTACT_ALREADY_INACTIVE] = new(ErrorGroup.Contact, nameof(ErrorCode.CONTACT_ALREADY_INACTIVE),
+                "Este contato já está inativo.", 409, ErrorType.Conflict),
+            [ErrorCode.CONTACT_ALREADY_ACTIVE] = new(ErrorGroup.Contact, nameof(ErrorCode.CONTACT_ALREADY_ACTIVE),
+                "Este contato já está ativo.", 409, ErrorType.Conflict),
+
+            // CALENDAR (módulo Workflow — agenda do escritório)
+            [ErrorCode.CALENDAR_EVENT_NOT_FOUND] = new(ErrorGroup.Calendar, nameof(ErrorCode.CALENDAR_EVENT_NOT_FOUND),
+                "Evento da agenda não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.CALENDAR_EVENT_TITLE_REQUIRED] = new(ErrorGroup.Calendar, nameof(ErrorCode.CALENDAR_EVENT_TITLE_REQUIRED),
+                "O título do evento é obrigatório.", 400, ErrorType.Validation),
+            [ErrorCode.CALENDAR_EVENT_INVALID_PERIOD] = new(ErrorGroup.Calendar, nameof(ErrorCode.CALENDAR_EVENT_INVALID_PERIOD),
+                "Período inválido: o término do evento não pode ser anterior ao início.", 400, ErrorType.Validation),
+            [ErrorCode.CALENDAR_EVENT_PROCESS_NOT_FOUND] = new(ErrorGroup.Calendar, nameof(ErrorCode.CALENDAR_EVENT_PROCESS_NOT_FOUND),
+                "O processo informado para o evento não existe neste escritório.", 404, ErrorType.NotFound),
             // ATENDIMENTO (módulo Atendimento — ver docs/modules/atendimento.md)
             [ErrorCode.ATENDIMENTO_NOT_FOUND] = new(ErrorGroup.Atendimento, nameof(ErrorCode.ATENDIMENTO_NOT_FOUND),
                 "Atendimento não encontrado.", 404, ErrorType.NotFound),

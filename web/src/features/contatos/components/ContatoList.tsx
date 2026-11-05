@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { DataTable } from '@/components/shared/DataTable'
+import { env } from '@/config/env'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
@@ -101,7 +102,7 @@ export function ContatoList() {
 
   return (
     <div className="space-y-4">
-      <DemoNotice modulo="Contatos" />
+      {env.useMocks ? <DemoNotice modulo="Contatos" /> : null}
 
       <DataTable
         caption="Contatos do escritório"

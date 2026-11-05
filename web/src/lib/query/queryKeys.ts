@@ -45,8 +45,9 @@ export const queryKeys = {
   },
   agenda: {
     all: ['agenda'] as const,
-    /** `weekStart` em ISO (segunda-feira) mantém uma entrada de cache por semana. */
-    week: (weekStart: string) => [...queryKeys.agenda.all, 'week', weekStart] as const,
+    /** Uma entrada de cache por janela consultada (início e fim em ISO). */
+    range: (from: string, to: string, responsavelId: string | null = null) =>
+      [...queryKeys.agenda.all, 'range', from, to, responsavelId] as const,
   },
   contatos: {
     all: ['contatos'] as const,

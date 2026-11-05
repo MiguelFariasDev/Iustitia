@@ -152,6 +152,30 @@ Alertas in-app (Platform) — ver `docs/modules/alerts.md`.
 | `ALERT_ALREADY_READ` | Este alerta já foi marcado como lido. | 409 | Conflict | `MarkAsRead` em alerta lido. | Nenhuma ação necessária. |
 | `ALERT_ALREADY_DISMISSED` | Este alerta já foi descartado. | 409 | Conflict | Ação sobre alerta descartado. | Nenhuma ação necessária. |
 
+## Contact (2100–2199)
+
+Contatos do CRM — ver ADR-067.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CONTACT_NOT_FOUND` | Contato não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório (RLS torna invisível). | Confirmar o identificador. |
+| `CONTACT_NAME_REQUIRED` | O nome do contato é obrigatório. | 400 | Validation | Nome vazio ou acima de 200 caracteres. | Informar o nome. |
+| `CONTACT_EMAIL_INVALID` | E-mail do contato inválido. | 400 | Validation | Formato de e-mail inválido. | Corrigir o e-mail. |
+| `CONTACT_PHONE_INVALID` | Telefone do contato inválido. Informe DDD e número (10 ou 11 dígitos). | 400 | Validation | Telefone sem 10 ou 11 dígitos. | Informar DDD e número. |
+| `CONTACT_DOCUMENT_INVALID` | Documento do contato inválido. Informe um CPF (11 dígitos) ou CNPJ (14 dígitos). | 400 | Validation | Documento sem 11 ou 14 dígitos. | Corrigir ou deixar em branco. |
+| `CONTACT_ALREADY_INACTIVE` | Este contato já está inativo. | 409 | Conflict | `Deactivate` em contato inativo. | Nenhuma. |
+| `CONTACT_ALREADY_ACTIVE` | Este contato já está ativo. | 409 | Conflict | `Reactivate` em contato ativo. | Nenhuma. |
+
+## Calendar (2000–2099)
+
+Agenda do escritório — ver ADR-067.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CALENDAR_EVENT_NOT_FOUND` | Evento da agenda não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `CALENDAR_EVENT_TITLE_REQUIRED` | O título do evento é obrigatório. | 400 | Validation | Título vazio ou acima de 200 caracteres. | Informar o título. |
+| `CALENDAR_EVENT_INVALID_PERIOD` | Período inválido: o término do evento não pode ser anterior ao início. | 400 | Validation | `EndAt` anterior a `StartAt`. | Corrigir as datas. |
+| `CALENDAR_EVENT_PROCESS_NOT_FOUND` | O processo informado para o evento não existe neste escritório. | 404 | NotFound | `ProcessId` de processo inexistente ou de outro escritório. | Escolher um processo do escritório. |
 ## Atendimento (2500–2599)
 
 Módulo Atendimento (inbox e handoff do bot de WhatsApp) — ver `docs/modules/atendimento.md`.

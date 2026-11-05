@@ -1,21 +1,14 @@
 import type { Metadata } from 'next'
-import { CalendarDays } from 'lucide-react'
-import { ComingSoon } from '@/components/shared/ComingSoon'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { AgendaView } from '@/features/agenda/components/AgendaView'
 
 export const metadata: Metadata = { title: 'Agenda' }
 
 export default function AgendaPage() {
   return (
-    <ComingSoon
-      title="Agenda"
-      description="Audiências, reuniões, prazos e tarefas da equipe na semana."
-      icon={CalendarDays}
-      phase="Fase 4"
-      highlights={[
-        'Audiências e reuniões cadastradas pelo escritório',
-        'Prazos processuais derivados das publicações capturadas',
-        'Visão semanal por advogado responsável',
-      ]}
-    />
+    <div className="space-y-6">
+      <PageHeader title="Agenda" description="Audiências, reuniões, prazos e tarefas da equipe." />
+      <AgendaView />
+    </div>
   )
 }

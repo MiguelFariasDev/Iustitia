@@ -1,4 +1,10 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.CRM.Api;
+using Advocacia.Modules.CRM.Infrastructure;
+using Advocacia.Modules.Integrations.CNJ.Infrastructure;
+using Advocacia.Modules.Legal.Api;
+using Advocacia.Modules.Legal.Infrastructure;
+using Advocacia.Modules.Workflow.Api;
 using Advocacia.Modules.Atendimentos.Api;
 using Advocacia.Modules.Atendimentos.Infrastructure;
 using Advocacia.Modules.Integrations.Anthropic.Infrastructure;
@@ -17,7 +23,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
-// TODO (Fase 2+): registrar os módulos de negócio restantes (Workflow, Documents, ...) conforme entram no roadmap
+// TODO (Fase 4): registrar os módulos de negócio restantes (Documents, Reporting, ...) conforme entram no roadmap
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +63,8 @@ builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddAnthropicIntegration(builder.Configuration);
 builder.Services.AddWorkflowInfrastructure();
 builder.Services.AddLegalInfrastructure(builder.Configuration);
+builder.Services.AddCrmInfrastructure(builder.Configuration);
+builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 builder.Services.AddAtendimentoInfrastructure(builder.Configuration);
 
 // Esquema de autenticação por chave de API do Bot (opt-in nos endpoints /bot/atendimentos).
@@ -121,6 +129,8 @@ app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
 app.MapPublicationsEndpoints();
+app.MapContactsEndpoints();
+app.MapCalendarEndpoints();
 app.MapAtendimentosEndpoints();
 app.MapBotEndpoints();
 
