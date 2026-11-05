@@ -16,15 +16,15 @@ import { ProdutividadeTable } from './ProdutividadeTable'
 // que as opções do `dynamic` sejam um objeto LITERAL (não dá para compartilhá-las numa const).
 const ProcessosPorAreaChart = dynamic(
   () => import('./ProcessosPorAreaChart').then((m) => m.ProcessosPorAreaChart),
-  { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-lg bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-72 animate-iu-pulse rounded-lg bg-border" /> }
 )
 const ProcessosPorStatusChart = dynamic(
   () => import('./ProcessosPorStatusChart').then((m) => m.ProcessosPorStatusChart),
-  { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-lg bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-72 animate-iu-pulse rounded-lg bg-border" /> }
 )
 const EvolucaoPublicacoesChart = dynamic(
   () => import('./EvolucaoPublicacoesChart').then((m) => m.EvolucaoPublicacoesChart),
-  { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-lg bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-72 animate-iu-pulse rounded-lg bg-border" /> }
 )
 
 export function IndicadoresView() {

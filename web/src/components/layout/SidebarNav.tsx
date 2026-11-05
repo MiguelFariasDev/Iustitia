@@ -31,7 +31,7 @@ function CountBadge({ count, collapsed }: { count: number; collapsed: boolean })
   return (
     <span
       className={cn(
-        'ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-700 px-1.5 py-px text-[10px] font-semibold text-white tabular',
+        'ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-700 px-1.5 py-px font-mono text-[10px] font-semibold text-white',
         collapsed && 'absolute top-1 right-1 ml-0 min-w-0 px-1 py-0 text-[9px] leading-tight'
       )}
     >
@@ -63,10 +63,12 @@ function ItemContent({
       ) : null}
       {count === undefined ? null : <CountBadge count={count} collapsed={collapsed} />}
       {item.soon ? (
-        collapsed ? (
+        // Item de IA que ainda não existe: o selo ✨ já ocupa a linha e a pílula "Em breve" cortaria
+        // o rótulo ("Criaçã…"). Fica só o item esmaecido, com o aviso para leitor de tela.
+        collapsed || item.ai ? (
           <span className="sr-only"> (em breve)</span>
         ) : (
-          <span className="ml-auto rounded-full border border-sidebar-border px-1.5 py-px text-[10px] font-medium tracking-wide text-sidebar-muted uppercase">
+          <span className="ml-auto shrink-0 rounded-full border border-sidebar-border px-1.5 py-px text-[10px] font-medium tracking-wide whitespace-nowrap text-sidebar-muted uppercase">
             Em breve
           </span>
         )
@@ -74,7 +76,7 @@ function ItemContent({
         collapsed ? (
           <span className="sr-only"> (dados de demonstração)</span>
         ) : (
-          <span className="ml-auto rounded-full border border-sidebar-border px-1.5 py-px text-[10px] font-medium tracking-wide text-sidebar-muted uppercase">
+          <span className="ml-auto shrink-0 rounded-full border border-sidebar-border px-1.5 py-px text-[10px] font-medium tracking-wide whitespace-nowrap text-sidebar-muted uppercase">
             Demo
           </span>
         )

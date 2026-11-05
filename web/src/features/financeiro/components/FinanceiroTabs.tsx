@@ -38,7 +38,7 @@ import { LancamentosTable } from './LancamentosTable'
 // Recharts é pesado e só a aba "Fluxo de caixa" o usa: carrega sob demanda.
 const FluxoCaixaChart = dynamic(() => import('./FluxoCaixaChart').then((m) => m.FluxoCaixaChart), {
   ssr: false,
-  loading: () => <div className="h-72 animate-pulse rounded-lg bg-muted" />,
+  loading: () => <div className="h-72 animate-iu-pulse rounded-lg bg-border" />,
 })
 
 type Aba = 'honorarios' | 'pagar' | 'receber' | 'fluxo'

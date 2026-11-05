@@ -43,7 +43,7 @@ export function NotificationsDropdown() {
           {unread > 0 ? (
             <span
               aria-hidden
-              className="absolute top-1 right-1 flex min-w-4 items-center justify-center rounded-full bg-red-700 px-1 text-[10px] leading-4 font-semibold text-white"
+              className="absolute top-1 right-1 flex min-w-4 items-center justify-center rounded-full bg-ia-text px-1 font-mono text-[10px] leading-4 font-semibold text-background"
             >
               {unread > 9 ? '9+' : unread}
             </span>

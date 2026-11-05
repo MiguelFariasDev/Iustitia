@@ -20,7 +20,7 @@ describe('navegação filtrada pela matriz de acesso', () => {
 
     expect(itens).not.toContain('Financeiro')
     expect(itens).not.toContain('Indicadores')
-    expect(itens).toContain('Processos')
+    expect(itens).toContain('Processos e casos')
   })
 
   it('perfil sem acesso ao jurídico fica sem o grupo "Gestão" inteiro quando nada sobra nele', () => {
