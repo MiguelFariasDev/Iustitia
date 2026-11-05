@@ -42,7 +42,8 @@ public static class OpenTelemetryConfiguration
                     ActivitySourceNames.Jobs,
                     ActivitySourceNames.Handlers,
                     ActivitySourceNames.Consumers,
-                    ActivitySourceNames.CnjCapture)
+                    ActivitySourceNames.CnjCapture,
+                    ActivitySourceNames.Anthropic)
                 .AddAspNetCoreInstrumentation(options =>
                     options.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
                 .AddHttpClientInstrumentation())

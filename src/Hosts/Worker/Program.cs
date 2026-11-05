@@ -1,7 +1,9 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs;
+using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
 using Advocacia.Platform.Infrastructure;
 using Advocacia.Platform.Infrastructure.Jobs.Jobs;
@@ -22,6 +24,8 @@ builder.Services.AddPlatformInfrastructure(builder.Configuration, builder.Enviro
 
 // Módulos de negócio (ver comentário equivalente em Hosts/Api/Program.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
+builder.Services.AddAnthropicIntegration(builder.Configuration);
+builder.Services.AddWorkflowInfrastructure();
 builder.Services.AddLegalInfrastructure(builder.Configuration);
 
 var host = builder.Build();

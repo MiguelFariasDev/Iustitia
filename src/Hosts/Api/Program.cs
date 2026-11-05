@@ -1,7 +1,9 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Api;
 using Advocacia.Modules.Legal.Infrastructure;
+using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Platform.Api.Extensions;
 using Advocacia.Platform.Api.Middleware;
 using Advocacia.Platform.Application;
@@ -48,6 +50,8 @@ builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 // do Legal — Legal.Infrastructure depende só da porta (Integrations.CNJ.Application), então
 // a implementação é registrada aqui, pelo host (ver Legal.Infrastructure/DependencyInjection.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
+builder.Services.AddAnthropicIntegration(builder.Configuration);
+builder.Services.AddWorkflowInfrastructure();
 builder.Services.AddLegalInfrastructure(builder.Configuration);
 
 var app = builder.Build();
