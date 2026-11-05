@@ -14,9 +14,13 @@ namespace Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
 /// Jobs:CnjCapture:Enabled deixaria o agendamento anterior ativo no Hangfire para sempre.
 /// </summary>
 public sealed class LegalRecurringJobsRegistrar(
-    IRecurringJobManager recurringJobManager, IOptions<CnjCaptureJobOptions> cnjCaptureOptions)
+    IRecurringJobManager recurringJobManager,
+    IOptions<CnjCaptureJobOptions> cnjCaptureOptions,
+    IOptions<PublicationClassificationJobOptions> classificationOptions)
 {
     public const string CnjCaptureJobId = "cnj-capture";
+
+    public const string PublicationClassificationJobId = "publication-classification";
 
     public void RegisterAll()
     {
@@ -32,6 +36,20 @@ public sealed class LegalRecurringJobsRegistrar(
         else
         {
             recurringJobManager.RemoveIfExists(CnjCaptureJobId);
+        }
+
+        var classification = classificationOptions.Value;
+
+        if (classification.Enabled)
+        {
+            recurringJobManager.AddOrUpdate<PublicationClassificationJob>(
+                PublicationClassificationJobId,
+                job => job.ExecuteAsync(CancellationToken.None),
+                classification.CronExpression);
+        }
+        else
+        {
+            recurringJobManager.RemoveIfExists(PublicationClassificationJobId);
         }
     }
 }

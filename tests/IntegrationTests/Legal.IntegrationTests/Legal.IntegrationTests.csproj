@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Infrastructure\Integrations.Anthropic.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
   </ItemGroup>
 

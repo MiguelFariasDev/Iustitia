@@ -35,6 +35,7 @@
          /infra/supabase a partir da 010 tocam tabelas do módulo Legal, então o schema dele
          precisa existir antes delas rodarem. -->
     <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Infrastructure\Integrations.Anthropic.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

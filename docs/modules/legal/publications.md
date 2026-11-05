@@ -184,9 +184,9 @@ sem necessidade.
 
 Faixa **PUBLICATION (1300–1399)** — ver `docs/errors/catalog.md`.
 
-## Ainda não implementado
+## Sugestão de IA (Fase 3, Etapa 3.2)
 
-`publication_suggestions` (Fase 3) tem o nome da tabela reservado em
-`PublicationSuggestionConfiguration`, mas **nenhuma entidade, DbSet ou tabela**
-— criar o esquema antes do agregado existir produziria um palpite que a
-Fase 3 teria que migrar de qualquer forma.
+`publication_suggestions` guarda a sugestão de tipo de ato e prazo gerada pelo Claude para cada
+publicação pendente. É só uma sugestão — a revisão humana (Etapa 3.3) é quem altera a publicação.
+Fluxo, configuração, tabelas e operação em [ai-classification.md](ai-classification.md); decisões
+nas ADR-070 e 071 (e 067 a 069 para a integração com a Anthropic).

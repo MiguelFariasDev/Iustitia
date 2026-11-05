@@ -4,6 +4,7 @@ using Advocacia.BuildingBlocks.Infrastructure.Persistence.Outbox;
 using Advocacia.Modules.Legal.Domain.Clientes;
 using Advocacia.Modules.Legal.Domain.Processos;
 using Advocacia.Modules.Legal.Domain.Publications;
+using Advocacia.Modules.Legal.Domain.Suggestions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Advocacia.Modules.Legal.Infrastructure.Persistence;
@@ -27,6 +28,8 @@ public sealed class LegalDbContext(DbContextOptions<LegalDbContext> options, ITe
     public DbSet<Processo> Processos => Set<Processo>();
 
     public DbSet<Publication> Publications => Set<Publication>();
+
+    public DbSet<PublicationSuggestion> PublicationSuggestions => Set<PublicationSuggestion>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 }
