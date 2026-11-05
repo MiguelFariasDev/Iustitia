@@ -46,6 +46,20 @@ public sealed class CreateTenantHandler(
             return Result.Failure<CreateTenantResponse>(tenantResult.Error);
         }
 
+        // OAB do titular: validada ANTES do SignUp pelo mesmo motivo do documento — falhar
+        // depois deixaria um usuário órfão no Supabase.
+        OABNumber? adminOab = null;
+        if (!string.IsNullOrWhiteSpace(request.AdminOabNumber))
+        {
+            var oabResult = OABNumber.Create(request.AdminOabNumber, request.AdminOabState);
+            if (oabResult.IsFailure)
+            {
+                return Result.Failure<CreateTenantResponse>(oabResult.Error);
+            }
+
+            adminOab = oabResult.Value;
+        }
+
         var emailResult = Email.Create(request.AdminEmail);
         if (emailResult.IsFailure)
         {
@@ -77,6 +91,16 @@ public sealed class CreateTenantHandler(
         // O Owner que acabou de criar o escritório e definir a própria senha entra
         // ativo direto — diferente de InviteUser, aqui não existe fluxo de convite.
         _ = adminUser.Activate();
+
+        if (adminOab is not null)
+        {
+            _ = adminUser.UpdateOabNumber(adminOab);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AdminPhone))
+        {
+            _ = adminUser.UpdateProfile(adminUser.Name, new string(request.AdminPhone.Where(char.IsDigit).ToArray()), adminUser.AvatarUrl);
+        }
 
         tenantRepository.Add(tenant);
         userRepository.Add(adminUser);

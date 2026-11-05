@@ -72,7 +72,10 @@ export function OnboardingWizard() {
   const [office, setOffice] = useState<OnboardingOfficeValues | null>(null)
   const [owner, setOwner] = useState<OnboardingOwnerValues | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [pendingConfirmation, setPendingConfirmation] = useState<string | null>(null)
+  const [completion, setCompletion] = useState<{
+    email: string
+    reason: 'confirm' | 'login'
+  } | null>(null)
 
   const officeForm = useForm<OnboardingOfficeValues>({
     resolver: zodResolver(onboardingOfficeSchema),
@@ -112,47 +115,71 @@ export function OnboardingWizard() {
   async function finish(preferences: OnboardingPreferencesValues) {
     if (!office || !owner) return
     setError(null)
+
+    // 1) Cadastro: o backend cria a conta E o titular (no Supabase Auth e no banco) de uma vez.
+    //    Falha aqui é erro de cadastro de verdade — nada foi criado, e tentar de novo é seguro.
+    let created
     try {
-      const session = await authService.signUp({
-        email: owner.email,
-        password: owner.password,
-        name: owner.ownerName,
-      })
-      if (!session) {
-        // Supabase com confirmação de e-mail habilitada: o escritório é criado após a confirmação.
-        setPendingConfirmation(owner.email)
-        return
-      }
-      useAuthStore.getState().setSession(session)
-      await createTenant({
-        office,
-        owner: { ownerName: owner.ownerName, email: owner.email, oabNumber: owner.oabNumber },
-        preferences,
-      })
-      notify.success(`Bem-vindo(a) ao ${env.appName}!`, {
-        description:
-          office.accountType === 'Solo'
-            ? 'Sua conta de advogado(a) autônomo(a) foi criada.'
-            : `${office.officeName} foi cadastrado com sucesso.`,
-      })
-      router.replace(routes.dashboard)
-      router.refresh()
+      created = await createTenant({ office, owner, preferences })
     } catch (err) {
       setError(getErrorMessage(err))
+      return
     }
+
+    // Cadastro feito: a senha não precisa mais ficar em memória além do login logo abaixo.
+    const { email, password } = owner
+    setOwner(null)
+
+    if (created.requiresEmailConfirmation) {
+      setCompletion({ email, reason: 'confirm' })
+      return
+    }
+
+    // 2) Entrada automática, com as credenciais que a pessoa acabou de definir. Se falhar, a
+    //    conta JÁ EXISTE: mandar repetir o cadastro daria "já existe uma conta", então o caminho
+    //    é entrar manualmente.
+    try {
+      const session = await authService.signIn({ email, password })
+      useAuthStore.getState().setSession(session)
+    } catch {
+      setCompletion({ email, reason: 'login' })
+      return
+    }
+
+    notify.success(`Bem-vindo(a) ao ${env.appName}!`, {
+      description:
+        office.accountType === 'Solo'
+          ? 'Sua conta de advogado(a) autônomo(a) foi criada.'
+          : `${office.officeName} foi cadastrado com sucesso.`,
+    })
+    router.replace(routes.dashboard)
+    router.refresh()
   }
 
-  if (pendingConfirmation) {
+  if (completion) {
     return (
-      <AuthCard title="Confirme seu e-mail">
+      <AuthCard title={completion.reason === 'confirm' ? 'Confirme seu e-mail' : 'Conta criada'}>
         <div role="status" className="flex gap-3 rounded-xl border bg-card p-4">
           <MailCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden />
           <p className="text-sm">
-            Enviamos um link de confirmação para{' '}
-            <strong className="break-all">{pendingConfirmation}</strong>. Após confirmar, entre para
-            concluir a configuração da conta.
+            {completion.reason === 'confirm' ? (
+              <>
+                Enviamos um link de confirmação para{' '}
+                <strong className="break-all">{completion.email}</strong>. Depois de confirmar,
+                entre com o e-mail e a senha que você acabou de definir.
+              </>
+            ) : (
+              <>
+                Sua conta foi criada, mas não conseguimos entrar automaticamente. Entre com o e-mail{' '}
+                <strong className="break-all">{completion.email}</strong> e a senha que você acabou
+                de definir.
+              </>
+            )}
           </p>
         </div>
+        <Button asChild>
+          <Link href={routes.login}>Ir para o login</Link>
+        </Button>
       </AuthCard>
     )
   }
@@ -567,7 +594,7 @@ export function OnboardingWizard() {
                 {preferencesForm.formState.isSubmitting ? (
                   <LoadingSpinner size="sm" decorative />
                 ) : null}
-                Criar escritório
+                {isSolo ? 'Criar conta' : 'Criar escritório'}
               </Button>
             </div>
           </form>

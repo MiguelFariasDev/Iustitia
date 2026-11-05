@@ -76,6 +76,24 @@ novo se cadastra; não existe usuário autenticado ainda nesse ponto).
 6. Registra auditoria (`AuditAction.Created`, `tenantId` explícito — não
    há `ICurrentUser.TenantId` ainda nesse ponto, a requisição é anônima).
 
+**Quem faz o quê no cadastro (frontend × backend).** O cadastro é **um único POST**: o backend
+cria o usuário no Supabase Auth, o `User` Owner e o `Tenant`, e desfaz o primeiro se o resto
+falhar. O frontend **não** chama `signUp` do Supabase antes — o backend tentaria cadastrar o
+mesmo e-mail de novo e recusaria. Sequência do assistente `/onboarding`:
+
+1. `POST /api/v1/tenants` (com `Idempotency-Key`, que o cliente HTTP já acrescenta) enviando
+   `accountType`, `name`, `cnpj`/`cpf`, `adminName`, `adminEmail`, `adminPassword` e, opcionais,
+   `adminOabNumber`, `adminOabState`, `adminPhone`;
+2. resposta `requiresEmailConfirmation = true` → a tela pede para confirmar o e-mail e leva ao
+   login; **não** tenta entrar;
+3. caso contrário, entra com `signIn(email, senha)` — o cadastro não devolve sessão — e vai ao
+   painel;
+4. se a conta foi criada mas a entrada automática falhou, a tela diz "Conta criada" e leva ao
+   login. **Não** é erro de cadastro: repetir o cadastro daria "já existe uma conta".
+
+OAB (número e UF) só valem juntas e são validadas **antes** do `SignUp`, pelo mesmo motivo do
+documento: falhar depois deixaria um usuário órfão no Supabase.
+
 ### 2. Login
 
 `POST /api/v1/auth/login` — `AllowAnonymous`.

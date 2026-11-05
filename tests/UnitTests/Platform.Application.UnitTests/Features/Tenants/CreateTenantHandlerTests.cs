@@ -134,6 +134,47 @@ public class CreateTenantHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithOabAndPhone_StoresThemOnTheOwner()
+    {
+        ArrangeSignUp();
+        var command = ValidCommand() with
+        {
+            AdminOabNumber = "123456",
+            AdminOabState = "CE",
+            AdminPhone = "(85) 99999-1234",
+        };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _userRepository.Received(1).Add(Arg.Is<User>(u =>
+            u.OabNumber != null && u.OabNumber.Number == "123456" && u.OabNumber.StateCode == "CE"
+            && u.Phone == "85999991234"));
+    }
+
+    [Fact]
+    public async Task Handle_WithOabNumberButNoState_FailsWithoutCallingSupabase()
+    {
+        var command = ValidCommand() with { AdminOabNumber = "123456", AdminOabState = null };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.Error.Code.Should().Be(nameof(ErrorCode.USER_OAB_INVALID));
+        await _supabaseAuthService.DidNotReceiveWithAnyArgs().SignUpAsync(default!, default!, cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutOab_LeavesItEmpty()
+    {
+        ArrangeSignUp();
+
+        var result = await CreateHandler().Handle(ValidCommand(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _userRepository.Received(1).Add(Arg.Is<User>(u => u.OabNumber == null && u.Phone == null));
+    }
+
+    [Fact]
     public async Task Handle_WhenSupabaseSignUpFails_ReturnsFailureWithoutTouchingRepositories()
     {
         var error = Error.Conflict("auth.email_already_registered", "E-mail já cadastrado.");

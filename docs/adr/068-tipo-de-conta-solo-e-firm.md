@@ -86,7 +86,15 @@ que um backend antigo recusaria.
 - **A agenda aceita qualquer usuário autenticado** (`RequireAuthorization()` sem policy), então
   estagiário e financeiro leem eventos, inclusive os vinculados a processos. Decidir se isso é
   desejado; o mais coerente com o resto seria `LawyerOrAbove`.
-- **Divergência anterior, não tratada aqui:** o assistente do frontend faz `signUp` no Supabase e
-  depois chama `POST /tenants` com `ownerName`/`ownerEmail`, enquanto o comando do backend espera
-  `adminName`/`adminEmail`/`adminPassword` e faz o próprio `SignUp`. Os dois fluxos precisam ser
-  reconciliados antes de o cadastro funcionar de ponta a ponta fora dos mocks.
+- **Cadastro reconciliado.** Antes, o assistente fazia `signUp` no Supabase e depois chamava
+  `POST /tenants` com `ownerName`/`ownerEmail`, enquanto o comando espera
+  `adminName`/`adminEmail`/`adminPassword` e faz o próprio `SignUp`: os dois fluxos não
+  funcionavam juntos. Agora é um único POST do backend seguido de `signIn` (ver
+  `docs/compliance/auth-flow.md`, fluxo 1). `AuthService.signUp` foi removido para o erro não
+  voltar. O comando passou a aceitar OAB (número e UF) e telefone do titular, que o formulário
+  já coletava e que se perdiam.
+- **Ainda sem destino no backend (o formulário coleta e o POST não envia):**
+  - *tamanho da equipe* e *áreas de atuação*, da etapa "Preferências";
+  - o aceite dos termos e a ciência sobre revisão humana da IA. São consentimentos (LGPD e
+    Provimento CFOAB 271/2025): hoje só valem como bloqueio do botão, **sem registro** de quem
+    aceitou, quando e qual versão. Isso precisa de uma tabela de consentimentos antes do piloto.

@@ -8,7 +8,10 @@ import { COOKIE_OPTIONS } from './cookieOptions'
  * Usado pelo proxy (src/proxy.ts). `getClaims()` valida a assinatura do JWT —
  * nunca confiar em `getSession()` no servidor.
  */
-export async function updateSupabaseSession(request: NextRequest, requestHeaders: Headers = request.headers) {
+export async function updateSupabaseSession(
+  request: NextRequest,
+  requestHeaders: Headers = request.headers
+) {
   let response = NextResponse.next({ request: { headers: requestHeaders } })
 
   if (!env.supabaseUrl || !env.supabaseAnonKey) {

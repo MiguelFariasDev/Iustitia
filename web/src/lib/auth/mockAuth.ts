@@ -1,4 +1,4 @@
-import type { AuthEvent, AuthService, AuthSession, AuthUser } from './types'
+import type { AccountType, AuthEvent, AuthService, AuthSession, AuthUser } from './types'
 import { AuthError } from './types'
 
 /**
@@ -17,6 +17,27 @@ export const mockUser: AuthUser = {
   role: 'Owner',
   tenantId: '00000000-0000-4000-8000-0000000000aa',
   accountType: 'Firm',
+}
+
+/**
+ * Contas "cadastradas" no mock durante esta sessão do navegador, para o fluxo de cadastro poder
+ * entrar em seguida com a senha que a pessoa acabou de escolher — como o backend real exige
+ * (o cadastro não devolve sessão). Só em memória: recarregar a página esquece as contas.
+ */
+interface MockAccount {
+  password: string
+  name: string
+  accountType: AccountType
+}
+const registeredAccounts = new Map<string, MockAccount>()
+
+export function registerMockAccount(input: MockAccount & { email: string }) {
+  const { email, ...account } = input
+  registeredAccounts.set(email.trim().toLowerCase(), account)
+}
+
+export function resetMockAccounts() {
+  registeredAccounts.clear()
 }
 
 type Listener = (event: AuthEvent, session: AuthSession | null) => void
@@ -59,17 +80,15 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export const mockAuthService: AuthService = {
   async signIn({ email, password }) {
     await delay(300)
-    if (password !== MOCK_PASSWORD) {
+    const registered = registeredAccounts.get(email.trim().toLowerCase())
+    if (registered ? password !== registered.password : password !== MOCK_PASSWORD) {
       throw new AuthError('E-mail ou senha inválidos.', 'INVALID_CREDENTIALS')
     }
-    const session = createSession({ ...mockUser, email })
-    writeCookie(session)
-    emit('SIGNED_IN', session)
-    return session
-  },
-  async signUp({ email, name }) {
-    await delay(300)
-    const session = createSession({ ...mockUser, email, name })
+    const session = createSession({
+      ...mockUser,
+      email,
+      ...(registered ? { name: registered.name, accountType: registered.accountType } : {}),
+    })
     writeCookie(session)
     emit('SIGNED_IN', session)
     return session

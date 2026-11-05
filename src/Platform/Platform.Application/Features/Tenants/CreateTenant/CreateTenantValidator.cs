@@ -19,6 +19,9 @@ public sealed class CreateTenantValidator : AbstractValidator<CreateTenantComman
         RuleFor(x => x.AdminName).NotEmpty().MaximumLength(200);
         RuleFor(x => x.AdminEmail).NotEmpty().EmailAddress();
         RuleFor(x => x.AdminPassword).NotEmpty().MinimumLength(8);
+        RuleFor(x => x.AdminPhone).MaximumLength(20);
+        RuleFor(x => x.AdminOabNumber).MaximumLength(20);
+        RuleFor(x => x.AdminOabState).MaximumLength(2);
     }
 
     private static bool IsSolo(string accountType) =>

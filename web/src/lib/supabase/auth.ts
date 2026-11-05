@@ -72,19 +72,6 @@ export const supabaseAuthService: AuthService = {
     return toAuthSession(data.session)
   },
 
-  async signUp({ email, password, name }) {
-    const { data, error } = await getSupabaseBrowserClient().auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: name },
-        emailRedirectTo: `${window.location.origin}/painel`,
-      },
-    })
-    if (error) throw toAuthError(error)
-    return data.session ? toAuthSession(data.session) : null
-  },
-
   async signOut() {
     const { error } = await getSupabaseBrowserClient().auth.signOut()
     if (error) throw toAuthError(error)

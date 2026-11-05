@@ -56,13 +56,8 @@ export interface Credentials {
   password: string
 }
 
-export interface SignUpInput extends Credentials {
-  name: string
-}
-
 export interface AuthService {
   signIn(credentials: Credentials): Promise<AuthSession>
-  signUp(input: SignUpInput): Promise<AuthSession | null>
   signOut(): Promise<void>
   getSession(): Promise<AuthSession | null>
   refreshSession(): Promise<AuthSession | null>

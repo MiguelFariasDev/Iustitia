@@ -5,7 +5,9 @@ const base = { nonce: 'abc123', isDev: false, apiUrl: 'https://api.iustitia.com.
 
 describe('buildCsp', () => {
   it('exige nonce nos scripts e NUNCA permite unsafe-inline/unsafe-eval em produção', () => {
-    const script = buildCsp(base).split('; ').find((d) => d.startsWith('script-src'))!
+    const script = buildCsp(base)
+      .split('; ')
+      .find((d) => d.startsWith('script-src'))!
     expect(script).toContain("'nonce-abc123'")
     expect(script).toContain("'strict-dynamic'")
     expect(script).not.toContain('unsafe-inline')
