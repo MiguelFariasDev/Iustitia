@@ -10,11 +10,11 @@ interface LogoProps {
   className?: string
 }
 
-/** Monograma "I" + balança. A marca vem de configuração (Marca Desacoplada — ADR-023). */
+/** Quadrado verde com brilho (v4). A marca vem de configuração (Marca Desacoplada — ADR-023). */
 export function Logo({
   showWordmark = true,
   variant = 'default',
-  size = 32,
+  size = 22,
   className,
 }: LogoProps) {
   const name = env.appName
@@ -24,39 +24,31 @@ export function Logo({
       <svg
         width={size}
         height={size}
-        viewBox="0 0 32 32"
+        viewBox="0 0 22 22"
         role={showWordmark ? undefined : 'img'}
         aria-hidden={showWordmark ? true : undefined}
         aria-label={showWordmark ? undefined : name}
         className="shrink-0"
       >
-        <rect
-          x="0.5"
-          y="0.5"
-          width="31"
-          height="31"
-          rx="8"
-          fill="#0A2540"
-          stroke="#C9A961"
-          strokeOpacity={variant === 'inverted' ? 0.6 : 0.25}
-        />
-        {/* Balança */}
-        <path d="M6.5 11h19" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" />
-        <path
-          d="M7 11.2 4.6 17.2M7 11.2l2.4 6M25 11.2l-2.4 6M25 11.2l2.4 6"
-          stroke="#FFFFFF"
-          strokeOpacity="0.75"
-          strokeWidth="0.9"
-        />
-        <path d="M4 17.2h6a3 3 0 0 1-6 0ZM22 17.2h6a3 3 0 0 1-6 0Z" fill="#FFFFFF" />
-        {/* Monograma "I" */}
-        <path d="M12 7.5h8v1.8h-3v13.4h3v1.8h-8v-1.8h3V9.3h-3Z" fill="#C9A961" />
+        {/* Quadrado verde com o ícone de brilho (a marca é o mesmo nos dois temas) */}
+        <rect width="22" height="22" rx="7" className="fill-logo" />
+        <g
+          transform="translate(4.2 4.2) scale(0.57)"
+          fill="none"
+          strokeWidth="2.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="stroke-logo-foreground"
+        >
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+          <path d="M20 3v4M22 5h-4M4 17v2M5 18H3" />
+        </g>
       </svg>
       {showWordmark ? (
         <span
           className={cn(
-            'font-serif text-lg leading-none font-semibold tracking-wide',
-            variant === 'inverted' ? 'text-white' : 'text-foreground'
+            'text-lg leading-none font-semibold',
+            variant === 'inverted' ? 'text-sidebar-foreground' : 'text-foreground'
           )}
         >
           {name}

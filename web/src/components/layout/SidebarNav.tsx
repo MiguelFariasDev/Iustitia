@@ -57,7 +57,7 @@ function ItemContent({
       <span className={cn('truncate', collapsed && 'sr-only')}>{item.label}</span>
       {item.ai ? (
         <Sparkles
-          className={cn('size-3.5 shrink-0 text-gold', collapsed && 'hidden')}
+          className={cn('size-3.5 shrink-0 text-sidebar-ia', collapsed && 'hidden')}
           aria-label="Com inteligência artificial"
         />
       ) : null}

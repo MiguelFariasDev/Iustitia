@@ -2,17 +2,23 @@
 @import 'tw-animate-css';
 
 /*
- * Design System — ver docs/frontend/design-system.md.
- * Tokens semânticos em CSS variables (claro em :root, escuro em .dark), expostos ao
- * Tailwind 4 via @theme inline. Nunca use cores hex diretamente nos componentes.
+ * Design System — alinhado ao protótipo Iustitia v4. Ver docs/frontend/design-system.md e
+ * docs/frontend/v4-alinhamento.md.
+ *
+ * Tokens semânticos em CSS variables (claro em :root, escuro em .dark), expostos ao Tailwind 4
+ * via @theme inline. Os nomes shadcn (background, primary, accent…) continuam valendo para os
+ * componentes existentes; os nomes do protótipo que não têm equivalente (ia, brand-soft,
+ * line-strong…) entram ao lado. Nunca use cores hex diretamente nos componentes.
+ *
+ * ATENÇÃO ao nome `accent`: no protótipo `--accent` é o VIOLETA da IA; no shadcn `accent` é o
+ * fundo de hover. Aqui `accent` segue sendo o hover, e o violeta é `ia` (bg-ia, text-ia-text).
  */
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   /* Tipografia (fontes carregadas via next/font no root layout) */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 
   /* Superfícies */
@@ -27,28 +33,36 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
+  --color-line-strong: var(--line-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Marca */
+  /* Marca (verde) e IA (violeta) */
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-ia: var(--ia);
+  --color-ia-text: var(--ia-text);
+  --color-ia-soft: var(--ia-soft);
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
 
   /* Feedback (fundo sólido + texto legível sobre fundo suave) */
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
 
-  /* Sidebar */
+  /* Sidebar (escura nos dois temas) */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-muted: var(--sidebar-muted);
@@ -56,106 +70,195 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-ia: var(--sidebar-ia);
 
-  /* Raio */
-  --radius-sm: calc(var(--radius) - 4px);
+  /* Peças fixas nos dois temas: marca, painel da Athena e toast */
+  --color-logo: var(--logo);
+  --color-logo-foreground: var(--logo-foreground);
+  --color-athena: var(--athena);
+  --color-athena-foreground: var(--athena-foreground);
+  --color-athena-muted: var(--athena-muted);
+  --color-athena-field: var(--athena-field);
+  --color-toast: var(--toast);
+  --color-toast-foreground: var(--toast-foreground);
+
+  /* Raio: 10px (botões, cards, inputs), 8px (segmented/badges), 6px (urgência), 14-16px (blocos) */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
 
-  /* Sombras sutis */
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
-  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06);
-  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.05);
-  --shadow-lg: 0 12px 32px -8px rgb(15 23 42 / 0.14), 0 4px 8px -4px rgb(15 23 42 / 0.06);
+  /* Sombras: a do protótipo (--sh) é a de card; as demais derivam dela */
+  --shadow-xs: 0 1px 2px 0 rgb(19 32 26 / 0.05);
+  --shadow-sm: var(--sh);
+  --shadow-md: var(--sh);
+  --shadow-lg: 0 12px 32px -8px rgb(19 32 26 / 0.18), 0 4px 8px -4px rgb(19 32 26 / 0.08);
 
-  /* Movimento */
+  /* Movimento: 4 durações de entrada + a de hover (ver docs/frontend/v4-alinhamento.md) */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --default-transition-duration: 150ms;
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-iu-in: iu-in var(--dur-screen) ease both;
+  --animate-iu-in-palette: iu-in var(--dur-palette) ease both;
+  --animate-iu-in-layer: iu-in var(--dur-layer) ease both;
+  --animate-iu-in-tab: iu-in var(--dur-tab) ease both;
+  --animate-iu-drawer: iu-drawer var(--dur-layer) ease both;
+  --animate-iu-pulse: iu-pulse 1.4s ease-in-out infinite;
 }
 
 :root {
   --radius: 0.625rem;
 
-  --background: #ffffff;
-  --foreground: #0f172a; /* slate-900 */
+  --dur-palette: 0.2s;
+  --dur-layer: 0.25s;
+  --dur-tab: 0.3s;
+  --dur-screen: 0.35s;
+
+  --background: #f5f4ef;
+  --foreground: #13201a;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #13201a;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --muted: #f1f5f9; /* slate-100 */
-  --muted-foreground: #475569; /* slate-600 — 7.6:1 sobre branco */
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --border: #e2e8f0; /* slate-200 */
-  --input: #cbd5e1; /* slate-300 */
-  --ring: #2563eb;
+  --popover-foreground: #13201a;
+  --muted: #ecebe4; /* "surface" do protótipo: colunas do kanban, fundos de bloco */
+  --muted-foreground: #56645d;
+  --accent: rgb(19 32 26 / 0.045); /* "hover" do protótipo */
+  --accent-foreground: #13201a;
+  --border: rgb(19 32 26 / 0.09);
+  --line-strong: rgb(19 32 26 / 0.24);
+  --input: rgb(19 32 26 / 0.24);
+  --ring: #7c3aed;
 
-  --primary: #0a2540; /* azul-marinho profundo */
-  --primary-foreground: #ffffff;
-  --secondary: #2563eb; /* azul elétrico — 5.2:1 com branco */
-  --secondary-foreground: #ffffff;
-  --gold: #c9a961; /* dourado — usar com moderação, nunca como texto sobre branco */
-  --gold-foreground: #0a2540;
+  --primary: #047857;
+  --primary-foreground: #f5f4ef;
+  --secondary: #047857;
+  --secondary-foreground: #f5f4ef;
+  --brand: #047857;
+  --brand-soft: rgb(4 120 87 / 0.1);
+  --ia: #7c3aed;
+  --ia-text: #6d28d9;
+  --ia-soft: rgb(124 58 237 / 0.09);
+  /* `gold` era o dourado da marca antiga; hoje carrega a identidade da IA (selo ✨) */
+  --gold: #7c3aed;
+  --gold-foreground: #ffffff;
 
-  --success: #10b981;
-  --success-foreground: #047857; /* emerald-700 */
-  --warning: #f59e0b;
-  --warning-foreground: #b45309; /* amber-700 */
-  --destructive: #ef4444;
-  --destructive-foreground: #b91c1c; /* red-700 */
-  --info: #3b82f6;
-  --info-foreground: #1d4ed8; /* blue-700 */
+  --success: #047857;
+  --success-foreground: #047857;
+  --success-soft: rgb(4 120 87 / 0.09);
+  --warning: #b4530a;
+  --warning-foreground: #b4530a;
+  --destructive: #c2362b;
+  --destructive-foreground: #c2362b;
+  --destructive-soft: rgb(194 54 43 / 0.08);
+  --info: #7c3aed;
+  --info-foreground: #6d28d9;
 
-  --sidebar: #0a2540;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-muted: #94a3b8;
-  --sidebar-accent: #15365a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #173a5e;
-  --sidebar-ring: #c9a961;
+  --sidebar: #0c2b24;
+  --sidebar-foreground: #d5e6df;
+  --sidebar-muted: #86a89a;
+  --sidebar-accent: rgb(110 231 183 / 0.14);
+  --sidebar-accent-foreground: #a7f3d0;
+  --sidebar-border: rgb(255 255 255 / 0.1);
+  --sidebar-ring: #a7f3d0;
+  --sidebar-ia: #a78bfa;
+
+  --logo: #34d399;
+  --logo-foreground: #0c2b24;
+  --athena: #0b1020;
+  --athena-foreground: #e6e9f2;
+  --athena-muted: #94a3b8;
+  --athena-field: #131a2e;
+  --toast: #0f172a;
+  --toast-foreground: #f8fafc;
+
+  --sh: 0 1px 2px rgb(19 32 26 / 0.05), 0 8px 24px rgb(19 32 26 / 0.05);
 }
 
 .dark {
-  --background: #020817;
-  --foreground: #f1f5f9;
-  --card: #0b1324;
-  --card-foreground: #f1f5f9;
-  --popover: #0b1324;
-  --popover-foreground: #f1f5f9;
-  --muted: #1e293b; /* slate-800 */
-  --muted-foreground: #94a3b8; /* slate-400 — 6.9:1 sobre o fundo */
-  --accent: #1e293b;
-  --accent-foreground: #f1f5f9;
-  --border: #1e293b;
-  --input: #334155;
-  --ring: #60a5fa;
+  --background: #0d1512;
+  --foreground: #e6efe9;
+  --card: #142019;
+  --card-foreground: #e6efe9;
+  --popover: #142019;
+  --popover-foreground: #e6efe9;
+  --muted: #101b16;
+  --muted-foreground: #93a69c;
+  --accent: rgb(255 255 255 / 0.05);
+  --accent-foreground: #e6efe9;
+  --border: rgb(255 255 255 / 0.08);
+  --line-strong: rgb(255 255 255 / 0.22);
+  --input: rgb(255 255 255 / 0.22);
+  --ring: #a78bfa;
 
-  --primary: #dbe7f5; /* no escuro o "marinho" inverte para um tom claro */
-  --primary-foreground: #0a2540;
-  --secondary: #3b82f6;
-  --secondary-foreground: #ffffff;
-  --gold: #d4b872;
-  --gold-foreground: #0a2540;
+  --primary: #34d399;
+  --primary-foreground: #0d1512;
+  --secondary: #34d399;
+  --secondary-foreground: #0d1512;
+  --brand: #34d399;
+  --brand-soft: rgb(52 211 153 / 0.12);
+  --ia: #a78bfa;
+  --ia-text: #c4b5fd;
+  --ia-soft: rgb(167 139 250 / 0.14);
+  --gold: #a78bfa;
+  --gold-foreground: #0d1512;
 
   --success: #34d399;
-  --success-foreground: #6ee7b7;
-  --warning: #fbbf24;
-  --warning-foreground: #fcd34d;
+  --success-foreground: #34d399;
+  --success-soft: rgb(52 211 153 / 0.12);
+  --warning: #fb923c;
+  --warning-foreground: #fb923c;
   --destructive: #f87171;
-  --destructive-foreground: #fca5a5;
-  --info: #60a5fa;
-  --info-foreground: #93c5fd;
+  --destructive-foreground: #f87171;
+  --destructive-soft: rgb(248 113 113 / 0.12);
+  --info: #a78bfa;
+  --info-foreground: #c4b5fd;
 
-  --sidebar: #050d1a;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-muted: #94a3b8;
-  --sidebar-accent: #11213a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #13233d;
-  --sidebar-ring: #d4b872;
+  --sidebar: #08110d;
+  --sidebar-foreground: #cfe0d8;
+  --sidebar-muted: #6f8a7e;
+  --sidebar-accent: rgb(52 211 153 / 0.14);
+  --sidebar-accent-foreground: #6ee7b7;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #6ee7b7;
+  --sidebar-ia: #a78bfa;
+
+  --sh: 0 1px 0 rgb(255 255 255 / 0.03), 0 10px 28px rgb(0 0 0 / 0.35);
+}
+
+@keyframes iu-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Gavetas nascem na borda direita: o movimento acompanha de onde elas vêm. */
+@keyframes iu-drawer {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes iu-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 @layer base {
@@ -175,16 +278,18 @@
 
   body {
     @apply bg-background font-sans text-foreground antialiased;
-    font-feature-settings:
-      'cv11' 1,
-      'ss01' 1;
+    font-size: 15px;
+    letter-spacing: -0.005em;
+    /* Números sempre alinhados em coluna (valores, prazos, processos). */
+    font-variant-numeric: lining-nums tabular-nums;
   }
 
   h1,
   h2,
   h3,
   h4 {
-    @apply tracking-tight text-balance;
+    @apply text-balance;
+    letter-spacing: -0.03em;
   }
 
   :focus-visible {
@@ -227,9 +332,37 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+
+    /* Esqueleto sem pulso (opacidade fixa) e hovers sem deslocamento. */
+    .animate-iu-pulse {
+      animation: none !important;
+      opacity: 0.6;
+    }
+
+    .iu-lift:hover,
+    .iu-grow:hover {
+      transform: none !important;
+    }
   }
 }
 
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Hover de card de KPI (sobe 2px) e do botão flutuante da Athena (cresce). Só transform. */
+@utility iu-lift {
+  transition: transform var(--default-transition-duration) var(--default-transition-timing-function);
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@utility iu-grow {
+  transition: transform var(--default-transition-duration) var(--default-transition-timing-function);
+
+  &:hover {
+    transform: scale(1.06);
+  }
 }
