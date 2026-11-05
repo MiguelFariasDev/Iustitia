@@ -26,20 +26,35 @@ public sealed class PostgresFixture : IAsyncLifetime
 {
     private const string AppUserPassword = "integration_tests_app_user";
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .WithDatabase("advocacia_db")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
+    // Criado sob demanda: PostgreSqlBuilder.Build() exige Docker já no Build(), o que impediria
+    // usar o banco externo (ADVOCACIA_TEST_PG) em ambientes sem Docker.
+    private PostgreSqlContainer? _container;
 
-    public string SuperuserConnectionString => _container.GetConnectionString();
+    private string? _externalDatabaseName;
+
+    public string SuperuserConnectionString { get; private set; } = null!;
 
     public string AppUserConnectionString { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
-        await _container.StartAsync();
+        var external = await ExternalPostgres.TryCreateDatabaseAsync();
+        if (external is { } externalDatabase)
+        {
+            SuperuserConnectionString = externalDatabase.ConnectionString;
+            _externalDatabaseName = externalDatabase.DatabaseName;
+        }
+        else
+        {
+            _container = new PostgreSqlBuilder()
+                .WithImage("postgres:16-alpine")
+                .WithDatabase("advocacia_db")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+            await _container.StartAsync();
+            SuperuserConnectionString = _container.GetConnectionString();
+        }
 
         var optionsBuilder = new DbContextOptionsBuilder<PlatformDbContext>();
         optionsBuilder.UseNpgsql(SuperuserConnectionString);
@@ -83,7 +98,19 @@ public sealed class PostgresFixture : IAsyncLifetime
         AppUserConnectionString = connectionStringBuilder.ConnectionString;
     }
 
-    public async Task DisposeAsync() => await _container.DisposeAsync();
+    public async Task DisposeAsync()
+    {
+        if (_externalDatabaseName is not null)
+        {
+            await ExternalPostgres.DropDatabaseAsync(_externalDatabaseName);
+            return;
+        }
+
+        if (_container is not null)
+        {
+            await _container.DisposeAsync();
+        }
+    }
 
     private async Task ApplySupabaseSqlMigrationsAsync()
     {
@@ -112,7 +139,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         // host de teste conecta como app_user. Em produção esse schema é provisionado por quem
         // tem o privilégio; aqui o container é descartável, então basta conceder CREATE no banco.
         await using var hangfireGrant = connection.CreateCommand();
-        hangfireGrant.CommandText = "GRANT CREATE ON DATABASE advocacia_db TO app_user";
+        hangfireGrant.CommandText = "DO $$ BEGIN EXECUTE format('GRANT CREATE ON DATABASE %I TO app_user', current_database()); END $$";
         await hangfireGrant.ExecuteNonQueryAsync();
     }
 

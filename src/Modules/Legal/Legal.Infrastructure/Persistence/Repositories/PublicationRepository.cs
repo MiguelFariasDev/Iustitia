@@ -184,13 +184,21 @@ public sealed class PublicationRepository(LegalDbContext dbContext)
             // Clientes resolvidos ANTES, em consulta própria: comparar o Id (value object
             // convertido) dentro de uma subconsulta não traduz para SQL. 500 é teto de
             // segurança — um termo que casa mais que isso é amplo demais para ser útil.
+            //
+            // Documento: só igualdade com CPF/CNPJ completo (11/14 dígitos), via índice cego —
+            // o documento é cifrado em repouso (ADR-068). Entre 3 e 10 dígitos o termo é um
+            // fragmento de número CNJ e não procura cliente nenhum.
             var clientes = dbContext.Set<Cliente>().Where(cliente => cliente.TenantId == tenantId);
-            var clienteIds = await (digitos.Length >= 3
-                    ? clientes.Where(cliente => cliente.DocumentoBusca.StartsWith(digitos))
-                    : clientes.Where(cliente => cliente.NomeBusca.Contains(termo)))
-                .Select(cliente => cliente.Id)
-                .Take(500)
-                .ToListAsync(cancellationToken);
+            var procuraClientePorDocumento = digitos.Length is 11 or 14;
+            var procuraClientePorNome = digitos.Length < 3;
+            var clienteIds = procuraClientePorDocumento || procuraClientePorNome
+                ? await (procuraClientePorDocumento
+                        ? clientes.Where(cliente => cliente.DocumentoBusca == digitos)
+                        : clientes.Where(cliente => cliente.NomeBusca.Contains(termo)))
+                    .Select(cliente => cliente.Id)
+                    .Take(500)
+                    .ToListAsync(cancellationToken)
+                : [];
             var clienteGuids = clienteIds.Select(id => id.Value).ToList();
 
             query = digitos.Length >= 3

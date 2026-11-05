@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Advocacia.BuildingBlocks.Domain.Errors;
@@ -5,17 +7,38 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Advocacia.Platform.Api.Extensions;
 
+/// <summary>Categoria de limite aplicada a uma requisição (ver <see cref="RateLimitingConfiguration.Classify"/>).</summary>
+public enum RateLimitCategory
+{
+    Login,
+    ForgotPassword,
+    Auth,
+    Webhook,
+    Write,
+    Read,
+}
+
 /// <summary>
-/// Rate limiting nativo do ASP.NET Core (ver docs/api/conventions.md), aplicado via um
-/// único <see cref="RateLimiterOptions.GlobalLimiter"/> — cobre toda requisição sem precisar
-/// de <c>RequireRateLimiting</c> em cada endpoint individualmente. Três categorias, cada
-/// uma com sua própria partição (chave de contagem):
-///   - Auth (path contém "/auth/"): 10 req/min por IP — login/refresh são o alvo típico de
-///     força bruta, então a partição é por IP, não por usuário (que ainda não existe nessas
-///     rotas).
-///   - Escrita (POST/PUT/DELETE/PATCH): 60 req/min por usuário (claim "sub" do JWT; IP para
-///     requisições anônimas).
-///   - Leitura (GET/demais): 300 req/min por usuário (mesma regra de partição).
+/// Rate limiting nativo do ASP.NET Core (ver ADR-039/067 e docs/api/conventions.md), num único
+/// <see cref="RateLimiterOptions.GlobalLimiter"/>: cobre toda rota sem depender de alguém
+/// lembrar de <c>RequireRateLimiting</c> num endpoint novo (fail closed por construção).
+///
+/// Limites (Etapa 3.9):
+///   - <c>/auth/login</c>: 5 tentativas / 5 min por IP — força bruta de senha.
+///   - <c>/auth/forgot-password</c>: 3 / 1 h por IP — abuso de envio de e-mail e enumeração.
+///   - demais <c>/auth/*</c> (refresh, logout): 10 / min por IP.
+///   - <c>/webhooks/*</c>: 1000 / min por IP — a Meta entrega em rajadas a partir de poucos IPs.
+///   - escrita (POST/PUT/PATCH/DELETE): 60 / min por usuário.
+///   - leitura (GET e demais): 300 / min por usuário.
+///
+/// "Por usuário" só funciona porque <c>UseRateLimiter</c> roda DEPOIS de
+/// <c>UseAuthentication</c> (ver Program.cs): antes disso <c>HttpContext.User</c> está sempre
+/// vazio e toda requisição cairia na partição por IP — um escritório inteiro atrás do mesmo
+/// NAT dividiria 60 escritas por minuto. Requisição anônima particiona por IP.
+///
+/// Os contadores são em memória, POR RÉPLICA: com N réplicas o limite efetivo é até N vezes o
+/// configurado. Aceito para o piloto (1–2 réplicas); limite distribuído (Redis) fica como
+/// evolução, ver ADR-067.
 /// </summary>
 public static class RateLimitingConfiguration
 {
@@ -28,10 +51,49 @@ public static class RateLimitingConfiguration
     public const string ExternalQueryPolicy = "external-query";
 
     private const int ExternalQueryPermitLimit = 10;
+    private const int LoginPermitLimit = 5;
+    private const int ForgotPasswordPermitLimit = 3;
     private const int AuthPermitLimit = 10;
+    private const int WebhookPermitLimit = 1000;
     private const int WritePermitLimit = 60;
     private const int ReadPermitLimit = 300;
-    private static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
+
+    private static readonly TimeSpan OneMinute = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan LoginWindow = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ForgotPasswordWindow = TimeSpan.FromHours(1);
+
+    public static RateLimitCategory Classify(HttpRequest request)
+    {
+        // Normaliza: roteamento do ASP.NET ignora caixa e barra final, então o limitador também.
+        var path = (request.Path.Value ?? string.Empty).TrimEnd('/');
+
+        if (path.EndsWith("/auth/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitCategory.Login;
+        }
+
+        if (path.EndsWith("/auth/forgot-password", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitCategory.ForgotPassword;
+        }
+
+        if (path.Contains("/auth/", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitCategory.Auth;
+        }
+
+        if (path.Contains("/webhooks/", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitCategory.Webhook;
+        }
+
+        return HttpMethods.IsPost(request.Method)
+            || HttpMethods.IsPut(request.Method)
+            || HttpMethods.IsDelete(request.Method)
+            || HttpMethods.IsPatch(request.Method)
+                ? RateLimitCategory.Write
+                : RateLimitCategory.Read;
+    }
 
     public static IServiceCollection AddAdvocaciaRateLimiting(this IServiceCollection services)
     {
@@ -39,47 +101,53 @@ public static class RateLimitingConfiguration
         {
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
             {
-                var path = httpContext.Request.Path.Value ?? string.Empty;
+                var category = Classify(httpContext.Request);
+                var ip = ClientIpKey(httpContext.Connection.RemoteIpAddress);
 
-                if (path.Contains("/auth/", StringComparison.OrdinalIgnoreCase))
+                return category switch
                 {
-                    var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    return RateLimitPartition.GetFixedWindowLimiter($"auth:{ip}", _ => NewWindowOptions(AuthPermitLimit));
-                }
-
-                var partitionKey = httpContext.User.FindFirst("sub")?.Value
-                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
-                    ?? "anonymous";
-
-                var isWrite = HttpMethods.IsPost(httpContext.Request.Method)
-                    || HttpMethods.IsPut(httpContext.Request.Method)
-                    || HttpMethods.IsDelete(httpContext.Request.Method)
-                    || HttpMethods.IsPatch(httpContext.Request.Method);
-
-                return isWrite
-                    ? RateLimitPartition.GetFixedWindowLimiter($"write:{partitionKey}", _ => NewWindowOptions(WritePermitLimit))
-                    : RateLimitPartition.GetFixedWindowLimiter($"read:{partitionKey}", _ => NewWindowOptions(ReadPermitLimit));
+                    // Janela deslizante nas rotas de credencial: a janela fixa permite 2x o
+                    // limite colado na virada (5 no fim de uma janela + 5 no começo da outra).
+                    RateLimitCategory.Login => RateLimitPartition.GetSlidingWindowLimiter(
+                        $"login:{ip}", _ => NewSlidingOptions(LoginPermitLimit, LoginWindow, segments: 5)),
+                    RateLimitCategory.ForgotPassword => RateLimitPartition.GetSlidingWindowLimiter(
+                        $"forgot:{ip}", _ => NewSlidingOptions(ForgotPasswordPermitLimit, ForgotPasswordWindow, segments: 6)),
+                    RateLimitCategory.Auth => RateLimitPartition.GetFixedWindowLimiter(
+                        $"auth:{ip}", _ => NewWindowOptions(AuthPermitLimit)),
+                    RateLimitCategory.Webhook => RateLimitPartition.GetFixedWindowLimiter(
+                        $"webhook:{ip}", _ => NewWindowOptions(WebhookPermitLimit)),
+                    RateLimitCategory.Write => RateLimitPartition.GetFixedWindowLimiter(
+                        $"write:{SubjectKey(httpContext, ip)}", _ => NewWindowOptions(WritePermitLimit)),
+                    _ => RateLimitPartition.GetFixedWindowLimiter(
+                        $"read:{SubjectKey(httpContext, ip)}", _ => NewWindowOptions(ReadPermitLimit)),
+                };
             });
 
             // Partição por usuário: o limite é do advogado que está cadastrando, não do
             // escritório inteiro — dois advogados cadastrando ao mesmo tempo é uso normal.
             options.AddPolicy(ExternalQueryPolicy, httpContext =>
-            {
-                var partitionKey = httpContext.User.FindFirst("sub")?.Value
-                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
-                    ?? "anonymous";
-
-                return RateLimitPartition.GetFixedWindowLimiter(
-                    $"external:{partitionKey}", _ => NewWindowOptions(ExternalQueryPermitLimit));
-            });
+                RateLimitPartition.GetFixedWindowLimiter(
+                    $"external:{SubjectKey(httpContext, ClientIpKey(httpContext.Connection.RemoteIpAddress))}",
+                    _ => NewWindowOptions(ExternalQueryPermitLimit)));
 
             options.OnRejected = async (context, cancellationToken) =>
             {
+                var httpContext = context.HttpContext;
                 var definition = ErrorCatalog.Get(ErrorCode.COMMON_RATE_LIMITED);
 
-                context.HttpContext.Response.StatusCode = definition.HttpStatus;
-                context.HttpContext.Response.Headers.RetryAfter = ((int)Window.TotalSeconds).ToString();
-                context.HttpContext.Response.ContentType = "application/problem+json";
+                var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue)
+                    ? (int)Math.Ceiling(retryAfterValue.TotalSeconds)
+                    : (int)OneMinute.TotalSeconds;
+
+                httpContext.Response.StatusCode = definition.HttpStatus;
+                httpContext.Response.Headers.RetryAfter = retryAfter.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                httpContext.Response.ContentType = "application/problem+json";
+
+                // Sem o IP no log: é dado pessoal (LGPD) e o RequestLoggingMiddleware já
+                // registra a requisição com o IP mascarado. Aqui só a categoria, para alarme.
+                httpContext.RequestServices.GetService<ILoggerFactory>()
+                    ?.CreateLogger(typeof(RateLimitingConfiguration).FullName!)
+                    .LogWarning("Rate limit excedido na categoria {RateLimitCategory}", Classify(httpContext.Request));
 
                 var problemDetails = new
                 {
@@ -87,24 +155,66 @@ public static class RateLimitingConfiguration
                     title = definition.Code,
                     status = definition.HttpStatus,
                     detail = definition.Message,
-                    instance = context.HttpContext.Request.Path.Value,
+                    instance = httpContext.Request.Path.Value,
                     errorCode = definition.Code,
                     errorGroup = definition.Group.ToString(),
                     correlationId = BuildingBlocks.Infrastructure.Observability.LogEnrichmentContext.CorrelationId,
                     timestamp = DateTimeOffset.UtcNow,
                 };
 
-                await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(problemDetails), cancellationToken);
+                await httpContext.Response.WriteAsync(JsonSerializer.Serialize(problemDetails), cancellationToken);
             };
         });
 
         return services;
     }
 
+    /// <summary>Usuário autenticado (claim "sub"); IP quando anônimo.</summary>
+    private static string SubjectKey(HttpContext httpContext, string ipKey)
+    {
+        var subject = httpContext.User.FindFirst("sub")?.Value;
+        return string.IsNullOrEmpty(subject) ? $"ip:{ipKey}" : $"user:{subject}";
+    }
+
+    /// <summary>
+    /// Chave de partição por cliente. IPv6 é agrupado no /64: um único assinante recebe um /64
+    /// inteiro (2^64 endereços), e particionar por endereço completo deixaria o atacante trocar
+    /// de IP a cada tentativa e nunca atingir o limite. IPv4 mapeado em IPv6 vira IPv4.
+    /// </summary>
+    public static string ClientIpKey(IPAddress? address)
+    {
+        if (address is null)
+        {
+            return "unknown";
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetworkV6)
+        {
+            return address.ToString();
+        }
+
+        var bytes = address.GetAddressBytes();
+        return $"{new IPAddress(bytes[..8].Concat(new byte[8]).ToArray())}/64";
+    }
+
     private static FixedWindowRateLimiterOptions NewWindowOptions(int permitLimit) => new()
     {
         PermitLimit = permitLimit,
-        Window = Window,
+        Window = OneMinute,
+        QueueLimit = 0,
+        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+    };
+
+    private static SlidingWindowRateLimiterOptions NewSlidingOptions(int permitLimit, TimeSpan window, int segments) => new()
+    {
+        PermitLimit = permitLimit,
+        Window = window,
+        SegmentsPerWindow = segments,
         QueueLimit = 0,
         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
     };

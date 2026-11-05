@@ -1,3 +1,4 @@
+using Advocacia.BuildingBlocks.Infrastructure.Security;
 using Advocacia.Platform.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -32,12 +33,18 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(320)
             .IsRequired();
 
+        // Número da OAB cifrado em repouso (ADR-068). Nunca é critério de busca/unicidade, então
+        // não precisa de índice cego.
         builder.Property(u => u.OabNumber)
             .HasConversion(
-                oab => oab == null ? null : oab.Number + "/" + oab.StateCode,
-                value => value == null ? null : ParseOabNumber(value))
+                oab => oab == null
+                    ? null
+                    : FieldEncryption.Encrypt(oab.Number + "/" + oab.StateCode, EncryptionContexts.UserOabNumber),
+                value => value == null
+                    ? null
+                    : ParseOabNumber(FieldEncryption.Decrypt(value, EncryptionContexts.UserOabNumber)))
             .HasColumnName("oab_number")
-            .HasMaxLength(30);
+            .HasMaxLength(255);
 
         builder.Property(u => u.Specialty).HasMaxLength(100);
 
@@ -47,7 +54,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired();
 
         builder.Property(u => u.AvatarUrl).HasMaxLength(500);
-        builder.Property(u => u.Phone).HasMaxLength(20);
+        builder.Property(u => u.Phone)
+            .HasConversion(new EncryptedStringConverter(EncryptionContexts.UserPhone))
+            .HasMaxLength(255);
 
         builder.Property(u => u.CreatedAt).IsRequired();
         builder.Property(u => u.CreatedBy).HasMaxLength(100);

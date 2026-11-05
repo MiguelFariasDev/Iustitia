@@ -347,13 +347,13 @@ namespace Advocacia.Platform.Infrastructure.Persistence.Migrations
                         .HasColumnName("name");
 
                     b.Property<string>("OabNumber")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("oab_number");
 
                     b.Property<string>("Phone")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("phone");
 
                     b.Property<string>("Role")

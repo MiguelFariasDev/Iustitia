@@ -82,6 +82,7 @@ public static class DependencyInjection
         services.AddScoped<PublicationClassificationJob>();
 
         services.AddScoped<LegalRecurringJobsRegistrar>();
+        services.AddScoped<ClienteEncryptionBackfillJob>();
 
         return services;
     }
