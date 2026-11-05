@@ -19,7 +19,7 @@ test.describe('Login', () => {
 
     // Filtra pelo texto: o route announcer do Next.js também tem role="alert".
     await expect(
-      page.getByRole('alert').filter({ hasText: 'E-mail ou senha inválidos.' })
+      page.getByRole('alert').filter({ hasText: 'E-mail ou senha incorretos.' })
     ).toBeVisible()
     await expect(page).toHaveURL(/\/login$/)
   })

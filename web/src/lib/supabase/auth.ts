@@ -115,6 +115,51 @@ export const supabaseAuthService: AuthService = {
     if (error) throw toAuthError(error)
   },
 
+  async resendConfirmation(email) {
+    const { error } = await getSupabaseBrowserClient().auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/login` },
+    })
+    // Resposta neutra: só falhas de limite de envio chegam ao usuário, nunca "conta inexistente".
+    if (error && (error.code === 'over_email_send_rate_limit' || error.code === 'over_request_rate_limit')) {
+      throw toAuthError(error)
+    }
+  },
+
+  async getMfaChallenge() {
+    const auth = getSupabaseBrowserClient().auth
+    const { data: level } = await auth.mfa.getAuthenticatorAssuranceLevel()
+    if (!level || level.nextLevel !== 'aal2' || level.currentLevel === 'aal2') return null
+    const { data: factors } = await auth.mfa.listFactors()
+    const factor = factors?.totp[0]
+    return factor ? { factorId: factor.id } : null
+  },
+
+  async verifyMfa(factorId, code) {
+    const { error } = await getSupabaseBrowserClient().auth.mfa.challengeAndVerify({ factorId, code })
+    if (error) throw new AuthError('Código inválido ou expirado. Tente o próximo código do aplicativo.', 'MFA_INVALID_CODE')
+  },
+
+  async hasMfaFactor() {
+    const { data } = await getSupabaseBrowserClient().auth.mfa.listFactors()
+    return (data?.totp.length ?? 0) > 0
+  },
+
+  async enrollMfa() {
+    const { data, error } = await getSupabaseBrowserClient().auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: `Aplicativo autenticador ${new Date().toLocaleDateString('pt-BR')}`,
+    })
+    if (error || !data) throw new AuthError('Não foi possível iniciar a ativação do segundo fator.', 'MFA_ENROLL_FAILED')
+    return { factorId: data.id, secret: data.totp.secret, qrCode: data.totp.qr_code }
+  },
+
+  async confirmMfaEnrollment(factorId, code) {
+    const { error } = await getSupabaseBrowserClient().auth.mfa.challengeAndVerify({ factorId, code })
+    if (error) throw new AuthError('Código inválido. Confira o horário do celular e tente de novo.', 'MFA_INVALID_CODE')
+  },
+
   async updatePassword(password) {
     const { error } = await getSupabaseBrowserClient().auth.updateUser({ password })
     if (error) throw toAuthError(error)

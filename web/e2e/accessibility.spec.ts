@@ -142,7 +142,7 @@ test.describe('Acessibilidade — rotas autenticadas', () => {
 test.describe('Acessibilidade — rotas públicas', () => {
   test.use({ storageState: GUEST_STATE })
 
-  for (const path of ['/login', '/esqueci-senha', '/onboarding'] as const) {
+  for (const path of ['/', '/login', '/esqueci-senha', '/cadastro', '/termos'] as const) {
     test(`${path} não tem violações WCAG 2.1 AA`, async ({ page }) => {
       await page.goto(path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()

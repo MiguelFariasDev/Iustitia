@@ -44,7 +44,8 @@ export async function proxy(request: NextRequest) {
     return withCsp(NextResponse.redirect(url), csp)
   }
 
-  if (isAuthenticated && isGuestOnlyPath(pathname)) {
+  // Landing é para visitantes; quem já tem sessão vai direto ao painel.
+  if (isAuthenticated && (pathname === '/' || isGuestOnlyPath(pathname))) {
     const url = request.nextUrl.clone()
     url.pathname = routes.dashboard
     url.search = ''

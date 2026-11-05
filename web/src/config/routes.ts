@@ -3,6 +3,9 @@ import type { Route } from 'next'
 export const routes = {
   home: '/',
   login: '/login',
+  signup: '/cadastro',
+  terms: '/termos',
+  privacy: '/privacidade',
   forgotPassword: '/esqueci-senha',
   resetPassword: '/redefinir-senha',
   onboarding: '/onboarding',
@@ -30,10 +33,14 @@ export const routes = {
 } as const satisfies Record<string, Route | Record<string, Route>>
 
 /** Rotas só para visitantes: um usuário autenticado é mandado para o painel. */
-export const guestOnlyPaths = ['/login', '/esqueci-senha'] as const
+export const guestOnlyPaths = ['/login', '/esqueci-senha', '/cadastro'] as const
 
-/** Rotas públicas acessíveis com ou sem sessão (links de e-mail, cadastro). */
-export const publicPaths = ['/redefinir-senha', '/convite', '/onboarding'] as const
+/**
+ * Rotas públicas acessíveis com ou sem sessão (links de e-mail, páginas legais). `/` (landing) é
+ * pública por igualdade exata — tratada à parte, porque como prefixo cobriria o site inteiro.
+ * `/onboarding` NÃO é pública: exige sessão (é o guia do primeiro acesso, depois do cadastro).
+ */
+export const publicPaths = ['/redefinir-senha', '/convite', '/termos', '/privacidade'] as const
 
 export function isGuestOnlyPath(pathname: string) {
   return guestOnlyPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))
@@ -41,6 +48,7 @@ export function isGuestOnlyPath(pathname: string) {
 
 export function isPublicPath(pathname: string) {
   return (
+    pathname === '/' ||
     isGuestOnlyPath(pathname) ||
     publicPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   )

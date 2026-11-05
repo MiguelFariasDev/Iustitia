@@ -28,6 +28,6 @@ describe('InviteForm', () => {
 
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: 'Aceitar convite' }))
-    await vi.waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/login'))
+    await vi.waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/login?next=%2Fonboarding'))
   })
 })

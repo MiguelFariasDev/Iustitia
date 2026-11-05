@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, LogOut, Monitor, Moon, Palette, Sun, UserRound } from 'lucide-react'
+import { Building2, Compass, LogOut, Monitor, Moon, Palette, Sun, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -84,6 +84,12 @@ export function UserMenu() {
             <Link href={routes.settings.tenant}>
               <Building2 aria-hidden />
               Escritório
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`${routes.dashboard}?tour=1` as never}>
+              <Compass aria-hidden />
+              Rever tour
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSub>

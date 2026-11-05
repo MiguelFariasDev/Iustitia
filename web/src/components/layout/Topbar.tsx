@@ -38,6 +38,7 @@ export function Topbar() {
           onClick={() => openPalette(true)}
           aria-label="Buscar (Ctrl+K)"
           aria-keyshortcuts="Control+K Meta+K"
+          data-tour="search"
           className="h-9 gap-2 px-2.5 text-muted-foreground sm:w-56 sm:justify-start md:w-64"
         >
           <Search aria-hidden />

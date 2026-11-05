@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
  * Qualquer novo uso falha aqui e exige decisão consciente: sanitizar com DOMPurify E acrescentar
  * o arquivo à lista abaixo, na revisão de código (ADR-070).
  */
-const ALLOWED = new Set(['app/layout.tsx'])
+const ALLOWED = new Set(['app/layout.tsx', 'app/(marketing)/page.tsx']) // layout: script de tema · landing: JSON-LD (constante, `<` escapado)
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

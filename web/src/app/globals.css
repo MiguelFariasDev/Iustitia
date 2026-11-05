@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '../styles/iustitia.css';
 
 /*
  * Design System — ver docs/frontend/design-system.md.

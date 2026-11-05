@@ -22,6 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { routes } from '@/config/routes'
 import { apiClient } from '@/lib/api/client'
 import { formatRelative } from '@/lib/format'
+import { FirstStepsCard } from '@/features/onboarding/components/FirstStepsCard'
+import { ProductTour } from '@/features/onboarding/components/ProductTour'
 import { dashboardSummaryQuery } from '../queries'
 import type { DashboardSummary } from '../types'
 
@@ -156,6 +158,8 @@ export function DashboardView() {
 
   return (
     <div className="space-y-6">
+      <FirstStepsCard />
+      <ProductTour />
       <DashboardMetrics metrics={data.metrics} />
 
       <DashboardAtalhos />

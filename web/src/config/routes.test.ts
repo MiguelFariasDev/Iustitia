@@ -7,6 +7,13 @@ describe('rotas', () => {
     expect(isPublicPath('/redefinir-senha')).toBe(true)
     expect(isPublicPath('/painel')).toBe(false)
     expect(isPublicPath('/loginx')).toBe(false)
+    // landing: só a raiz exata é pública
+    expect(isPublicPath('/')).toBe(true)
+    expect(isPublicPath('/qualquer')).toBe(false)
+    expect(isGuestOnlyPath('/cadastro')).toBe(true)
+    expect(isPublicPath('/termos')).toBe(true)
+    // onboarding exige sessão
+    expect(isPublicPath('/onboarding')).toBe(false)
   })
 
   it('safeRedirectPath bloqueia open redirect', () => {

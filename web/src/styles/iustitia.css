@@ -1,0 +1,204 @@
+/*
+ * Superfícies públicas e de acesso (landing, cadastro, login, onboarding) — linguagem do
+ * protótipo v4, aplicada por ESCOPO (`.iu`) para não alterar o app autenticado enquanto ele não
+ * é migrado. Em vez de duplicar componentes, o escopo REMAPEIA as variáveis semânticas do shadcn
+ * (--primary, --background, --border…): Button, Input, Checkbox etc. herdam o visual v4 aqui.
+ *
+ * Valores marcados (*) não constam do prompt (o v4 não está no repositório) e são derivações
+ * conservadoras dos tokens informados — revisar quando o v4 for importado.
+ */
+
+.iu {
+  --iu-bg: #f5f4ef;
+  --iu-panel: #ffffff;
+  --iu-text: #13201a;
+  --iu-muted: #56655d; /* (*) AA sobre --iu-bg */
+  --iu-border: #dcdacf; /* (*) */
+  --iu-brand: #047857;
+  --iu-brand-soft: #e1f0e8; /* (*) */
+  --iu-accent: #7c3aed; /* tudo que é da IA */
+  --iu-accent-soft: #efe9fd; /* (*) */
+  --iu-danger: #b91c1c;
+  --iu-warn: #b45309;
+  --iu-ok: #047857;
+  --iu-side: #0c1f19; /* (*) painel escuro lateral */
+
+  --background: var(--iu-bg);
+  --foreground: var(--iu-text);
+  --card: var(--iu-panel);
+  --card-foreground: var(--iu-text);
+  --popover: var(--iu-panel);
+  --popover-foreground: var(--iu-text);
+  --muted: var(--iu-brand-soft);
+  --muted-foreground: var(--iu-muted);
+  --accent: var(--iu-brand-soft);
+  --accent-foreground: var(--iu-text);
+  --border: var(--iu-border);
+  --input: var(--iu-border);
+  --ring: var(--iu-accent);
+  --primary: var(--iu-brand);
+  --primary-foreground: var(--iu-bg);
+  /* Links e ações secundárias usam a marca; o violeta fica reservado à IA (--iu-accent). */
+  --secondary: var(--iu-brand);
+  --secondary-foreground: var(--iu-bg);
+  --destructive: var(--iu-danger);
+  --destructive-foreground: var(--iu-danger);
+  --success: var(--iu-ok);
+  --success-foreground: var(--iu-ok);
+  --warning: var(--iu-warn);
+  --warning-foreground: var(--iu-warn);
+
+  background: var(--iu-bg);
+  color: var(--iu-text);
+  font-family: var(--font-geist), var(--font-sans);
+  font-feature-settings: 'tnum' 1;
+}
+
+.dark .iu {
+  --iu-bg: #0d1512;
+  --iu-panel: #131d19; /* (*) */
+  --iu-text: #e8efe9; /* (*) */
+  --iu-muted: #9db1a6; /* (*) */
+  --iu-border: #243229; /* (*) */
+  --iu-brand: #34d399;
+  --iu-brand-soft: #14281f; /* (*) */
+  --iu-accent: #a78bfa;
+  --iu-accent-soft: #221b3a; /* (*) */
+  --iu-danger: #f87171;
+  --iu-warn: #fbbf24;
+  --iu-ok: #34d399;
+  --iu-side: #0a110e; /* (*) */
+}
+
+.iu h1,
+.iu h2,
+.iu h3 {
+  letter-spacing: -0.03em;
+}
+
+.iu .iu-mono {
+  font-family: var(--font-mono);
+}
+
+/* Botões contornados (borda 1.5px na cor semântica); só o primário de marca é preenchido. */
+.iu [data-slot='button'][data-variant='outline'] {
+  background: transparent;
+  border: 1.5px solid var(--iu-border);
+  box-shadow: none;
+}
+.iu [data-slot='button'][data-variant='outline']:hover {
+  background: var(--iu-brand-soft);
+  border-color: var(--iu-brand);
+}
+.iu [data-slot='button'][data-variant='default'] {
+  border-radius: 10px;
+}
+.iu [data-slot='button'][data-variant='default']:hover {
+  opacity: 0.88;
+  background: var(--iu-brand);
+}
+
+.iu .iu-btn-lg {
+  height: 48px;
+  padding-inline: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.iu :focus-visible {
+  outline: 2px solid var(--iu-accent);
+  outline-offset: 2px;
+}
+
+.iu .iu-card {
+  background: var(--iu-panel);
+  border: 1px solid var(--iu-border);
+  border-radius: 14px;
+}
+
+/* ── Movimento: mesmo vocabulário do v4. Apenas opacity/transform. ───────────────────────── */
+@keyframes iu-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes iu-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes iu-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.iu .iu-in {
+  animation: iu-in 0.35s ease both;
+}
+/* Entrada escalonada: defina --i em cada item (60 ms por posição). */
+.iu .iu-stagger > * {
+  animation: iu-in 0.35s ease both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.iu .iu-pulse {
+  animation: iu-pulse 1.4s ease-in-out infinite;
+}
+.iu .iu-lift {
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.iu .iu-lift:hover {
+  transform: translateY(-2px);
+}
+.iu .iu-check path {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: iu-draw 0.5s ease 0.1s forwards;
+}
+
+/* Revelação ao rolar: o componente <Reveal> arma (data-armed) só os itens ABAIXO da dobra, depois da
+   hidratação — sem JS, ou acima da dobra, o conteúdo nunca fica oculto. */
+.iu [data-reveal][data-armed]:not([data-revealed]) {
+  opacity: 0;
+}
+.iu [data-reveal][data-revealed] {
+  animation: iu-in 0.35s ease both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* Centraliza SEM transform: translateX(-50%) + iu-in anularia o centramento (transform:none final). */
+.iu .iu-center-x {
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: fit-content;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iu *,
+  .iu *::before,
+  .iu *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .iu [data-reveal][data-armed]:not([data-revealed]) {
+    opacity: 1;
+  }
+  .iu .iu-lift:hover {
+    transform: none;
+  }
+  .iu .iu-check path {
+    stroke-dashoffset: 0;
+  }
+}

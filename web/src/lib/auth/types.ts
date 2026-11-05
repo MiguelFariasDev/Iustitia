@@ -49,6 +49,32 @@ export interface AuthService {
   onAuthStateChange(callback: (event: AuthEvent, session: AuthSession | null) => void): () => void
   resetPassword(email: string): Promise<void>
   updatePassword(password: string): Promise<void>
+  /** Reenvia o e-mail de confirmação do cadastro (resposta neutra: nunca revela se a conta existe). */
+  resendConfirmation(email: string): Promise<void>
+
+  // ── Autenticação em dois fatores (TOTP) ──────────────────────────────────────────────────
+  /** Depois do login por senha: há um fator verificado que ainda precisa ser provado nesta sessão? */
+  getMfaChallenge(): Promise<MfaChallenge | null>
+  /** Prova o segundo fator com o código de 6 dígitos do aplicativo autenticador. */
+  verifyMfa(factorId: string, code: string): Promise<void>
+  /** O usuário já tem um fator TOTP verificado? */
+  hasMfaFactor(): Promise<boolean>
+  /** Inicia o cadastro de um fator TOTP (segredo + QR em SVG data URI). */
+  enrollMfa(): Promise<MfaEnrollment>
+  /** Conclui o cadastro com o primeiro código gerado pelo aplicativo. */
+  confirmMfaEnrollment(factorId: string, code: string): Promise<void>
+}
+
+export interface MfaChallenge {
+  factorId: string
+}
+
+export interface MfaEnrollment {
+  factorId: string
+  /** Segredo em Base32 para digitação manual. */
+  secret: string
+  /** QR Code como data URI (image/svg+xml). */
+  qrCode: string
 }
 
 export class AuthError extends Error {

@@ -5,11 +5,6 @@ import { ApiError } from '@/lib/api/errors'
 import { mockResponse } from '@/lib/api/mock'
 import type { UserRole } from '@/lib/auth/types'
 import { daysFromNow } from '@/mocks/dates'
-import type {
-  OnboardingOfficeValues,
-  OnboardingOwnerValues,
-  OnboardingPreferencesValues,
-} from './schemas'
 
 export interface InviteDetails {
   token: string
@@ -51,25 +46,40 @@ export async function acceptInvite(input: { token: string; name: string; passwor
   return { ok: true }
 }
 
-export interface OnboardingInput {
-  office: OnboardingOfficeValues
-  owner: Omit<OnboardingOwnerValues, 'password' | 'confirmPassword'>
-  preferences: OnboardingPreferencesValues
+export interface CreateTenantInput {
+  officeName: string
+  /** Somente dígitos. */
+  cnpj: string
+  adminName: string
+  adminEmail: string
+  adminPassword: string
 }
 
-/** Cria o escritório (tenant) após o cadastro do responsável no Supabase Auth. */
-export async function createTenant(input: OnboardingInput) {
-  if (env.useMocks) return mockResponse({ tenantId: crypto.randomUUID() }, 500)
-  const { data } = await apiClient.post<{ tenantId: string }>(endpoints.tenants.create, {
-    name: input.office.officeName,
-    cnpj: input.office.cnpj.replace(/\D/g, '') || null,
-    oabState: input.office.oabState,
-    phone: input.office.phone || null,
-    ownerName: input.owner.ownerName,
-    ownerEmail: input.owner.email,
-    ownerOabNumber: input.owner.oabNumber || null,
-    teamSize: input.preferences.teamSize,
-    practiceAreas: input.preferences.practiceAreas,
+export interface CreateTenantResult {
+  tenantId: string
+  adminUserId: string
+  /** O Supabase exige confirmação de e-mail antes do primeiro acesso. */
+  requiresEmailConfirmation: boolean
+}
+
+/**
+ * Cadastro self-service de escritório (POST /tenants, anônimo). O BACKEND cria a conta no
+ * Supabase Auth e o usuário titular — o front NÃO chama `signUp` antes (o wizard anterior fazia e
+ * enviava nomes de campo que a API não conhece; só funcionava contra os mocks).
+ */
+export async function createTenant(input: CreateTenantInput): Promise<CreateTenantResult> {
+  if (env.useMocks) {
+    return mockResponse(
+      { tenantId: crypto.randomUUID(), adminUserId: crypto.randomUUID(), requiresEmailConfirmation: true },
+      500
+    )
+  }
+  const { data } = await apiClient.post<CreateTenantResult>(endpoints.tenants.create, {
+    name: input.officeName,
+    cnpj: input.cnpj,
+    adminName: input.adminName,
+    adminEmail: input.adminEmail,
+    adminPassword: input.adminPassword,
   })
   return data
 }

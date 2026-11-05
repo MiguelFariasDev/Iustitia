@@ -53,6 +53,15 @@ function createSession(user: AuthUser): AuthSession {
   }
 }
 
+/** Código TOTP aceito pelo mock. E-mails com "2fa" (ex.: ana.2fa@x.com) exigem o segundo fator. */
+export const MOCK_MFA_CODE = '123456'
+const MFA_FLAG = 'adv-mock-mfa'
+const MFA_FACTOR_ID = 'mock-factor-1'
+
+function mfaEnrolled() {
+  return typeof localStorage !== 'undefined' && localStorage.getItem(MFA_FLAG) === 'enrolled'
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const mockAuthService: AuthService = {
@@ -91,6 +100,38 @@ export const mockAuthService: AuthService = {
   },
   async resetPassword() {
     await delay(300)
+  },
+  async resendConfirmation() {
+    await delay(300)
+  },
+  async getMfaChallenge() {
+    const session = readCookie()
+    const required = Boolean(session?.user.email.includes('2fa')) || mfaEnrolled()
+    return required && sessionStorage.getItem('adv-mock-aal2') !== session?.user.email
+      ? { factorId: MFA_FACTOR_ID }
+      : null
+  },
+  async verifyMfa(_factorId: string, code: string) {
+    await delay(250)
+    if (code !== MOCK_MFA_CODE) throw new AuthError('Código inválido ou expirado.', 'MFA_INVALID_CODE')
+    sessionStorage.setItem('adv-mock-aal2', readCookie()?.user.email ?? '')
+  },
+  async hasMfaFactor() {
+    return mfaEnrolled()
+  },
+  async enrollMfa() {
+    await delay(250)
+    return {
+      factorId: MFA_FACTOR_ID,
+      secret: 'MOCKSECRETBASE32',
+      qrCode: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="white" stroke="black"/></svg>'),
+    }
+  },
+  async confirmMfaEnrollment(_factorId: string, code: string) {
+    await delay(250)
+    if (code !== MOCK_MFA_CODE) throw new AuthError('Código inválido.', 'MFA_INVALID_CODE')
+    localStorage.setItem(MFA_FLAG, 'enrolled')
+    sessionStorage.setItem('adv-mock-aal2', readCookie()?.user.email ?? '')
   },
   async updatePassword() {
     await delay(300)

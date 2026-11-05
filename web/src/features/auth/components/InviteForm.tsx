@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { AlertCircle, Building2, MailX } from 'lucide-react'
+import type { Route } from 'next'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm, useWatch } from 'react-hook-form'
@@ -45,7 +46,7 @@ export function InviteForm({ token }: { token: string }) {
     mutationFn: acceptInvite,
     onSuccess: () => {
       notify.success('Convite aceito! Entre com sua nova senha.')
-      router.replace(routes.login)
+      router.replace(`${routes.login}?next=${encodeURIComponent(routes.onboarding)}` as Route)
     },
   })
 

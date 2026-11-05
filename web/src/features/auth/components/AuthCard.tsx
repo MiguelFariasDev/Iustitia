@@ -10,9 +10,9 @@ interface AuthCardProps {
 
 export function AuthCard({ title, description, children, footer, className }: AuthCardProps) {
   return (
-    <div className={cn('w-full max-w-md space-y-6', className)}>
+    <div className={cn('iu-in w-full max-w-[420px] space-y-6', className)}>
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-3xl font-semibold">{title}</h1>
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {children}

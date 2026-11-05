@@ -1,56 +1,66 @@
-import { Gavel, ScanEye, ShieldCheck } from 'lucide-react'
-import { Logo } from '@/components/shared/Logo'
+import { ArrowLeft, Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import { BrandMark } from '@/components/iu/BrandMark'
+import { IuScope } from '@/components/iu/IuScope'
+import { ThemeToggle } from '@/components/iu/ThemeToggle'
 import { env } from '@/config/env'
+import { routes } from '@/config/routes'
+import { geist } from '@/lib/fonts'
 
-const highlights = [
-  { icon: Gavel, text: 'Prazos e publicações sob controle, sem planilhas.' },
-  { icon: ScanEye, text: 'IA que sugere — e você decide. Revisão humana sempre.' },
-  { icon: ShieldCheck, text: 'Dados isolados por escritório, em conformidade com a LGPD.' },
-]
-
+/** Casca compartilhada de cadastro, login, recuperação de senha e convite (linguagem v4). */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <aside
-        aria-label={`Sobre o ${env.appName}`}
-        className="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-white lg:flex dark:bg-sidebar"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-32 -right-32 size-96 rounded-full bg-secondary/25 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-40 -left-20 size-96 rounded-full bg-gold/15 blur-3xl"
-        />
-        <Logo variant="inverted" size={36} className="relative" />
-        <div className="relative space-y-8">
-          <p className="max-w-md font-serif text-3xl leading-tight font-semibold text-balance">
-            A gestão do seu escritório, com a seriedade que a advocacia exige.
-          </p>
-          <ul className="space-y-4">
-            {highlights.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 text-sm text-slate-200">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                  <Icon className="size-4 text-gold" aria-hidden />
-                </span>
-                {text}
-              </li>
-            ))}
-          </ul>
+    <IuScope fontClass={geist.variable}>
+      <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="flex flex-col">
+          <header className="flex items-center justify-between px-4 py-4 sm:px-8">
+            <Link href={routes.home} aria-label={`${env.appName}: voltar ao site`}>
+              <BrandMark className="text-lg" />
+            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                href={routes.home}
+                className="hidden items-center gap-1 rounded-md px-2 py-2 text-sm text-muted-foreground hover:text-foreground sm:inline-flex"
+              >
+                <ArrowLeft className="size-4" aria-hidden /> Voltar ao site
+              </Link>
+              <ThemeToggle />
+            </div>
+          </header>
+          <main
+            id="conteudo"
+            tabIndex={-1}
+            className="flex flex-1 flex-col items-center justify-center px-4 py-8 outline-none sm:px-8"
+          >
+            {children}
+          </main>
         </div>
-        <p className="relative text-xs text-slate-300">
-          © {new Date().getFullYear()} {env.appName}
-        </p>
-      </aside>
-      <main
-        id="conteudo"
-        tabIndex={-1}
-        className="flex flex-col items-center justify-center px-4 py-10 outline-none sm:px-8"
-      >
-        <Logo className="mb-10 lg:hidden" />
-        {children}
-      </main>
-    </div>
+
+        <aside
+          aria-label={`Sobre o ${env.appName}`}
+          className="hidden flex-col justify-between bg-[var(--iu-side)] p-12 text-white lg:flex"
+        >
+          <BrandMark tone="light" className="text-lg" />
+          <div className="max-w-md space-y-8">
+            <p className="text-3xl leading-tight font-semibold tracking-tight text-balance">
+              Eu sugiro. Você decide.
+            </p>
+            <div className="rounded-[14px] border border-white/15 bg-white/5 p-4">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-[#a78bfa] uppercase">
+                <Sparkles className="size-3" aria-hidden /> Athena sugere
+              </p>
+              <p className="text-sm font-semibold">Contestação · 15 dias úteis</p>
+              <p className="mt-1 text-xs text-white/60">
+                Aceitar, corrigir ou rejeitar — nada vai para a agenda sem a sua decisão.
+              </p>
+              <p className="mt-3 text-[11px] text-white/45">Exemplo ilustrativo</p>
+            </div>
+          </div>
+          <p className="text-xs text-white/50">
+            © {new Date().getFullYear()} {env.appName}
+          </p>
+        </aside>
+      </div>
+    </IuScope>
   )
 }
