@@ -250,6 +250,12 @@ public static class ErrorCatalog
                 "A mensagem foi registrada, mas não foi possível enviá-la ao WhatsApp. Tente novamente.", 500, ErrorType.Failure),
             [ErrorCode.ATENDIMENTO_BOT_API_KEY_NOT_FOUND] = new(ErrorGroup.Atendimento, nameof(ErrorCode.ATENDIMENTO_BOT_API_KEY_NOT_FOUND),
                 "Chave de API do bot não encontrada.", 404, ErrorType.NotFound),
+            [ErrorCode.ATENDIMENTO_CONSULTA_REQUER_BOT] = new(ErrorGroup.Atendimento, nameof(ErrorCode.ATENDIMENTO_CONSULTA_REQUER_BOT),
+                "A consulta de processo só está disponível enquanto o bot conduz a conversa.", 409, ErrorType.Conflict),
+            [ErrorCode.ATENDIMENTO_CONSULTA_NAO_VERIFICADA] = new(ErrorGroup.Atendimento, nameof(ErrorCode.ATENDIMENTO_CONSULTA_NAO_VERIFICADA),
+                "É preciso verificar a identidade antes de consultar o processo. A verificação pode ter expirado.", 403, ErrorType.Forbidden),
+            [ErrorCode.ATENDIMENTO_CONSULTA_PROCESSO_NOT_FOUND] = new(ErrorGroup.Atendimento, nameof(ErrorCode.ATENDIMENTO_CONSULTA_PROCESSO_NOT_FOUND),
+                "Processo não encontrado.", 404, ErrorType.NotFound),
 
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),

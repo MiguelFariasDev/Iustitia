@@ -41,6 +41,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAtendimentoRepository, AtendimentoRepository>();
         services.AddScoped<IBotApiKeyRepository, BotApiKeyRepository>();
+        services.AddScoped<IConsultaSessaoRepository, ConsultaSessaoRepository>();
         services.AddScoped<IAtendimentoUnitOfWork, AtendimentoUnitOfWork>();
         services.AddScoped<IBotCredentialValidator, BotCredentialValidator>();
 

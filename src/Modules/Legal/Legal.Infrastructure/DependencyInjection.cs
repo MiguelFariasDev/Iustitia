@@ -2,6 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Interceptors;
 using Advocacia.Modules.Legal.Application;
 using Advocacia.Modules.Legal.Application.Abstractions;
+using Advocacia.Modules.Legal.Infrastructure.Consulta;
 using Advocacia.Modules.Legal.Infrastructure.Integrations;
 using Advocacia.Modules.Legal.Infrastructure.Jobs;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
@@ -51,6 +52,11 @@ public static class DependencyInjection
         services.AddScoped<IProcessoRepository, ProcessoRepository>();
         services.AddScoped<IPublicationRepository, PublicationRepository>();
         services.AddScoped<ILegalUnitOfWork, LegalUnitOfWork>();
+
+        // Portas de BuildingBlocks consumidas pelo módulo Atendimento (consulta de andamento pelo bot):
+        // Atendimento não depende de Legal; é Legal quem se oferece (ADR-068).
+        services.AddScoped<IClientIdentityDirectory, LegalClientIdentityDirectory>();
+        services.AddScoped<IClientProcessReader, LegalClientProcessReader>();
 
         // Telemetria da captura: singleton porque encapsula um Meter (instrumentos do
         // System.Diagnostics.Metrics devem ser criados uma vez por processo).

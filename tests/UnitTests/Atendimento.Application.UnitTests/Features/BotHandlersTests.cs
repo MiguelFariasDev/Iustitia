@@ -14,7 +14,7 @@ public class BotHandlersTests
     private StartAtendimentoHandler StartHandler(Guid? tenant = null) =>
         new(_repository, _unitOfWork, Doubles.BotCaller(tenant), Doubles.Clock());
 
-    private AddBotMessageHandler AddMessageHandler() => new(_repository, _unitOfWork, Doubles.Clock());
+    private AddBotMessageHandler AddMessageHandler() => new(_repository, new InMemoryConsultaRepository(), _unitOfWork, Doubles.Clock());
 
     private RequestHandoffHandler HandoffHandler() => new(_repository, _unitOfWork, Doubles.Clock());
 

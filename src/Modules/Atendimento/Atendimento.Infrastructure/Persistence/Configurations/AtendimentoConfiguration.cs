@@ -1,4 +1,5 @@
 using Advocacia.Modules.Atendimentos.Domain.Atendimentos;
+using Advocacia.Modules.Atendimentos.Domain.Consulta;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -115,12 +116,13 @@ public sealed class AtendimentoAuditoriaConfiguration : IEntityTypeConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(auditoria => auditoria.TenantId).IsRequired();
-        builder.Property(auditoria => auditoria.Action).HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(auditoria => auditoria.Action).HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(auditoria => auditoria.ActorType).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(auditoria => auditoria.ActorId);
         builder.Property(auditoria => auditoria.FromStatus).HasConversion<string>().HasMaxLength(20);
         builder.Property(auditoria => auditoria.ToStatus).HasConversion<string>().HasMaxLength(20);
         builder.Property(auditoria => auditoria.OccurredAt).IsRequired();
+        builder.Property(auditoria => auditoria.ReferenceId);
 
         builder.HasIndex(auditoria => new { auditoria.AtendimentoId, auditoria.OccurredAt })
             .HasDatabaseName("ix_atendimento_auditoria_atendimento");
@@ -149,5 +151,51 @@ public sealed class BotApiKeyConfiguration : IEntityTypeConfiguration<BotApiKey>
 
         builder.HasIndex(key => key.KeyHash).HasDatabaseName("ux_bot_api_keys_hash").IsUnique();
         builder.HasIndex(key => key.TenantId).HasDatabaseName("ix_bot_api_keys_tenant");
+    }
+}
+
+public sealed class ConsultaSessaoConfiguration : IEntityTypeConfiguration<ConsultaSessao>
+{
+    public void Configure(EntityTypeBuilder<ConsultaSessao> builder)
+    {
+        builder.ToTable("atendimento_consulta_sessoes");
+
+        builder.HasKey(sessao => sessao.Id);
+        builder.Property(sessao => sessao.Id).ValueGeneratedNever();
+
+        builder.Property(sessao => sessao.TenantId).IsRequired();
+
+        builder.Property(sessao => sessao.AtendimentoId)
+            .HasConversion(id => id.Value, value => AtendimentoId.From(value))
+            .IsRequired();
+
+        builder.HasOne<Atendimento>()
+            .WithMany()
+            .HasForeignKey(sessao => sessao.AtendimentoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(sessao => sessao.ClientId).IsRequired();
+        builder.Property(sessao => sessao.StartedAt).IsRequired();
+        builder.Property(sessao => sessao.ExpiresAt).IsRequired();
+        builder.Property(sessao => sessao.FailedAttempts).IsRequired();
+        builder.Property(sessao => sessao.LastAttemptAt);
+        builder.Property(sessao => sessao.VerifiedAt);
+        builder.Property(sessao => sessao.BlockedUntil);
+
+        // Só ids dos processos liberados. NUNCA o documento: nem o certo, nem os tentados.
+        builder.Property(sessao => sessao.ProcessIds).HasColumnType("uuid[]").IsRequired();
+
+        // Token de concorrência (xmin do PostgreSQL). É o que impede furar o limite de tentativas com
+        // pedidos paralelos: sem ele, 100 verificações simultâneas leriam "0 falhas" ao mesmo tempo e
+        // todas seriam avaliadas. Com ele, só uma grava; as outras falham e não ganham tentativa extra.
+        builder.Property<uint>("xmin").HasColumnType("xid").ValueGeneratedOnAddOrUpdate().IsConcurrencyToken();
+
+        builder.HasIndex(sessao => new { sessao.AtendimentoId, sessao.StartedAt })
+            .HasDatabaseName("ix_consulta_sessoes_atendimento")
+            .IsDescending(false, true);
+
+        // Bloqueio e falhas recentes são consultados por CLIENTE, não por atendimento.
+        builder.HasIndex(sessao => new { sessao.TenantId, sessao.ClientId, sessao.StartedAt })
+            .HasDatabaseName("ix_consulta_sessoes_cliente");
     }
 }

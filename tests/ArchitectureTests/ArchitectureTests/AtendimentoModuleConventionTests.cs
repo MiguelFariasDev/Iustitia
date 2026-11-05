@@ -1,8 +1,10 @@
 using System.Reflection;
+using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Messaging;
 using Advocacia.Modules.Atendimentos.Api;
 using Advocacia.Modules.Atendimentos.Application;
 using Advocacia.Modules.Atendimentos.Domain.Atendimentos;
+using Advocacia.Modules.Atendimentos.Domain.Consulta;
 using Advocacia.Modules.Atendimentos.Domain.Events;
 using Advocacia.Modules.Atendimentos.Infrastructure.Persistence;
 using FluentAssertions;
@@ -141,6 +143,45 @@ public class AtendimentoModuleConventionTests
             .ToList();
 
         mapExtensions.Should().Contain(["MapBotEndpoints", "MapAtendimentosEndpoints"]);
+    }
+
+    [Fact]
+    public void WhatTheClientCanSee_IsAClosedList_PiecesValuesAndInternalNotesDoNotExistInTheType()
+    {
+        // Se alguém quiser expor mais um campo ao cliente final, este teste obriga a decidir de caso pensado.
+        typeof(ClientProcessSummary).GetProperties().Select(p => p.Name).Should()
+            .BeEquivalentTo(["ProcessId", "Title", "Phase", "LastMovement", "UpdatedAt"]);
+    }
+
+    [Fact]
+    public void NoEntityOfTheModule_HasAMemberThatCouldStoreTheDocument()
+    {
+        // O documento digitado só existe na comparação (ADR-068): nenhuma entidade tem onde guardá-lo.
+        var entities = new[] { typeof(ConsultaSessao), typeof(Atendimento), typeof(AtendimentoMensagem), typeof(AtendimentoAuditoria), typeof(BotApiKey) };
+
+        var offenders = entities
+            .SelectMany(type => type.GetProperties().Select(property => $"{type.Name}.{property.Name}"))
+            .Where(name => name.Contains("documento", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("cpf", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("cnpj", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        offenders.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TheModuleReachesClientsOnlyThroughTheBuildingBlocksPorts()
+    {
+        // Atendimento não conhece Legal (já coberto acima); a identidade e os processos entram pelas
+        // portas. Garante que as portas existem onde o módulo as consome.
+        var result = Types.InAssembly(AtendimentoApplication)
+            .That().HaveNameEndingWith("Handler")
+            .Should().NotHaveDependencyOn("Advocacia.Modules.Legal")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(BuildFailureMessage(result));
+        typeof(IClientIdentityDirectory).Assembly.GetName().Name.Should().Contain("BuildingBlocks");
+        typeof(IClientProcessReader).Assembly.GetName().Name.Should().Contain("BuildingBlocks");
     }
 
     private static string BuildFailureMessage(TestResult result) =>

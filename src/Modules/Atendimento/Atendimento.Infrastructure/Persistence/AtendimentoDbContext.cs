@@ -2,6 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.DbContext;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Outbox;
 using Advocacia.Modules.Atendimentos.Domain.Atendimentos;
+using Advocacia.Modules.Atendimentos.Domain.Consulta;
 using Microsoft.EntityFrameworkCore;
 
 namespace Advocacia.Modules.Atendimentos.Infrastructure.Persistence;
@@ -22,6 +23,8 @@ public sealed class AtendimentoDbContext(DbContextOptions<AtendimentoDbContext> 
     public DbSet<AtendimentoAuditoria> Auditoria => Set<AtendimentoAuditoria>();
 
     public DbSet<BotApiKey> BotApiKeys => Set<BotApiKey>();
+
+    public DbSet<ConsultaSessao> ConsultaSessoes => Set<ConsultaSessao>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 }

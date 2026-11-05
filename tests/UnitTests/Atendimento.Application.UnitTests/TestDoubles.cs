@@ -4,6 +4,7 @@ using Advocacia.BuildingBlocks.Domain.Specifications;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Atendimentos.Application.Abstractions;
 using Advocacia.Modules.Atendimentos.Domain.Atendimentos;
+using Advocacia.Modules.Atendimentos.Domain.Consulta;
 using NSubstitute;
 
 namespace Advocacia.Modules.Atendimentos.Application.UnitTests;
@@ -66,6 +67,69 @@ internal sealed class InMemoryAtendimentoRepository : IAtendimentoRepository
 
     public Task<int> CountAsync(ISpecification<Atendimento> specification, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
+}
+
+internal sealed class InMemoryConsultaRepository : IConsultaSessaoRepository
+{
+    public List<ConsultaSessao> Sessoes { get; } = [];
+
+    public void Add(ConsultaSessao sessao) => Sessoes.Add(sessao);
+
+    public Task<ConsultaSessao?> GetLatestByAtendimentoAsync(AtendimentoId atendimentoId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Sessoes.Where(s => s.AtendimentoId == atendimentoId).OrderByDescending(s => s.StartedAt).ThenByDescending(s => s.ExpiresAt).FirstOrDefault());
+
+    public Task<DateTimeOffset?> GetBlockedUntilAsync(Guid tenantId, Guid clientId, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Sessoes.Where(s => s.TenantId == tenantId && s.ClientId == clientId && s.BlockedUntil > now).Max(s => s.BlockedUntil));
+
+    public Task<int> GetRecentFailuresAsync(Guid tenantId, Guid clientId, DateTimeOffset since, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Sessoes
+            .Where(s => s.TenantId == tenantId && s.ClientId == clientId && s.StartedAt >= since && s.VerifiedAt == null && s.BlockedUntil == null)
+            .Select(s => s.FailedAttempts)
+            .DefaultIfEmpty(0)
+            .Max());
+}
+
+internal sealed class FakeIdentityDirectory : IClientIdentityDirectory
+{
+    /// <summary>Telefone (do WhatsApp) -> cliente. Telefone ausente = sem cadastro.</summary>
+    public Dictionary<(Guid Tenant, string Phone), Guid> ClientsByPhone { get; } = [];
+
+    /// <summary>Documento (só dígitos) de cada cliente — vive SÓ aqui, no dublê do Legal.</summary>
+    public Dictionary<(Guid Tenant, Guid Client), string> Documents { get; } = [];
+
+    public List<(Guid Tenant, Guid Client, string Digits)> Comparisons { get; } = [];
+
+    public Task<Guid?> FindActiveClientByPhoneAsync(Guid tenantId, string whatsAppPhone, CancellationToken cancellationToken = default) =>
+        Task.FromResult(ClientsByPhone.TryGetValue((tenantId, whatsAppPhone), out var id) ? id : (Guid?)null);
+
+    public Task<bool> DocumentMatchesAsync(Guid tenantId, Guid clientId, string documentDigits, CancellationToken cancellationToken = default)
+    {
+        Comparisons.Add((tenantId, clientId, documentDigits));
+        return Task.FromResult(Documents.TryGetValue((tenantId, clientId), out var stored) && stored == documentDigits);
+    }
+}
+
+internal sealed class FakeProcessReader : IClientProcessReader
+{
+    /// <summary>Todos os processos do "banco", de qualquer cliente e de qualquer escritório.</summary>
+    public List<(Guid Tenant, Guid Client, ClientProcessSummary Process)> Store { get; } = [];
+
+    public List<string> Calls { get; } = [];
+
+    public Task<IReadOnlyList<ClientProcessSummary>> ListAsync(Guid tenantId, Guid clientId, int max, CancellationToken cancellationToken = default)
+    {
+        Calls.Add($"list:{tenantId}:{clientId}");
+        return Task.FromResult<IReadOnlyList<ClientProcessSummary>>(
+            Store.Where(x => x.Tenant == tenantId && x.Client == clientId).Select(x => x.Process).Take(max).ToList());
+    }
+
+    public Task<ClientProcessSummary?> GetAsync(Guid tenantId, Guid clientId, Guid processId, CancellationToken cancellationToken = default)
+    {
+        Calls.Add($"get:{tenantId}:{clientId}:{processId}");
+        return Task.FromResult(
+            Store.Where(x => x.Tenant == tenantId && x.Client == clientId && x.Process.ProcessId == processId)
+                .Select(x => x.Process).FirstOrDefault());
+    }
 }
 
 internal sealed class FakeUnitOfWork : IAtendimentoUnitOfWork

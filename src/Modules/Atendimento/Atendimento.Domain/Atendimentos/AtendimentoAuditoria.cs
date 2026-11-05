@@ -11,6 +11,11 @@ public enum AtendimentoAuditAction
     Closed,
     ClienteLinked,
     HumanMessageSent,
+    ConsultaIniciada,
+    ConsultaVerificada,
+    ConsultaNegada,
+    ConsultaBloqueada,
+    ConsultaProcessoVisualizado,
 }
 
 public enum AuditActorType
@@ -43,6 +48,12 @@ public sealed class AtendimentoAuditoria : Entity<Guid>, IHasTenant
 
     public DateTimeOffset OccurredAt { get; private set; }
 
+    /// <summary>
+    /// A que a ação se refere, quando se refere a algo: na consulta de andamento, o processo visto.
+    /// É sempre um id — nunca o documento nem qualquer dado da conversa.
+    /// </summary>
+    public Guid? ReferenceId { get; private set; }
+
     private AtendimentoAuditoria()
     {
         // EF Core.
@@ -56,7 +67,8 @@ public sealed class AtendimentoAuditoria : Entity<Guid>, IHasTenant
         Guid? actorId,
         AtendimentoStatus? from,
         AtendimentoStatus? to,
-        DateTimeOffset occurredAt)
+        DateTimeOffset occurredAt,
+        Guid? referenceId = null)
         : base(Guid.NewGuid())
     {
         TenantId = tenantId;
@@ -67,6 +79,7 @@ public sealed class AtendimentoAuditoria : Entity<Guid>, IHasTenant
         FromStatus = from;
         ToStatus = to;
         OccurredAt = occurredAt;
+        ReferenceId = referenceId;
     }
 
     public static AtendimentoAuditoria Record(
@@ -77,4 +90,16 @@ public sealed class AtendimentoAuditoria : Entity<Guid>, IHasTenant
         AtendimentoStatus? from,
         DateTimeOffset occurredAt) =>
         new(atendimento.TenantId, atendimento.Id, action, actorType, actorId, from, atendimento.Status, occurredAt);
+
+    /// <summary>
+    /// Ação da consulta de andamento. Quem consulta é o CLIENTE (o Bot só repassa): o ator é o id do
+    /// cliente cadastrado — <c>null</c> quando o telefone não pertence a nenhum. Nunca recebe o documento.
+    /// </summary>
+    public static AtendimentoAuditoria RecordConsulta(
+        Atendimento atendimento,
+        AtendimentoAuditAction action,
+        Guid? clientId,
+        DateTimeOffset occurredAt,
+        Guid? referenceId = null) =>
+        new(atendimento.TenantId, atendimento.Id, action, AuditActorType.Client, clientId, null, atendimento.Status, occurredAt, referenceId);
 }

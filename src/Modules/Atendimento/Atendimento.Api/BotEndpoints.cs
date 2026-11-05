@@ -1,4 +1,5 @@
 using Advocacia.Modules.Atendimentos.Application.Features.Bot;
+using Advocacia.Modules.Atendimentos.Application.Features.Consulta;
 using Advocacia.Platform.Api.Extensions;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -45,6 +46,25 @@ public static class BotEndpoints
             .WithName("BotGetAtendimentoStatus")
             .WithSummary("Status atual — o Bot consulta ANTES de responder qualquer mensagem.");
 
+        // Consulta de andamento de processo, com verificação de identidade feita NO CORE (ADR-068).
+        // Só funciona com o bot conduzindo a conversa (senão 409); o escritório vem da chave.
+        group.MapPost("/{id:guid}/consulta/iniciar", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new IniciarConsultaCommand(id), cancellationToken)).ToHttpResult())
+            .WithName("BotIniciarConsulta")
+            .WithSummary("Inicia a verificação de identidade. Telefone sem cadastro responde 'Negado', como um documento errado.");
+
+        group.MapPost("/{id:guid}/consulta/verificar", async (
+                Guid id, VerificarConsultaRequest request, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new VerificarConsultaCommand(id, request.Documento ?? string.Empty), cancellationToken)).ToHttpResult())
+            .WithName("BotVerificarConsulta")
+            .WithSummary("Confere o documento do cliente. 3 falhas bloqueiam por 30 min. Verificado devolve a lista de processos.");
+
+        group.MapGet("/{id:guid}/consulta/processos/{indice:int}", async (
+                Guid id, int indice, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new GetConsultaProcessoQuery(id, indice), cancellationToken)).ToHttpResult())
+            .WithName("BotGetConsultaProcesso")
+            .WithSummary("Título, fase e último andamento de um processo da lista liberada pela verificação.");
+
         return app;
     }
 }
@@ -53,3 +73,15 @@ public static class BotEndpoints
 public sealed record BotMessageRequest(string Direction, string Sender, string Body, string? ExternalId);
 
 public sealed record HandoffResponse(bool Success);
+
+/// <summary>
+/// O documento é dado pessoal: o <c>ToString</c> gerado para o record o mostraria, então é sobrescrito.
+/// </summary>
+public sealed record VerificarConsultaRequest(string? Documento)
+{
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("Documento = ***");
+        return true;
+    }
+}

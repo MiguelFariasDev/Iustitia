@@ -169,6 +169,9 @@ Módulo Atendimento (inbox e handoff do bot de WhatsApp) — ver `docs/modules/a
 | `ATENDIMENTO_BOT_BLOCKED` | O bot não pode responder: o atendimento está com um humano. | 409 | Conflict | O Bot tentou registrar uma resposta automática com o atendimento em `Human`. **Regra inegociável do handoff.** | O Bot deve consultar `GET .../status` antes de responder e ficar em silêncio. |
 | `ATENDIMENTO_DELIVERY_FAILED` | A mensagem foi registrada, mas não foi possível enviá-la ao WhatsApp. Tente novamente. | 500 | Failure | O Bot estava fora do ar ou recusou o envio. A mensagem fica no histórico com `delivery = Failed`. | Reenviar; verificar a saúde do Bot. |
 | `ATENDIMENTO_BOT_API_KEY_NOT_FOUND` | Chave de API do bot não encontrada. | 404 | NotFound | Revogação de uma chave inexistente ou de outro escritório. | Listar as chaves com `GET /api/v1/bot/api-keys`. |
+| `ATENDIMENTO_CONSULTA_REQUER_BOT` | A consulta de processo só está disponível enquanto o bot conduz a conversa. | 409 | Conflict | Qualquer chamada de `/consulta` com o atendimento em `PendingHuman`, `Human` ou `Closed`. | O advogado conduz a conversa; o bot não oferece a consulta. |
+| `ATENDIMENTO_CONSULTA_NAO_VERIFICADA` | É preciso verificar a identidade antes de consultar o processo. A verificação pode ter expirado. | 403 | Forbidden | `GET .../consulta/processos/{indice}` sem sessão verificada e ativa (não iniciada, aguardando, bloqueada ou expirada). | Recomeçar com `iniciar` e `verificar`. |
+| `ATENDIMENTO_CONSULTA_PROCESSO_NOT_FOUND` | Processo não encontrado. | 404 | NotFound | Índice fora da lista liberada, ou processo que deixou de pertencer ao cliente. Indistinguível de "não existe". | Usar um índice da lista devolvida por `verificar`. |
 
 ## CNJ (1700–1799)
 

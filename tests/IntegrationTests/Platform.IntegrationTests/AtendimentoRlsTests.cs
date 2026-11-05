@@ -277,4 +277,104 @@ public class AtendimentoRlsTests(PostgresFixture fixture)
 
         (await lookup.ExecuteScalarAsync()).Should().Be(tenant);
     }
+
+    // ---- sessão de verificação de identidade (015_atendimento_consulta.sql) ----
+
+    private async Task<Guid> SeedSessaoAsync(Guid tenant, Guid atendimento)
+    {
+        var id = Guid.NewGuid();
+        await using var connection = await OpenAsync(fixture.SuperuserConnectionString, null);
+        await using var command = new NpgsqlCommand(
+            "INSERT INTO atendimento_consulta_sessoes (id, tenant_id, atendimento_id, client_id, started_at, expires_at, failed_attempts, process_ids) " +
+            "VALUES (@id, @tenant, @atendimento, gen_random_uuid(), now(), now() + interval '10 minutes', 0, '{}')", connection);
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("tenant", tenant);
+        command.Parameters.AddWithValue("atendimento", atendimento);
+        await command.ExecuteNonQueryAsync();
+        return id;
+    }
+
+    [Fact]
+    public async Task AppUser_OnlySeesTheVerificationSessionsOfItsOwnTenant()
+    {
+        var (a, b) = (Guid.NewGuid(), Guid.NewGuid());
+        await SeedSessaoAsync(a, await SeedAtendimentoAsync(a));
+        await SeedSessaoAsync(b, await SeedAtendimentoAsync(b));
+
+        await using var asA = await OpenAsync(fixture.AppUserConnectionString, a);
+        await using var command = new NpgsqlCommand(
+            "SELECT count(*) FILTER (WHERE tenant_id = @a), count(*) FILTER (WHERE tenant_id = @b) FROM atendimento_consulta_sessoes", asA);
+        command.Parameters.AddWithValue("a", a);
+        command.Parameters.AddWithValue("b", b);
+        await using var reader = await command.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        reader.GetInt64(0).Should().Be(1);
+        reader.GetInt64(1).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AppUser_CannotInsertAVerificationSessionForAnotherTenant()
+    {
+        var (a, b) = (Guid.NewGuid(), Guid.NewGuid());
+        var atendimentoOfB = await SeedAtendimentoAsync(b);
+        await using var asA = await OpenAsync(fixture.AppUserConnectionString, a);
+        await using var command = new NpgsqlCommand(
+            "INSERT INTO atendimento_consulta_sessoes (id, tenant_id, atendimento_id, client_id, started_at, expires_at, failed_attempts, process_ids) " +
+            "VALUES (gen_random_uuid(), @other, @atendimento, gen_random_uuid(), now(), now(), 0, '{}')", asA);
+        command.Parameters.AddWithValue("other", b);
+        command.Parameters.AddWithValue("atendimento", atendimentoOfB);
+
+        var act = async () => await command.ExecuteNonQueryAsync();
+
+        (await act.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("42501");
+    }
+
+    [Theory]
+    [InlineData("UPDATE atendimento_consulta_sessoes SET client_id = gen_random_uuid()")]
+    [InlineData("UPDATE atendimento_consulta_sessoes SET tenant_id = gen_random_uuid()")]
+    [InlineData("UPDATE atendimento_consulta_sessoes SET atendimento_id = gen_random_uuid()")]
+    [InlineData("UPDATE atendimento_consulta_sessoes SET started_at = now()")]
+    [InlineData("DELETE FROM atendimento_consulta_sessoes")]
+    public async Task AppUser_CannotRewriteWhoASessionBelongsTo_NorDeleteIt(string sql)
+    {
+        var tenant = Guid.NewGuid();
+        await SeedSessaoAsync(tenant, await SeedAtendimentoAsync(tenant));
+        await using var connection = await OpenAsync(fixture.AppUserConnectionString, tenant);
+        await using var command = new NpgsqlCommand(sql, connection);
+
+        var act = async () => await command.ExecuteNonQueryAsync();
+
+        (await act.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("42501");
+    }
+
+    [Fact]
+    public async Task AppUser_CanUpdateOnlyTheColumnsTheVerificationChanges()
+    {
+        var tenant = Guid.NewGuid();
+        await SeedSessaoAsync(tenant, await SeedAtendimentoAsync(tenant));
+        await using var connection = await OpenAsync(fixture.AppUserConnectionString, tenant);
+        await using var command = new NpgsqlCommand(
+            "UPDATE atendimento_consulta_sessoes SET expires_at = now(), failed_attempts = 2, last_attempt_at = now(), " +
+            "verified_at = now(), blocked_until = now(), process_ids = ARRAY[gen_random_uuid()]", connection);
+
+        (await command.ExecuteNonQueryAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task TheSessionTableHasNoColumnThatCouldHoldTheDocument()
+    {
+        await using var connection = await OpenAsync(fixture.SuperuserConnectionString, null);
+        await using var command = new NpgsqlCommand(
+            "SELECT column_name FROM information_schema.columns WHERE table_name IN ('atendimento_consulta_sessoes', 'atendimento_auditoria')", connection);
+        var columns = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            columns.Add(reader.GetString(0));
+        }
+
+        columns.Should().NotBeEmpty();
+        columns.Should().NotContain(c => c.Contains("doc", StringComparison.OrdinalIgnoreCase) || c.Contains("cpf") || c.Contains("cnpj"));
+    }
 }

@@ -63,9 +63,13 @@ public sealed class StartAtendimentoHandler(
 
 public sealed class AddBotMessageHandler(
     IAtendimentoRepository repository,
+    IConsultaSessaoRepository consultaSessoes,
     IAtendimentoUnitOfWork unitOfWork,
     IDateTimeProvider clock) : ICommandHandler<AddBotMessageCommand, AddMessageResponse>
 {
+    /// <summary>O que fica no histórico no lugar da mensagem do cliente durante a verificação de identidade.</summary>
+    public const string RedactedInboundBody = "[mensagem omitida: verificação de identidade]";
+
     public async Task<Result<AddMessageResponse>> Handle(AddBotMessageCommand request, CancellationToken cancellationToken)
     {
         // Idempotência: a Meta reentrega webhooks. A mesma mensagem devolve o mesmo id.
@@ -87,7 +91,22 @@ public sealed class AddBotMessageHandler(
         var direction = Enum.Parse<MessageDirection>(request.Direction, ignoreCase: true);
         var sender = Enum.Parse<MessageSender>(request.Sender, ignoreCase: true);
 
-        var mensagem = atendimento.AddMessage(direction, sender, request.Body, request.ExternalId, clock.UtcNow);
+        var now = clock.UtcNow;
+        var body = request.Body;
+
+        // O documento (CPF/CNPJ) que o cliente digita para a consulta de andamento NÃO pode ir parar em
+        // texto claro no histórico. O Bot registra a mensagem sem saber que era o documento, então o
+        // Core a oculta enquanto há verificação em curso (ou acabou de haver uma tentativa).
+        if (direction == MessageDirection.Inbound && sender == MessageSender.Client)
+        {
+            var sessao = await consultaSessoes.GetLatestByAtendimentoAsync(atendimento.Id, cancellationToken);
+            if (sessao?.ShouldRedactInbound(now) == true)
+            {
+                body = RedactedInboundBody;
+            }
+        }
+
+        var mensagem = atendimento.AddMessage(direction, sender, body, request.ExternalId, now);
         if (mensagem.IsFailure)
         {
             return Result.Failure<AddMessageResponse>(mensagem.Error);
