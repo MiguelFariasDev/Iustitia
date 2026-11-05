@@ -56,6 +56,18 @@ public class ErrorCatalogConventionTests
             $"erros de negócio em {projectFolderName} devem usar ErrorFactory.From(ErrorCode.X), nunca Error.X(\"...\", \"...\") direto");
     }
 
+    [Theory]
+    [InlineData("Atendimento.Domain")]
+    [InlineData("Atendimento.Application")]
+    public void AtendimentoSourceFiles_NeverConstructErrorDirectly(string projectFolderName)
+    {
+        var offendingFiles = FindFilesConstructingErrorDirectly(
+            FindSourceDirectory("Modules", "Atendimento", projectFolderName));
+
+        offendingFiles.Should().BeEmpty(
+            $"erros de negócio em {projectFolderName} devem usar ErrorFactory.From(ErrorCode.X), nunca Error.X(\"...\", \"...\") direto");
+    }
+
     /// <summary>Localiza src/&lt;segments&gt; a partir do diretório de execução dos testes.</summary>
     private static string FindSourceDirectory(params string[] segments)
     {

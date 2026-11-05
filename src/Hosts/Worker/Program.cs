@@ -1,4 +1,5 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.Atendimentos.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
@@ -16,11 +17,14 @@ builder.Configuration.AddAdvocaciaKeyVault();
 // AddPlatformInfrastructure já registra Serilog e OpenTelemetry (ver ADR-036) — o Worker não
 // expõe endpoints HTTP, mas os jobs e consumers continuam logando/instrumentados do mesmo
 // jeito que a Api.
-builder.Services.AddPlatformInfrastructure(builder.Configuration, builder.Environment);
+// Consumers de Realtime do Atendimento no mesmo bus (ver Hosts/Api/Program.cs).
+builder.Services.AddPlatformInfrastructure(
+    builder.Configuration, builder.Environment, bus => bus.AddAtendimentoConsumers());
 
 // Módulos de negócio (ver comentário equivalente em Hosts/Api/Program.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddLegalInfrastructure(builder.Configuration);
+builder.Services.AddAtendimentoInfrastructure(builder.Configuration);
 
 var host = builder.Build();
 

@@ -56,7 +56,7 @@ export const mainNavigation: NavGroup[] = [
       { label: 'Processos', icon: BriefcaseBusiness, href: routes.processes },
       { label: 'Clientes', icon: Users, href: routes.clients },
       { label: 'Contatos', icon: Users, href: routes.contacts, demo: true },
-      { label: 'Atendimentos', icon: Headset, href: routes.serviceDesk, soon: true },
+      { label: 'Atendimentos', icon: Headset, href: routes.serviceDesk },
       { label: 'Financeiro', icon: Banknote, href: routes.finance, demo: true },
     ],
   },

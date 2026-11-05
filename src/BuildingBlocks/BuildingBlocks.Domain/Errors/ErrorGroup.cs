@@ -23,5 +23,6 @@ public enum ErrorGroup
     Publication,
     Alert,
     Cnj,
+    Atendimento,
     Internal,
 }

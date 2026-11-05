@@ -1,4 +1,6 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.Atendimentos.Api;
+using Advocacia.Modules.Atendimentos.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Api;
 using Advocacia.Modules.Legal.Infrastructure;
@@ -27,7 +29,9 @@ builder.Configuration.AddAdvocaciaKeyVault();
 // FluentValidation, Mapster) é independente de ASP.NET Core — ver ADR-030 — e AddPlatformApi
 // só cuida de Swagger/OpenAPI. AddPlatformInfrastructure já registra Serilog, OpenTelemetry
 // e os health checks de dependências críticas (ver ADR-036).
-builder.Services.AddPlatformInfrastructure(builder.Configuration, builder.Environment);
+// Os consumers de Realtime do Atendimento entram no MESMO bus do MassTransit (só pode haver um).
+builder.Services.AddPlatformInfrastructure(
+    builder.Configuration, builder.Environment, bus => bus.AddAtendimentoConsumers());
 builder.Services.AddPlatformAuth(builder.Configuration);
 builder.Services.AddPlatformApplication(builder.Configuration);
 builder.Services.AddPlatformApi(builder.Configuration);
@@ -38,6 +42,11 @@ builder.Services.AddAdvocaciaRateLimiting();
 // a implementação é registrada aqui, pelo host (ver Legal.Infrastructure/DependencyInjection.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddLegalInfrastructure(builder.Configuration);
+builder.Services.AddAtendimentoInfrastructure(builder.Configuration);
+
+// Esquema de autenticação por chave de API do Bot (opt-in nos endpoints /bot/atendimentos).
+// Depois de AddPlatformAuth: o JWT do Supabase continua sendo o esquema padrão.
+builder.Services.AddAtendimentoApi();
 
 var app = builder.Build();
 
@@ -87,6 +96,8 @@ app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
 app.MapPublicationsEndpoints();
+app.MapAtendimentosEndpoints();
+app.MapBotEndpoints();
 
 var hangfireOptions = app.Services.GetRequiredService<IOptions<HangfireOptions>>().Value;
 if (hangfireOptions.DashboardEnabled)

@@ -69,6 +69,16 @@ export const endpoints = {
     /** PATCH { status, notes } — revisão humana (ADR-012). */
     status: (id: string) => `/publications/${id}/status`,
   },
+  /** Inbox do advogado (JWT). O Bot usa /bot/atendimentos com chave de API — nunca daqui. */
+  atendimentos: {
+    list: '/atendimentos',
+    byId: (id: string) => `/atendimentos/${id}`,
+    mensagens: (id: string) => `/atendimentos/${id}/mensagens`,
+    /** PATCH { status } — Human (assumir), Bot (devolver) ou Closed (encerrar). */
+    status: (id: string) => `/atendimentos/${id}/status`,
+    /** PUT { clienteId } — vincula a conversa a um cliente do escritório. */
+    cliente: (id: string) => `/atendimentos/${id}/cliente`,
+  },
   alerts: {
     list: '/alerts',
     byId: (id: string) => `/alerts/${id}`,
