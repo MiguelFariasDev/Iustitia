@@ -39,14 +39,15 @@ public sealed class ClientesPorTenantSpecification : Specification<Cliente>
 }
 
 /// <summary>
-/// Cliente pelo documento — impede cadastro duplicado no mesmo escritório. A comparação é
-/// pelo value object INTEIRO (não por <c>.Value</c>), que é o que o EF Core traduz para
-/// igualdade de coluna.
+/// Cliente pelo documento — impede cadastro duplicado no mesmo escritório. Compara pela coluna
+/// DERIVADA <see cref="Cliente.DocumentoBusca"/> (índice cego): a coluna <c>documento</c> é
+/// cifrada com nonce aleatório e nunca é igual a si mesma entre duas gravações. Passa-se o
+/// documento em claro; a infraestrutura aplica o HMAC ao parâmetro (ver ADR-068).
 /// </summary>
 public sealed class ClientePorDocumentoSpecification : Specification<Cliente>
 {
     public ClientePorDocumentoSpecification(Guid tenantId, Documento documento)
-        : base(cliente => cliente.TenantId == tenantId && cliente.Documento == documento)
+        : base(cliente => cliente.TenantId == tenantId && cliente.DocumentoBusca == documento.Value)
     {
     }
 }

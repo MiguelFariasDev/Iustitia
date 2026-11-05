@@ -113,14 +113,14 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Documento")
                         .IsRequired()
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("documento");
 
                     b.Property<string>("DocumentoBusca")
                         .IsRequired()
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
                         .HasColumnName("documento_busca");
 
                     b.Property<bool>("IsActive")
@@ -172,7 +172,7 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_clientes");
 
-                    b.HasIndex("TenantId", "Documento")
+                    b.HasIndex("TenantId", "DocumentoBusca")
                         .IsUnique()
                         .HasDatabaseName("ux_clientes_tenant_documento")
                         .HasFilter("is_deleted = false");
@@ -489,13 +489,13 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                                 .HasColumnName("id");
 
                             b1.Property<string>("Email")
-                                .HasMaxLength(320)
-                                .HasColumnType("character varying(320)")
+                                .HasMaxLength(600)
+                                .HasColumnType("character varying(600)")
                                 .HasColumnName("email");
 
                             b1.Property<string>("Telefone")
-                                .HasMaxLength(11)
-                                .HasColumnType("character varying(11)")
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
                                 .HasColumnName("telefone");
 
                             b1.HasKey("ClienteId");

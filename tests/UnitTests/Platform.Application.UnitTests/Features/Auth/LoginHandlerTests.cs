@@ -108,4 +108,38 @@ public class LoginHandlerTests
             performedByUserId: userId, tenantId: inactiveUser.TenantId,
             errorCode: ErrorCode.AUTH_ACCOUNT_DISABLED, cancellationToken: Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_WithWrongPasswordOfAnExistingUser_AuditsLoginFailed_AndStillReturnsTheCredentialsError()
+    {
+        var userId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var user = CreateActiveUser(userId, tenantId);
+
+        _supabaseAuthService.SignInAsync("fulano@teste.com", "errada", Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<SupabaseSession>(ErrorFactory.From(ErrorCode.AUTH_INVALID_CREDENTIALS)));
+        _userRepository.FirstOrDefaultAsync(Arg.Any<BuildingBlocks.Domain.Specifications.ISpecification<User>>(), Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        var result = await CreateHandler().Handle(new LoginCommand("fulano@teste.com", "errada"), CancellationToken.None);
+
+        result.Error.Code.Should().Be(nameof(ErrorCode.AUTH_INVALID_CREDENTIALS));
+        await _auditService.Received(1).RecordAsync(
+            AuditAction.LoginFailed, nameof(User), userId.ToString(),
+            before: null, after: null,
+            performedByUserId: userId, tenantId: tenantId, errorCode: ErrorCode.AUTH_INVALID_CREDENTIALS,
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithWrongPasswordOfAnUnknownEmail_RecordsNothing_BecauseThereIsNoTenantToAttributeItTo()
+    {
+        _supabaseAuthService.SignInAsync("ninguem@teste.com", "x", Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<SupabaseSession>(ErrorFactory.From(ErrorCode.AUTH_INVALID_CREDENTIALS)));
+
+        var result = await CreateHandler().Handle(new LoginCommand("ninguem@teste.com", "x"), CancellationToken.None);
+
+        result.Error.Code.Should().Be(nameof(ErrorCode.AUTH_INVALID_CREDENTIALS));
+        await _auditService.DidNotReceiveWithAnyArgs().RecordAsync(default, default!, default!);
+    }
 }

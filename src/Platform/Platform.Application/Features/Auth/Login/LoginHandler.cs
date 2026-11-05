@@ -1,5 +1,6 @@
 using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Application.Messaging;
+using Advocacia.BuildingBlocks.Domain.Specifications;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.BuildingBlocks.Domain.Time;
@@ -27,6 +28,7 @@ public sealed class LoginHandler(
         var sessionResult = await supabaseAuthService.SignInAsync(request.Email, request.Password, cancellationToken);
         if (sessionResult.IsFailure)
         {
+            await AuditFailedAttemptAsync(request.Email, sessionResult.Error, cancellationToken);
             return Result.Failure<LoginResponse>(sessionResult.Error);
         }
 
@@ -77,5 +79,49 @@ public sealed class LoginHandler(
             session.AccessToken,
             session.RefreshToken,
             session.ExpiresInSeconds);
+    }
+
+    /// <summary>
+    /// Credencial errada de um usuário que EXISTE vira LoginFailed (evento de segurança — base
+    /// para detectar força bruta e acesso indevido). Se o e-mail não corresponde a nenhum usuário
+    /// não há tenant a que atribuir o evento (audit_logs.tenant_id é obrigatório), então nada é
+    /// gravado — a tentativa fica só nos logs de aplicação e no rate limit por IP. A resposta ao
+    /// cliente é a mesma nos dois casos: nunca revela se o e-mail existe.
+    /// </summary>
+    private async Task AuditFailedAttemptAsync(string email, Error error, CancellationToken cancellationToken)
+    {
+        if (error.Code != nameof(ErrorCode.AUTH_INVALID_CREDENTIALS))
+        {
+            return;
+        }
+
+        var parsedEmail = Email.Create(email);
+        if (parsedEmail.IsFailure)
+        {
+            return;
+        }
+
+        var user = await userRepository.FirstOrDefaultAsync(new UserByEmailSpecification(parsedEmail.Value), cancellationToken);
+        if (user is null)
+        {
+            return;
+        }
+
+        await auditService.RecordAsync(
+            AuditAction.LoginFailed,
+            entityType: nameof(User),
+            entityId: user.Id.Value.ToString(),
+            performedByUserId: user.Id.Value,
+            tenantId: user.TenantId,
+            errorCode: ErrorCode.AUTH_INVALID_CREDENTIALS,
+            cancellationToken: cancellationToken);
+    }
+
+    private sealed class UserByEmailSpecification : Specification<User>
+    {
+        public UserByEmailSpecification(Email email)
+            : base(u => u.Email == email)
+        {
+        }
     }
 }

@@ -63,6 +63,7 @@ public static class DependencyInjection
         // Legal; o DataJud fica atrás deste adaptador (ver ADR-064).
         services.AddScoped<IConsultaProcessoTribunal, DataJudConsultaProcessoTribunal>();
         services.AddScoped<LegalRecurringJobsRegistrar>();
+        services.AddScoped<ClienteEncryptionBackfillJob>();
 
         return services;
     }

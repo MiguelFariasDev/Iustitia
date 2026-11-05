@@ -32,6 +32,17 @@ builder.Services.AddPlatformAuth(builder.Configuration);
 builder.Services.AddPlatformApplication(builder.Configuration);
 builder.Services.AddPlatformApi(builder.Configuration);
 builder.Services.AddAdvocaciaRateLimiting();
+builder.Services.AddAdvocaciaForwardedHeaders(builder.Configuration);
+
+// Swagger UI (só em Development) e o dashboard do Hangfire são HTML com script inline: ficam
+// com uma CSP mais frouxa. Toda a API JSON responde com default-src 'none' (ver ADR-067).
+builder.Services.AddAdvocaciaSecurityHeaders(
+    builder.Environment.IsDevelopment()
+        ? ["/swagger", builder.Configuration["Hangfire:DashboardPath"] ?? "/jobs"]
+        : [builder.Configuration["Hangfire:DashboardPath"] ?? "/jobs"]);
+
+// Não anuncia "Server: Kestrel" (a SecurityHeadersMiddleware cobre o X-Powered-By).
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
 // Módulos de negócio. AddCnjIntegration registra o ICnjClient consumido pelo job de captura
 // do Legal — Legal.Infrastructure depende só da porta (Integrations.CNJ.Application), então
@@ -40,6 +51,13 @@ builder.Services.AddCnjIntegration(builder.Configuration);
 builder.Services.AddLegalInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Primeiro de tudo: restaura IP/esquema reais do cliente a partir do X-Forwarded-* do proxy
+// (Front Door/ingress). Rate limit por IP, HttpsRedirection e logs dependem disto.
+app.UseForwardedHeaders();
+
+// Headers de segurança em TODA resposta, inclusive as de middlewares que encerram o pipeline.
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -64,17 +82,20 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 // 3. RequestLogging — loga a requisição já com CorrelationId disponível.
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// 4. RateLimiting — nativo do ASP.NET Core (ver RateLimitingConfiguration).
-app.UseRateLimiter();
-
-// 5/7. Authentication/Authorization — nativos do ASP.NET Core.
+// 4. Authentication — nativo do ASP.NET Core. Vem ANTES do rate limiter de propósito: o
+//    limite de escrita/leitura é por usuário (claim "sub"), e antes de Authentication
+//    HttpContext.User está vazio — o limite degeneraria para por-IP.
 app.UseAuthentication();
+
+// 5. RateLimiting — nativo do ASP.NET Core (ver RateLimitingConfiguration).
+app.UseRateLimiter();
 
 // 6. TenantContext — precisa vir depois de Authentication (lê claims do JWT via
 //    ICurrentUser) e antes de Authorization (algumas policies dependem do tenant já
 //    resolvido).
 app.UseMiddleware<TenantContextMiddleware>();
 
+// 7. Authorization — nativo do ASP.NET Core.
 app.UseAuthorization();
 
 // 8. Idempotency — roda só nos POSTs críticos, depois de Authorization (a chave de

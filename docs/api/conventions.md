@@ -64,19 +64,30 @@ HTTP status, `detail` = mensagem em pt-BR, e as extensions `errorType`,
 
 ## Rate limiting
 
-Ver ADR-039/RateLimitingConfiguration: rotas de `/auth/*` (login/refresh)
-são limitadas a 10 req/min por IP; demais rotas, 60 req/min (escrita) ou
-300 req/min (leitura) por usuário (ou IP, se anônimo). Estourar o limite
-responde 429 com `Retry-After` e o mesmo shape de ProblemDetails.
+Ver ADR-039, ADR-067 e `RateLimitingConfiguration`. Limites por categoria:
+
+| Rota | Limite | Chave |
+|---|---|---|
+| `/auth/login` | 5 / 5 min (janela deslizante) | IP |
+| `/auth/forgot-password` | 3 / 1 h (janela deslizante) | IP |
+| demais `/auth/*` | 10 / min | IP |
+| `/webhooks/*` | 1000 / min | IP |
+| escrita (POST/PUT/PATCH/DELETE) | 60 / min | usuário (`sub`; IP se anônimo) |
+| leitura | 300 / min | usuário (`sub`; IP se anônimo) |
+
+IPv6 é agrupado no /64. Estourar o limite responde 429 com `Retry-After` real e ProblemDetails
+`COMMON_RATE_LIMITED`. Os contadores são em memória, por réplica (ver ADR-067).
 
 ## Ordem do pipeline de middlewares (Hosts/Api/Program.cs)
 
-1. CorrelationId
-2. ExceptionHandling
-3. RequestLogging
-4. RateLimiting (`UseRateLimiter`)
-5. Authentication (nativo)
-6. TenantContext
-7. Authorization (nativo)
-8. Idempotency
-9. Endpoint (nativo)
+1. ForwardedHeaders (IP/esquema reais atrás do Front Door/ingress)
+2. SecurityHeaders (headers OWASP em toda resposta)
+3. CorrelationId
+4. ExceptionHandling
+5. RequestLogging
+6. Authentication (nativo)
+7. RateLimiting (`UseRateLimiter`) — depois da autenticação, para limitar por usuário
+8. TenantContext
+9. Authorization (nativo)
+10. Idempotency
+11. Endpoint (nativo)
