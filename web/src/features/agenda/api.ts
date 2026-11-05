@@ -20,11 +20,14 @@ const notFound = () =>
     detail: 'Evento da agenda não encontrado.',
   })
 
-export async function listEventos(periodo: AgendaPeriodo): Promise<AgendaEvento[]> {
-  if (env.useMocks) return mockResponse(mockListEventos(periodo), 200)
+export async function listEventos(
+  periodo: AgendaPeriodo,
+  responsavelId: string | null = null
+): Promise<AgendaEvento[]> {
+  if (env.useMocks) return mockResponse(mockListEventos(periodo, responsavelId), 200)
 
   const { data } = await apiClient.get<ListCalendarEventsDto>(endpoints.agenda.eventos, {
-    params: { from: periodo.from, to: periodo.to },
+    params: { from: periodo.from, to: periodo.to, responsavelId: responsavelId ?? undefined },
   })
 
   return data.items.map(toAgendaEvento)

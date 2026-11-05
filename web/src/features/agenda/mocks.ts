@@ -1,3 +1,4 @@
+import { mockUser } from '@/lib/auth/mockAuth'
 import { daysFromNow } from '@/mocks/dates'
 import type { AgendaEvento, AgendaPeriodo } from './types'
 
@@ -12,7 +13,8 @@ function seed(): AgendaEvento[] {
     tipo: AgendaEvento['tipo'],
     dias: number,
     hora: number,
-    horas = 1
+    horas = 1,
+    responsavelId: string | null = mockUser.id
   ): AgendaEvento => ({
     id: `00000000-0000-4000-8000-00000000000${n}`,
     titulo,
@@ -23,15 +25,15 @@ function seed(): AgendaEvento[] {
     diaInteiro: false,
     local: null,
     processoId: null,
-    responsavelId: null,
+    responsavelId,
   })
 
   return [
     evento(1, 'Audiência de instrução', 'Audiencia', 1, 14, 2),
     evento(2, 'Prazo: contestação', 'Prazo', 2, 9),
     evento(3, 'Reunião com cliente', 'Reuniao', 0, 16),
-    evento(4, 'Revisar minuta de acordo', 'Tarefa', 3, 11),
-    evento(5, 'Prazo: embargos de declaração', 'Prazo', 5, 9),
+    evento(4, 'Revisar minuta de acordo', 'Tarefa', 3, 11, 1, 'u-2'),
+    evento(5, 'Prazo: embargos de declaração', 'Prazo', 5, 9, 1, 'u-2'),
   ]
 }
 
@@ -41,20 +43,29 @@ export function resetAgendaMock() {
   eventos = seed()
 }
 
-export function mockListEventos({ from, to }: AgendaPeriodo): AgendaEvento[] {
+export function mockListEventos(
+  { from, to }: AgendaPeriodo,
+  responsavelId: string | null = null
+): AgendaEvento[] {
   return eventos
     .filter((e) => e.inicio < to && e.fim >= from)
+    .filter((e) => responsavelId === null || e.responsavelId === responsavelId)
     .sort((a, b) => a.inicio.localeCompare(b.inicio))
 }
 
 export function mockCreateEvento(
-  values: Omit<AgendaEvento, 'id' | 'responsavelId' | 'fim'> & { fim: string | null }
+  values: Omit<AgendaEvento, 'id' | 'fim'> & { fim: string | null }
 ): AgendaEvento {
   const inicio = new Date(values.inicio)
   const fim =
     values.fim ??
     new Date(inicio.getTime() + (values.diaInteiro ? 86_400_000 : 3_600_000)).toISOString()
-  const criado: AgendaEvento = { ...values, fim, id: crypto.randomUUID(), responsavelId: null }
+  const criado: AgendaEvento = {
+    ...values,
+    fim,
+    id: crypto.randomUUID(),
+    responsavelId: values.responsavelId ?? mockUser.id,
+  }
   eventos = [...eventos, criado]
 
   return criado

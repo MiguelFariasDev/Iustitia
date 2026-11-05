@@ -29,6 +29,21 @@ describe('AgendaView', () => {
     expect(screen.getByRole('button', { name: /Reunião: Reunião com cliente/ })).toBeInTheDocument()
   })
 
+  it('filtra a agenda por responsável', async () => {
+    const { user } = await renderAgenda()
+
+    await user.click(screen.getByRole('combobox', { name: 'Filtrar por responsável' }))
+    await user.click(await screen.findByRole('option', { name: /^Bruno Lima/ }))
+
+    // Os dois eventos do mock atribuídos a u-2 permanecem; os demais saem.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Audiência: Audiência de instrução/ })).toBeNull()
+    )
+    expect(
+      screen.getByRole('button', { name: /Tarefa: Revisar minuta de acordo/ })
+    ).toBeInTheDocument()
+  })
+
   it('troca para a visão semanal', async () => {
     const { user } = await renderAgenda()
 

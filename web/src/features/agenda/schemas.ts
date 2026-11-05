@@ -20,6 +20,8 @@ export const eventoFormSchema = z
     local: z.string().trim().max(300, 'O local pode ter no máximo 300 caracteres.'),
     descricao: z.string().trim().max(4000, 'A descrição pode ter no máximo 4000 caracteres.'),
     processoId: z.string(),
+    /** '' = sem escolha: na criação o servidor assume quem está logado. */
+    responsavelId: z.string(),
   })
   .refine((v) => v.fim === '' || v.fim >= v.inicio, {
     path: ['fim'],
@@ -28,16 +30,25 @@ export const eventoFormSchema = z
 
 export type EventoFormValues = z.infer<typeof eventoFormSchema>
 
-export function eventoFormDefaults(inicio: string, processoId = ''): EventoFormValues {
+export interface EventoPreset {
+  processoId?: string
+  titulo?: string
+  tipo?: TipoEvento
+  descricao?: string
+  diaInteiro?: boolean
+}
+
+export function eventoFormDefaults(inicio: string, preset: EventoPreset = {}): EventoFormValues {
   return {
-    titulo: '',
-    tipo: 'Reuniao',
-    diaInteiro: false,
+    titulo: preset.titulo ?? '',
+    tipo: preset.tipo ?? 'Reuniao',
+    diaInteiro: preset.diaInteiro ?? false,
     inicio,
     fim: '',
     local: '',
-    descricao: '',
-    processoId,
+    descricao: preset.descricao ?? '',
+    processoId: preset.processoId ?? '',
+    responsavelId: '',
   }
 }
 
@@ -57,5 +68,6 @@ export function formToPayload(values: EventoFormValues) {
     inicio: new Date(inicioLocal).toISOString(),
     fim: values.diaInteiro || values.fim === '' ? null : new Date(values.fim).toISOString(),
     processoId: values.processoId === '' ? null : values.processoId,
+    responsavelId: values.responsavelId === '' ? null : values.responsavelId,
   }
 }

@@ -9,8 +9,11 @@ import { agendaQuery } from './queries'
 import type { EventoFormValues } from './schemas'
 import type { AgendaEvento, AgendaPeriodo } from './types'
 
-export function useAgenda(periodo: AgendaPeriodo) {
-  return useQuery({ ...agendaQuery(periodo), placeholderData: (previous) => previous })
+export function useAgenda(periodo: AgendaPeriodo, responsavelId: string | null = null) {
+  return useQuery({
+    ...agendaQuery(periodo, responsavelId),
+    placeholderData: (previous) => previous,
+  })
 }
 
 /** Invalida por prefixo: o mesmo evento aparece em várias janelas em cache (mês, semana, dia). */

@@ -19,6 +19,7 @@ import {
   type VisaoAgenda,
 } from '../types'
 import { cn } from '@/lib/utils'
+import { ResponsavelSelect } from './ResponsavelSelect'
 import { EventoDialog, type EventoDialogState } from './EventoDialog'
 import { MonthGrid } from './MonthGrid'
 import { TimeGrid } from './TimeGrid'
@@ -26,11 +27,15 @@ import { TimeGrid } from './TimeGrid'
 export function AgendaView() {
   const [view, setView] = useState<VisaoAgenda>('mes')
   const [anchor, setAnchor] = useState(() => new Date())
+  const [responsavelId, setResponsavelId] = useState('')
   const [tipos, setTipos] = useState<ReadonlySet<TipoEvento>>(new Set())
   const [dialog, setDialog] = useState<EventoDialogState | null>(null)
 
   const periodo = periodFor(view, anchor)
-  const { data, error, isPending, isError, refetch } = useAgenda(periodo)
+  const { data, error, isPending, isError, refetch } = useAgenda(
+    periodo,
+    responsavelId === '' ? null : responsavelId
+  )
   const reschedule = useRescheduleEvento()
 
   const eventos = (data ?? []).filter((e) => tipos.size === 0 || tipos.has(e.tipo))
@@ -97,6 +102,13 @@ export function AgendaView() {
       </div>
 
       <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap items-center gap-2">
+        <ResponsavelSelect
+          value={responsavelId}
+          onChange={setResponsavelId}
+          emptyLabel="Todos os responsáveis"
+          label="Filtrar por responsável"
+          className="h-8 w-52"
+        />
         {tiposEvento.map((tipo) => (
           <FilterChip key={tipo} active={tipos.has(tipo)} onClick={() => toggleTipo(tipo)}>
             <span className="flex items-center gap-1.5">

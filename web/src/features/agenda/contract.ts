@@ -49,6 +49,7 @@ export function toEventPayload(values: {
   descricao: string
   local: string
   processoId: string | null
+  responsavelId: string | null
 }) {
   const blankToNull = (value: string) => (value.trim() === '' ? null : value.trim())
 
@@ -61,5 +62,6 @@ export function toEventPayload(values: {
     description: blankToNull(values.descricao),
     location: blankToNull(values.local),
     processId: values.processoId,
+    assignedUserId: values.responsavelId,
   }
 }

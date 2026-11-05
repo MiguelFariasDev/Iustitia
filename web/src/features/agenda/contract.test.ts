@@ -38,6 +38,7 @@ describe('contrato da agenda', () => {
       descricao: '  ',
       local: 'Sala 2',
       processoId: null,
+      responsavelId: 'u-2',
     })
 
     expect(payload).toEqual({
@@ -49,6 +50,7 @@ describe('contrato da agenda', () => {
       description: null,
       location: 'Sala 2',
       processId: null,
+      assignedUserId: 'u-2',
     })
   })
 })

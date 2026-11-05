@@ -5,6 +5,7 @@ import { BriefcaseBusiness, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Pagination } from '@/components/shared/Pagination'
@@ -32,6 +33,7 @@ import { cn } from '@/lib/utils'
 import { listUsers } from '../../settings/api'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ProcessosKanban } from './ProcessosKanban'
 import { processosQuery } from '../queries'
 import {
   areaDireitoLabels,
@@ -44,6 +46,8 @@ import {
 } from '../types'
 
 const TODOS = '__todos__'
+
+type Visao = 'lista' | 'quadro'
 
 export function ProcessosView() {
   const searchParams = useSearchParams()
@@ -62,10 +66,15 @@ export function ProcessosView() {
     }
   })
 
+  const [visao, setVisao] = useState<Visao>(() =>
+    searchParams.get('visao') === 'quadro' ? 'quadro' : 'lista'
+  )
+
   const { data: usuarios } = useQuery({ queryKey: ['users', 'list'], queryFn: listUsers })
 
   const { data, isPending, isFetching } = useQuery({
     ...processosQuery(filters),
+    enabled: visao === 'lista',
     placeholderData: (previous) => previous,
   })
 
@@ -84,24 +93,35 @@ export function ProcessosView() {
         />
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={filters.status ?? TODOS}
-            onValueChange={(value) =>
-              updateFilters({ status: value === TODOS ? null : (value as StatusProcesso) })
-            }
-          >
-            <SelectTrigger className="w-40" aria-label="Filtrar por situação">
-              <SelectValue placeholder="Situação" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={TODOS}>Todas as situações</SelectItem>
-              {statusProcesso.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {statusProcessoMeta[value].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div role="group" aria-label="Modo de exibição" className="flex gap-1">
+            <FilterChip active={visao === 'lista'} onClick={() => setVisao('lista')}>
+              Lista
+            </FilterChip>
+            <FilterChip active={visao === 'quadro'} onClick={() => setVisao('quadro')}>
+              Quadro
+            </FilterChip>
+          </div>
+
+          {visao === 'quadro' ? null : (
+            <Select
+              value={filters.status ?? TODOS}
+              onValueChange={(value) =>
+                updateFilters({ status: value === TODOS ? null : (value as StatusProcesso) })
+              }
+            >
+              <SelectTrigger className="w-40" aria-label="Filtrar por situação">
+                <SelectValue placeholder="Situação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TODOS}>Todas as situações</SelectItem>
+                {statusProcesso.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {statusProcessoMeta[value].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select
             value={filters.area ?? TODOS}
@@ -194,7 +214,19 @@ export function ProcessosView() {
         </div>
       </div>
 
-      {isPending ? (
+      {visao === 'quadro' ? (
+        <ProcessosKanban
+          filters={{
+            clienteId: filters.clienteId,
+            area: filters.area,
+            busca: filters.busca,
+            responsavelUserId: filters.responsavelUserId,
+            tribunal: filters.tribunal,
+            distribuicaoDe: filters.distribuicaoDe,
+            distribuicaoAte: filters.distribuicaoAte,
+          }}
+        />
+      ) : isPending ? (
         <div className="flex justify-center py-12">
           <LoadingSpinner label="Carregando processos…" />
         </div>

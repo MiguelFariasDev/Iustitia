@@ -40,7 +40,8 @@ export const queryKeys = {
   agenda: {
     all: ['agenda'] as const,
     /** Uma entrada de cache por janela consultada (início e fim em ISO). */
-    range: (from: string, to: string) => [...queryKeys.agenda.all, 'range', from, to] as const,
+    range: (from: string, to: string, responsavelId: string | null = null) =>
+      [...queryKeys.agenda.all, 'range', from, to, responsavelId] as const,
   },
   contatos: {
     all: ['contatos'] as const,

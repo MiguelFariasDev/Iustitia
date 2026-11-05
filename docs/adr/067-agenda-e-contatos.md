@@ -58,3 +58,18 @@ permanecer. Evento da agenda é excluído logicamente (`ISoftDeletable`).
   antes de aplicar `infra/supabase/migrations/014_calendar_contacts.sql` (RLS).
 - A agenda limita a consulta a 62 dias por requisição, o suficiente para a visão mensal com
   as semanas vizinhas.
+
+## Complementos de frontend (Fase 4)
+
+- **Prazos a partir de publicações.** "Agendar prazo" na publicação abre o diálogo da agenda
+  com tipo Prazo, dia inteiro e o processo já vinculados. A descrição leva só a referência
+  (data e diário), nunca o texto da publicação: descrição de evento vai para lembretes.
+  A sugestão automática de prazo por IA é da Fase 3 e não é tocada aqui.
+- **Agenda por responsável.** Filtro por advogado na agenda (`responsavelId` no endpoint de
+  listagem) e campo Responsável no evento.
+- **Quadro de processos.** Visão "Quadro" em `/processos`, com colunas Ativo, Suspenso e
+  Encerrado. Mover um cartão usa o mesmo `PATCH /processos/{id}/status` da tela de detalhe,
+  então as regras de transição são as do servidor, com atualização otimista e volta ao lugar
+  se ele recusar. **Arquivado não é coluna**: arquivar é estado final com confirmação própria.
+  Cada coluna mostra até 100 processos e avisa quando há mais; arrastar exige ponteiro, e o
+  seletor "Mover para" de cada cartão é o caminho por teclado.

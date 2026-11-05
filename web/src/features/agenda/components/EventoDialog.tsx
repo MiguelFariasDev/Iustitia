@@ -34,17 +34,21 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { toDateTimeLocal } from '../dates'
 import { useCreateEvento, useDeleteEvento, useUpdateEvento } from '../hooks'
-import { eventoFormDefaults, eventoFormSchema, type EventoFormValues } from '../schemas'
+import {
+  eventoFormDefaults,
+  eventoFormSchema,
+  type EventoFormValues,
+  type EventoPreset,
+} from '../schemas'
 import { tipoEventoLabels, tiposEvento, type AgendaEvento } from '../types'
 import { ProcessoSelect } from './ProcessoSelect'
+import { ResponsavelSelect } from './ResponsavelSelect'
 
-export interface EventoDialogState {
+export interface EventoDialogState extends EventoPreset {
   /** Evento em edição; ausente = criação. */
   evento?: AgendaEvento
   /** Início sugerido na criação (clique numa célula). */
   inicio?: Date
-  /** Processo pré-selecionado (criação a partir da tela do processo). */
-  processoId?: string
 }
 
 interface EventoDialogProps {
@@ -67,7 +71,7 @@ function defaultsFor(state: EventoDialogState): EventoFormValues {
     const base = state.inicio ?? new Date()
     if (!state.inicio) base.setMinutes(0, 0, 0)
 
-    return eventoFormDefaults(toDateTimeLocal(base), state.processoId ?? '')
+    return eventoFormDefaults(toDateTimeLocal(base), state)
   }
 
   return {
@@ -79,6 +83,7 @@ function defaultsFor(state: EventoDialogState): EventoFormValues {
     local: evento.local ?? '',
     descricao: evento.descricao ?? '',
     processoId: evento.processoId ?? '',
+    responsavelId: evento.responsavelId ?? '',
   }
 }
 
@@ -216,6 +221,23 @@ function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClos
               <FormItem>
                 <FormLabel>Processo</FormLabel>
                 <ProcessoSelect value={field.value} onChange={field.onChange} />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="responsavelId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Responsável</FormLabel>
+                <ResponsavelSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  emptyLabel="Eu"
+                  label="Responsável pelo evento"
+                />
                 <FormMessage />
               </FormItem>
             )}
