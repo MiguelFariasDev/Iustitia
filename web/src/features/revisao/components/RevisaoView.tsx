@@ -387,7 +387,7 @@ export function RevisaoView() {
               <div
                 role="tablist"
                 aria-label="Publicações a revisar"
-                className="flex flex-wrap gap-2"
+                className="flex gap-2 overflow-x-auto pb-1"
               >
                 {itens.map((item, indice) => {
                   const id = item.publication.id
@@ -405,7 +405,7 @@ export function RevisaoView() {
                       tabIndex={selecionada ? 0 : -1}
                       onClick={() => setEscolhido(id)}
                       className={cn(
-                        'rounded-full border px-3.5 py-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring',
                         selecionada
                           ? 'border-ia bg-ia-soft text-ia-text'
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground'

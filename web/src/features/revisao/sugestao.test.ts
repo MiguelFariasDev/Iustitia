@@ -16,7 +16,9 @@ describe('sugerirDemo', () => {
 
     expect(s.dias).toBe(15)
     expect(content.slice(s.trecho!.inicio, s.trecho!.fim)).toBe('15 (quinze) dias úteis')
-    expect(s.fundamento).toMatch(/fixado no texto/)
+    expect(s.fundamento).toMatch(/fixado no próprio texto/)
+    // Não cita artigo da tabela por tipo, que poderia contradizer o prazo lido do texto.
+    expect(s.fundamento).not.toMatch(/art\./)
     expect(s.confianca).toBeGreaterThanOrEqual(88)
   })
 
