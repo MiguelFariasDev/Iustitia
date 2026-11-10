@@ -21,6 +21,7 @@ export type Screen =
   | 'dashboard'
   | 'agenda'
   | 'publications'
+  | 'review'
   | 'alerts'
   | 'processes'
   | 'clients'
@@ -30,6 +31,7 @@ export type Screen =
   | 'drafting'
   | 'documents'
   | 'indicators'
+  | 'tasks'
   | 'settings.profile'
   | 'settings.tenant'
   | 'settings.users'
@@ -52,6 +54,7 @@ export const screenRules: Record<Screen, Rule> = {
   agenda: { roles: allRoles },
   documents: { roles: allRoles },
   publications: { roles: lawyerOrAbove },
+  review: { roles: lawyerOrAbove },
   alerts: { roles: lawyerOrAbove },
   processes: { roles: lawyerOrAbove },
   clients: { roles: lawyerOrAbove },
@@ -60,6 +63,8 @@ export const screenRules: Record<Screen, Rule> = {
   drafting: { roles: lawyerOrAbove },
   finance: { roles: ['Owner', 'Partner', 'Financial'] },
   indicators: { roles: partnerOrAbove },
+  // Tarefas da equipe: todos, menos o financeiro. Não há API de tarefas: sem policy a espelhar.
+  tasks: { roles: ['Owner', 'Partner', 'Lawyer', 'Intern', 'Admin'] },
   'settings.profile': { roles: allRoles },
   'settings.notifications': { roles: allRoles },
   'settings.integrations': { roles: allRoles },
@@ -103,6 +108,8 @@ export function screenLabel(screen: Screen, fallback: string, context: AccessCon
 }
 
 const pathScreens: readonly (readonly [string, Screen])[] = [
+  // Mais específica que /publicacoes, então vem antes.
+  ['/publicacoes/revisao', 'review'],
   [routes.settings.profile, 'settings.profile'],
   [routes.settings.tenant, 'settings.tenant'],
   [routes.settings.users, 'settings.users'],
@@ -120,6 +127,7 @@ const pathScreens: readonly (readonly [string, Screen])[] = [
   [routes.finance, 'finance'],
   [routes.drafting, 'drafting'],
   [routes.documents, 'documents'],
+  [routes.tasks, 'tasks'],
   [routes.indicators, 'indicators'],
 ]
 

@@ -17,5 +17,11 @@ export function AccessGuard({ children }: { children: React.ReactNode }) {
 
   if (screen && access.isReady && !access.can(screen)) return <AccessDenied />
 
-  return children
+  // `key` no caminho: cada tela nova entra com a animação de entrada (iu-in, 0,35s). Só opacity e
+  // transform; sob prefers-reduced-motion o CSS global faz aparecer direto.
+  return (
+    <div key={pathname} className="animate-iu-in">
+      {children}
+    </div>
+  )
 }

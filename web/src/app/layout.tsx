@@ -1,23 +1,23 @@
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
-import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google'
+import { Geist, JetBrains_Mono } from 'next/font/google'
 import { env } from '@/config/env'
 import { themeColor } from '@/config/theme'
 import { AppProviders } from '@/providers/AppProviders'
 import { themeInitScript } from '@/providers/themeScript'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
-const playfair = Playfair_Display({
+const geist = Geist({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  variable: '--font-geist',
   display: 'swap',
-  weight: ['600', '700'],
+  weight: ['300', '400', '500', '600'],
 })
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains-mono',
   display: 'swap',
+  weight: ['400', '500'],
 })
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable}`}
+      className={`${geist.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>

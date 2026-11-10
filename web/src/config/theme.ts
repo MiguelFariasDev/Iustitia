@@ -3,26 +3,27 @@
  * (gráficos, canvas, meta theme-color). A fonte da verdade continua sendo o CSS.
  */
 export const palette = {
-  primary: '#0A2540',
-  secondary: '#2563EB',
-  gold: '#C9A961',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
+  primary: '#047857',
+  secondary: '#047857',
+  ia: '#7c3aed',
+  success: '#047857',
+  warning: '#b4530a',
+  error: '#c2362b',
+  info: '#7c3aed',
 } as const
 
 export const themeColor = {
-  light: '#FFFFFF',
-  dark: '#020817',
+  light: '#f5f4ef',
+  dark: '#0d1512',
 } as const
 
 /** Escala de 4px (Tailwind: 1 unidade = 0.25rem = 4px). */
 export const spacing = [0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64] as const
 
-export const radius = { sm: 6, md: 8, lg: 10, xl: 14, full: 9999 } as const
+export const radius = { xs: 6, sm: 8, lg: 10, xl: 14, '2xl': 16, '3xl': 20, full: 9999 } as const
 
-export const motion = { fast: 150, base: 200, slow: 300 } as const
+/** ms. `hover` é a transição de hover; as demais, as durações de entrada (--dur-* no CSS). */
+export const motion = { hover: 150, palette: 200, layer: 250, tab: 300, screen: 350 } as const
 
 export type Theme = 'light' | 'dark' | 'system'
 export type ResolvedTheme = Exclude<Theme, 'system'>

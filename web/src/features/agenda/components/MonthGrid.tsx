@@ -20,7 +20,11 @@ export function MonthGrid({ anchor, eventos, onSelectEvento, onCreateAt, onMove 
   const today = new Date()
 
   return (
-    <div role="grid" aria-label="Calendário do mês" className="overflow-hidden rounded-lg border">
+    <div
+      role="grid"
+      aria-label="Calendário do mês"
+      className="animate-iu-in overflow-hidden rounded-lg border"
+    >
       <div role="row" className="grid grid-cols-7 border-b bg-muted/50 text-xs font-medium">
         {diasSemanaCurtos.map((dia) => (
           <div key={dia} role="columnheader" className="px-2 py-1.5 text-center uppercase">
@@ -53,7 +57,8 @@ export function MonthGrid({ anchor, eventos, onSelectEvento, onCreateAt, onMove 
                 }}
                 className={cn(
                   'min-h-24 space-y-1 border-r p-1 last:border-r-0',
-                  foraDoMes && 'bg-muted/30'
+                  foraDoMes && 'bg-muted/30',
+                  isSameDay(day, today) && 'bg-brand-soft'
                 )}
               >
                 <button

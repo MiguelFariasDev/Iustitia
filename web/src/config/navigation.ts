@@ -12,6 +12,7 @@ import {
   Newspaper,
   PenLine,
   Settings,
+  SquareKanban,
   Users,
 } from 'lucide-react'
 import type { Screen } from '@/lib/auth/access'
@@ -45,6 +46,12 @@ export interface NavGroup {
   items: NavItem[]
 }
 
+/**
+ * Ordem e grupos do protótipo v4: uma lista principal e o grupo "Equipe e gestão".
+ * "Clientes" não existe no menu do protótipo (lá fica dentro de Contatos), mas é uma tela real e
+ * com backend, então permanece, logo depois de Contatos — ver docs/frontend/v4-alinhamento.md.
+ * "Tarefas" (kanban de equipe) entra aqui quando a tela existir.
+ */
 export const mainNavigation: NavGroup[] = [
   {
     items: [
@@ -56,45 +63,34 @@ export const mainNavigation: NavGroup[] = [
       },
       { screen: 'agenda', label: 'Agenda', icon: CalendarDays, href: routes.agenda },
       {
-        screen: 'publications',
-        label: 'Publicações',
-        icon: Newspaper,
-        href: routes.publications,
-        badge: 'publications',
-      },
-      { screen: 'alerts', label: 'Alertas', icon: Bell, href: routes.alerts, badge: 'alerts' },
-    ],
-  },
-  {
-    label: 'Gestão',
-    items: [
-      { screen: 'processes', label: 'Processos', icon: BriefcaseBusiness, href: routes.processes },
-      { screen: 'clients', label: 'Clientes', icon: Users, href: routes.clients },
-      {
         screen: 'contacts',
         label: 'Contatos',
         icon: Users,
         href: routes.contacts,
         demo: env.useMocks,
       },
+      { screen: 'clients', label: 'Clientes', icon: Users, href: routes.clients },
+      { screen: 'serviceDesk', label: 'Atendimentos', icon: Headset, href: routes.serviceDesk },
       {
-        screen: 'serviceDesk',
-        label: 'Atendimentos',
-        icon: Headset,
-        href: routes.serviceDesk,
+        screen: 'processes',
+        label: 'Processos e casos',
+        icon: BriefcaseBusiness,
+        href: routes.processes,
+      },
+      {
+        screen: 'publications',
+        label: 'Publicações',
+        icon: Newspaper,
+        href: routes.publications,
+        badge: 'publications',
       },
       { screen: 'finance', label: 'Financeiro', icon: Banknote, href: routes.finance, demo: true },
-    ],
-  },
-  {
-    label: 'Ferramentas',
-    items: [
       {
         screen: 'drafting',
         label: 'Criação de peças',
         icon: PenLine,
         href: routes.drafting,
-        soon: true,
+        soon: !env.useMocks,
         ai: true,
       },
       {
@@ -104,6 +100,13 @@ export const mainNavigation: NavGroup[] = [
         href: routes.documents,
         demo: true,
       },
+      { screen: 'alerts', label: 'Alertas', icon: Bell, href: routes.alerts, badge: 'alerts' },
+    ],
+  },
+  {
+    label: 'Equipe e gestão',
+    items: [
+      { screen: 'tasks', label: 'Tarefas', icon: SquareKanban, href: routes.tasks, demo: true },
       {
         screen: 'indicators',
         label: 'Indicadores',
@@ -173,9 +176,10 @@ export const settingsNavigation: {
 export const segmentLabels: Record<string, string> = {
   painel: 'Área de trabalho',
   publicacoes: 'Publicações',
+  revisao: 'Revisão da IA',
   alertas: 'Alertas',
   agenda: 'Agenda',
-  processos: 'Processos',
+  processos: 'Processos e casos',
   clientes: 'Clientes',
   novo: 'Novo',
   editar: 'Editar',
@@ -184,6 +188,7 @@ export const segmentLabels: Record<string, string> = {
   financeiro: 'Financeiro',
   'criacao-de-pecas': 'Criação de peças',
   documentos: 'Documentos',
+  tarefas: 'Tarefas',
   indicadores: 'Indicadores',
   configuracoes: 'Configurações',
   perfil: 'Perfil',

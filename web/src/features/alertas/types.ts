@@ -23,9 +23,9 @@ export interface AlertasSummary {
 }
 
 /** Abas da tela: cada uma é um PRESET de filtro (ver tabFilters). */
-export type AlertaTab = 'important' | 'all' | 'publications' | 'others'
+export type AlertaTab = 'important' | 'publications' | 'deadlines' | 'all'
 
-export const alertaTabs: AlertaTab[] = ['important', 'all', 'publications', 'others']
+export const alertaTabs: AlertaTab[] = ['important', 'publications', 'deadlines', 'all']
 
 export interface AlertasFilters {
   page?: number

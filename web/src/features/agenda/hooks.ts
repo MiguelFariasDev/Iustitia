@@ -9,10 +9,15 @@ import { agendaQuery } from './queries'
 import type { EventoFormValues } from './schemas'
 import type { AgendaEvento, AgendaPeriodo } from './types'
 
-export function useAgenda(periodo: AgendaPeriodo, responsavelId: string | null = null) {
+export function useAgenda(
+  periodo: AgendaPeriodo,
+  responsavelId: string | null = null,
+  { enabled = true }: { enabled?: boolean } = {}
+) {
   return useQuery({
     ...agendaQuery(periodo, responsavelId),
     placeholderData: (previous) => previous,
+    enabled,
   })
 }
 

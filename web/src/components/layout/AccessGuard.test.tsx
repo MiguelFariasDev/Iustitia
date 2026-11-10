@@ -62,3 +62,21 @@ describe('AccessGuard', () => {
     expect(screen.getByText('conteúdo')).toBeInTheDocument()
   })
 })
+
+describe('AccessGuard — entrada de tela', () => {
+  it('envolve o conteúdo na animação de entrada, reiniciada a cada rota', () => {
+    pathname = '/agenda'
+    loginAs('Lawyer', 'Firm')
+    const { container, rerender } = render(<AccessGuard>conteúdo</AccessGuard>)
+    const antes = container.firstElementChild
+
+    expect(antes).toHaveClass('animate-iu-in')
+
+    pathname = '/contatos'
+    rerender(<AccessGuard>conteúdo</AccessGuard>)
+
+    // Outro elemento (remontado): é o que reinicia a animação de CSS.
+    expect(container.firstElementChild).not.toBe(antes)
+    expect(container.firstElementChild).toHaveClass('animate-iu-in')
+  })
+})
