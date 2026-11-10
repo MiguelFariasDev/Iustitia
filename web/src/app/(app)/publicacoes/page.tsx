@@ -4,6 +4,7 @@ import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { env } from '@/config/env'
+import { RevisaoLink } from '@/features/revisao/components/RevisaoLink'
 import { PublicacaoAtualizarButton } from '@/features/publicacoes/components/PublicacaoAtualizarButton'
 import { PublicacoesSkeleton } from '@/features/publicacoes/components/PublicacoesSkeleton'
 import { PublicacoesView } from '@/features/publicacoes/components/PublicacoesView'
@@ -48,7 +49,12 @@ export default function PublicacoesPage({ searchParams }: { searchParams: Search
       <PageHeader
         title="Publicações"
         description="Capturas dos diários oficiais para os processos cadastrados no escritório."
-        actions={<PublicacaoAtualizarButton />}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <RevisaoLink />
+            <PublicacaoAtualizarButton />
+          </div>
+        }
       />
       <Suspense fallback={<PublicacoesSkeleton />}>
         <PublicacoesData searchParams={searchParams} />

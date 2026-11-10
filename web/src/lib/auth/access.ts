@@ -21,6 +21,7 @@ export type Screen =
   | 'dashboard'
   | 'agenda'
   | 'publications'
+  | 'review'
   | 'alerts'
   | 'processes'
   | 'clients'
@@ -52,6 +53,7 @@ export const screenRules: Record<Screen, Rule> = {
   agenda: { roles: allRoles },
   documents: { roles: allRoles },
   publications: { roles: lawyerOrAbove },
+  review: { roles: lawyerOrAbove },
   alerts: { roles: lawyerOrAbove },
   processes: { roles: lawyerOrAbove },
   clients: { roles: lawyerOrAbove },
@@ -103,6 +105,8 @@ export function screenLabel(screen: Screen, fallback: string, context: AccessCon
 }
 
 const pathScreens: readonly (readonly [string, Screen])[] = [
+  // Mais específica que /publicacoes, então vem antes.
+  ['/publicacoes/revisao', 'review'],
   [routes.settings.profile, 'settings.profile'],
   [routes.settings.tenant, 'settings.tenant'],
   [routes.settings.users, 'settings.users'],

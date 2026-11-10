@@ -34,6 +34,7 @@ describe('uiStore', () => {
     expect(stored.state).toEqual({
       theme: 'dark',
       dashboardVariant: 'A',
+      reviewVariant: 'A',
       sidebarCollapsed: false,
       dismissedHints: [],
     })

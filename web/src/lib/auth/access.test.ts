@@ -105,6 +105,7 @@ describe('screenForPath', () => {
         '/painel',
         '/agenda',
         '/publicacoes',
+        '/publicacoes/revisao',
         '/alertas',
         '/processos',
         '/clientes',

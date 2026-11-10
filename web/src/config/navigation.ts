@@ -174,6 +174,7 @@ export const settingsNavigation: {
 export const segmentLabels: Record<string, string> = {
   painel: 'Área de trabalho',
   publicacoes: 'Publicações',
+  revisao: 'Revisão da IA',
   alertas: 'Alertas',
   agenda: 'Agenda',
   processos: 'Processos e casos',

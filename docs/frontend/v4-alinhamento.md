@@ -117,3 +117,22 @@ uma afirmação sem lastro (corrigido). Sem a flag, o item é só "Revisar publi
 "Sugeridos pela IA" nem aparece. Quando a API expuser a sugestão por publicação, `statusBadgeOf`
 (`publicacoes/view.ts`) e `buildQueue` são os dois únicos pontos a ajustar. No mock do tenant a flag
 está **ligada**, para a demonstração mostrar a revisão da IA.
+
+## Revisão da IA (item 5.3) — `/publicacoes/revisao`
+
+- Abas por publicação (`01 Contestação` …, com ✓ quando decidida), variações A (dividida, com o trecho
+  gerador destacado em `<mark>`) e B (leitura com métricas e barra de decisão grudada na base), botões
+  contornados Rejeitar / Corrigir / Aceitar, **Corrigir** com campo numérico e **Confirmar**, resultado no
+  lugar dos botões e **avanço automático** para a próxima ainda não decidida.
+- **Decisão real, sugestão de demonstração.** O backend já tem o fluxo de revisão
+  (`PendingReview → Approved/Corrected/Rejected`, com nota). Aceitar e Corrigir **salvam o prazo na
+  agenda e mudam o status** (Approved/Corrected, com a nota do valor sugerido e do corrigido, para
+  auditoria); Rejeitar muda para Rejected. O que **não existe** é a sugestão da IA por publicação: em
+  modo de demonstração ela é calculada a partir do texto (`sugestao.ts`), e **sem mocks a tela diz que a
+  revisão da IA ainda não está disponível** em vez de inventar um prazo para um escritório real.
+- **Dias úteis ignoram feriados, recesso e suspensões.** A data vem marcada como estimativa na tela e na
+  descrição do evento. Nunca é a fonte de um prazo processual.
+- Só **Owner, Partner e Lawyer** acessam (nova tela `review` na matriz de acesso).
+- Defeito achado pelo teste e corrigido: campo de prazo **vazio** valia 0 dia e liberava "Confirmar".
+- O fundamento legal de um prazo lido do texto cita só a origem ("fixado no próprio texto"): colar o artigo
+  da tabela por tipo podia contradizer o prazo (ex.: art. de 5 dias ao lado de um prazo de 15).
