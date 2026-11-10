@@ -50,6 +50,9 @@
     <!-- Pin de segurança: trazido transitivamente pelo Hangfire.AspNetCore (Etapa 0.5) -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
 
+    <!-- Banco vetorial (módulo Drafting, ADR-072): cliente oficial do Qdrant, gRPC. -->
+    <PackageVersion Include="Qdrant.Client" Version="1.15.1" />
+
     <!-- Jobs / Mensageria -->
     <PackageVersion Include="Hangfire.Core" Version="1.8.15" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.20.10" />

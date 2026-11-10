@@ -26,6 +26,7 @@ public enum ErrorGroup
     Calendar,
     Cnj,
     Atendimento,
+    Drafting,
     Ai,
     Internal,
 }

@@ -221,6 +221,20 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `AI_INVALID_RESPONSE` | A resposta da IA não pôde ser validada e foi descartada. | 500 | Failure | O Claude devolveu texto que não é JSON, não segue o contrato do prompt (campo ausente, tipo errado, `act_type` fora da lista, `confidence` fora de 0–100). Os tokens consumidos continuam registrados em `ai_usage_logs`. | Nenhuma ação do usuário: a publicação segue sem sugestão; após 3 tentativas deixa de ser reprocessada. Se recorrente, revisar o prompt/versão. |
 | `AI_PROMPT_NOT_FOUND` | O prompt '{0}' não foi encontrado. | 500 | Failure | O arquivo `.md` versionado não está embarcado no assembly ou não tem as seções `SYSTEM`/`USER`. | Erro de empacotamento — reportar ao suporte. |
 
+## Drafting (2600–2699)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `DRAFTING_DISABLED` | A geração assistida de peças não está habilitada neste ambiente. | 500 | Failure | `Drafting:Enabled` é `false` (padrão). | Habilitar `Drafting:Enabled` depois de cumprir o checklist de privacidade da ADR-072. |
+| `DRAFTING_INVALID_PIECE_TYPE` | Tipo de peça inválido. | 400 | Validation | `tipoPeca` fora da lista aceita. | Usar um dos tipos documentados (ex.: `peticao_inicial`). |
+| `DRAFTING_INVALID_AREA` | Área do direito inválida. | 400 | Validation | `area` fora da lista aceita. | Usar uma das áreas documentadas (ex.: `civel`). |
+| `DRAFTING_FIELD_REQUIRED` | O campo '{0}' é obrigatório. | 400 | Validation | `fatos` ou `pedidos` vazios. | Preencher o campo. |
+| `DRAFTING_FIELD_TOO_LONG` | O campo '{0}' excede o limite de {1} caracteres. | 400 | Validation | Campo acima do limite. | Resumir o texto. |
+| `DRAFTING_PROMPT_INJECTION` | O campo '{0}' contém instruções dirigidas ao assistente, que não são aceitas. | 400 | Validation | O texto tenta mudar as regras do assistente (ex.: "ignore as regras anteriores"). | Descrever só fatos e pedidos. |
+| `DRAFTING_REQUEST_NOT_FOUND` | Solicitação de peça não encontrada. | 404 | NotFound | `pecaOrigemId` inexistente neste escritório. | Conferir o identificador. |
+| `DRAFTING_GENERATION_FAILED` | Não foi possível gerar a peça. Tente novamente. | 500 | Failure | Falha do Ollama/Qdrant, timeout ou cancelamento. O detalhe técnico fica no log e na solicitação, nunca na resposta. | Tentar de novo; se persistir, conferir a saúde da instância de IA. |
+| `DRAFTING_TOO_MANY_DOCUMENTS` | Informe no máximo {0} documentos. | 400 | Validation | `documentosIds` acima do limite. | Reduzir a lista. |
+
 ## Internal (9000–9999)
 
 | Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |

@@ -1,6 +1,8 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Advocacia.Modules.CRM.Api;
 using Advocacia.Modules.CRM.Infrastructure;
+using Advocacia.Modules.Drafting.Api;
+using Advocacia.Modules.Drafting.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Api;
 using Advocacia.Modules.Legal.Infrastructure;
@@ -65,6 +67,7 @@ builder.Services.AddLegalInfrastructure(builder.Configuration);
 builder.Services.AddCrmInfrastructure(builder.Configuration);
 builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 builder.Services.AddAtendimentoInfrastructure(builder.Configuration);
+builder.Services.AddDraftingInfrastructure(builder.Configuration);
 
 // Esquema de autenticação por chave de API do Bot (opt-in nos endpoints /bot/atendimentos).
 // Depois de AddPlatformAuth: o JWT do Supabase continua sendo o esquema padrão.
@@ -132,6 +135,7 @@ app.MapContactsEndpoints();
 app.MapCalendarEndpoints();
 app.MapAtendimentosEndpoints();
 app.MapBotEndpoints();
+app.MapPecasEndpoints();
 
 var hangfireOptions = app.Services.GetRequiredService<IOptions<HangfireOptions>>().Value;
 if (hangfireOptions.DashboardEnabled)

@@ -50,6 +50,14 @@ public static class RateLimitingConfiguration
     /// </summary>
     public const string ExternalQueryPolicy = "external-query";
 
+    /// <summary>
+    /// Geração por IA (Ollama numa GPU alugada, minutos por chamada): 6 por minuto por usuário,
+    /// além do limitador global. Protege o custo e a fila de uma GPU única.
+    /// </summary>
+    public const string AiGenerationPolicy = "ai-generation";
+
+    private const int AiGenerationPermitLimit = 6;
+
     private const int ExternalQueryPermitLimit = 10;
     private const int LoginPermitLimit = 5;
     private const int ForgotPasswordPermitLimit = 3;
@@ -163,6 +171,11 @@ public static class RateLimitingConfiguration
                 RateLimitPartition.GetFixedWindowLimiter(
                     $"external:{SubjectKey(httpContext, ClientIpKey(httpContext.Connection.RemoteIpAddress))}",
                     _ => NewWindowOptions(ExternalQueryPermitLimit)));
+
+            options.AddPolicy(AiGenerationPolicy, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    $"ai-generation:{SubjectKey(httpContext, ClientIpKey(httpContext.Connection.RemoteIpAddress))}",
+                    _ => NewWindowOptions(AiGenerationPermitLimit)));
 
             options.OnRejected = async (context, cancellationToken) =>
             {
