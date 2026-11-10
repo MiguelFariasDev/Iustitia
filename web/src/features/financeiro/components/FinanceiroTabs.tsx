@@ -3,7 +3,7 @@
 import { Download } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
-import { FilterChip } from '@/components/shared/FilterChip'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -41,13 +41,21 @@ const FluxoCaixaChart = dynamic(() => import('./FluxoCaixaChart').then((m) => m.
   loading: () => <div className="h-72 animate-iu-pulse rounded-lg bg-border" />,
 })
 
-type Aba = 'honorarios' | 'pagar' | 'receber' | 'fluxo'
+type Aba = 'honorarios' | 'receber' | 'pagar' | 'atraso' | 'fluxo'
 
-const abas: { valor: Exclude<Aba, 'fluxo'>; rotulo: string; tipo: TipoLancamento }[] = [
+/** `tipo: 'Atrasado'` = todos os tipos, só os vencidos (a aba "Em atraso" cruza as outras). */
+const abas: {
+  valor: Exclude<Aba, 'fluxo'>
+  rotulo: string
+  tipo: TipoLancamento | 'Atrasado'
+}[] = [
   { valor: 'honorarios', rotulo: 'Honorários', tipo: 'Honorario' },
-  { valor: 'pagar', rotulo: 'Contas a pagar', tipo: 'ContaPagar' },
-  { valor: 'receber', rotulo: 'Contas a receber', tipo: 'ContaReceber' },
+  { valor: 'receber', rotulo: 'A receber', tipo: 'ContaReceber' },
+  { valor: 'pagar', rotulo: 'A pagar', tipo: 'ContaPagar' },
+  { valor: 'atraso', rotulo: 'Em atraso', tipo: 'Atrasado' },
 ]
+
+const TODOS = '__todos__'
 
 interface FinanceiroTabsProps {
   lancamentos: Lancamento[]
@@ -77,7 +85,9 @@ export function FinanceiroTabs({ lancamentos, fluxoCaixa }: FinanceiroTabsProps)
       return
     }
 
-    const linhas = filtrados.filter((l) => l.tipo === abaAtual.tipo)
+    const linhas = filtrados.filter((l) =>
+      abaAtual.tipo === 'Atrasado' ? l.status === 'Atrasado' : l.tipo === abaAtual.tipo
+    )
     downloadCsv(`financeiro-${abaAtual.valor}.csv`, lancamentosToCsv(linhas))
   }
 
@@ -95,17 +105,19 @@ export function FinanceiroTabs({ lancamentos, fluxoCaixa }: FinanceiroTabsProps)
       {aba !== 'fluxo' ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por status">
-              {statusLancamento.map((valor) => (
-                <FilterChip
-                  key={valor}
-                  active={status === valor}
-                  onClick={() => setStatus(status === valor ? null : valor)}
-                >
-                  {valor}
-                </FilterChip>
-              ))}
-            </div>
+            {aba === 'atraso' ? null : (
+              <SegmentedControl
+                label="Filtrar por status"
+                value={status ?? TODOS}
+                onChange={(valor) =>
+                  setStatus(valor === TODOS ? null : (valor as StatusLancamento))
+                }
+                options={[
+                  { value: TODOS, label: 'Todos' },
+                  ...statusLancamento.map((valor) => ({ value: valor, label: valor })),
+                ]}
+              />
+            )}
 
             <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoFinanceiro)}>
               <SelectTrigger className="w-56" aria-label="Período de vencimento">
@@ -139,8 +151,13 @@ export function FinanceiroTabs({ lancamentos, fluxoCaixa }: FinanceiroTabsProps)
       ) : null}
 
       {abas.map((a) => (
-        <TabsContent key={a.valor} value={a.valor}>
-          <LancamentosTable tipo={a.tipo} lancamentos={filtrados} />
+        <TabsContent key={a.valor} value={a.valor} className="animate-iu-in">
+          <LancamentosTable
+            tipo={a.tipo}
+            lancamentos={
+              a.tipo === 'Atrasado' ? filtrados.filter((l) => l.status === 'Atrasado') : filtrados
+            }
+          />
         </TabsContent>
       ))}
 

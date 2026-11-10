@@ -10,16 +10,36 @@ interface FinanceiroResumoProps {
 /** Quatro números que respondem "como está o caixa?". Saldo negativo é dito, não só colorido. */
 export function FinanceiroResumo({ resumo }: FinanceiroResumoProps) {
   const cartoes = [
-    { rotulo: 'Faturamento do mês', valor: resumo.faturamentoMes, dica: 'honorários recebidos' },
-    { rotulo: 'Honorários a receber', valor: resumo.honorariosAReceber, dica: 'em aberto' },
-    { rotulo: 'Contas a pagar', valor: resumo.contasAPagar, dica: 'em aberto' },
-    { rotulo: 'Saldo', valor: resumo.saldo, dica: 'recebido menos pago' },
+    {
+      rotulo: 'Faturamento do mês',
+      valor: resumo.faturamentoMes,
+      dica: 'honorários recebidos',
+      borda: 'border-t-brand',
+    },
+    {
+      rotulo: 'Honorários a receber',
+      valor: resumo.honorariosAReceber,
+      dica: 'em aberto',
+      borda: 'border-t-warning',
+    },
+    {
+      rotulo: 'Contas a pagar',
+      valor: resumo.contasAPagar,
+      dica: 'em aberto',
+      borda: 'border-t-destructive',
+    },
+    {
+      rotulo: 'Saldo',
+      valor: resumo.saldo,
+      dica: 'recebido menos pago',
+      borda: 'border-t-line-strong',
+    },
   ]
 
   return (
     <section aria-label="Resumo financeiro" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cartoes.map(({ rotulo, valor, dica }) => (
-        <Card key={rotulo}>
+      {cartoes.map(({ rotulo, valor, dica, borda }) => (
+        <Card key={rotulo} className={cn('border-t-2', borda)}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">{rotulo}</CardTitle>
           </CardHeader>

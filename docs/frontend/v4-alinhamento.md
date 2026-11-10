@@ -189,3 +189,7 @@ Situação virou controle segmentado (Todos · Ativos · Suspensos · Encerrados
 ## Contatos (5.7)
 
 O filtro por tipo trocou os chips alternáveis por controle segmentado (Todos · Parte contrária · Testemunha · Fornecedor · Outros), com "Todos" explícito em vez de "clicar de novo para desfazer"; a lista entra com `animate-iu-in`. O aviso de dados de demonstração e a exclusão com confirmação continuam como estavam. **Precisa de backend:** o módulo CRM em `src/Modules/CRM` nunca foi compilado nem migrado (ver pendências); sem mocks a tela depende dele.
+
+## Financeiro (5.8)
+
+Abas na ordem do v4: Honorários · A receber · A pagar · Em atraso (+ Fluxo de caixa, que já existia). "Em atraso" cruza os três tipos e lista só o que está com status Atrasado (com coluna "Tipo"); nela o filtro de status some por redundância. Status é controle segmentado; o CSV exporta o que a aba mostra (nome `financeiro-atraso.csv` na nova aba). Os cartões de resumo ganharam a borda superior de cor do v4, mas **mantêm o número em `text-2xl`, não nos 45px do `KpiCard`**: "R$ 11.700,00" em 45px estoura a coluna em quatro cartões. Exportação em PDF segue indisponível (avisado ao usuário). **Tudo é demonstração:** não existe backend financeiro; o aviso de dados fictícios permanece e lançamentos novos somem ao recarregar. O status "Atrasado" vem pronto do mock — com backend real, quem calcula o vencimento é o servidor.
