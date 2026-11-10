@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { FilterChip } from '@/components/shared/FilterChip'
 import { Button } from '@/components/ui/button'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAccess } from '@/hooks/useAccess'
 import { periodFor, shiftAnchor, titleFor, weekDays } from '../dates'
@@ -89,13 +90,15 @@ export function AgendaView() {
         </h2>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Visão da agenda" className="flex gap-1">
-            {visoesAgenda.map((valor) => (
-              <FilterChip key={valor} active={view === valor} onClick={() => setView(valor)}>
-                {visaoAgendaLabels[valor]}
-              </FilterChip>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Visão da agenda"
+            value={view}
+            onChange={setView}
+            options={visoesAgenda.map((valor) => ({
+              value: valor,
+              label: visaoAgendaLabels[valor],
+            }))}
+          />
           <Button size="sm" onClick={() => setDialog({})}>
             <Plus aria-hidden />
             Novo evento
@@ -118,7 +121,12 @@ export function AgendaView() {
             <span className="flex items-center gap-1.5">
               <span
                 aria-hidden
-                className={cn('size-2 rounded-full border', tipoEventoClasses[tipo])}
+                className={cn(
+                  'size-2 rounded-full border transition-opacity',
+                  tipoEventoClasses[tipo],
+                  // Tipo fora do filtro: só o ponto esmaece; o texto fica com contraste pleno (AA).
+                  tipos.size > 0 && !tipos.has(tipo) && 'opacity-50'
+                )}
               />
               {tipoEventoLabels[tipo]}
             </span>
@@ -136,6 +144,7 @@ export function AgendaView() {
         <Skeleton className="h-[32rem] w-full" />
       ) : view === 'mes' ? (
         <MonthGrid
+          key={`mes-${anchor.getFullYear()}-${anchor.getMonth()}`}
           anchor={anchor}
           eventos={eventos}
           onSelectEvento={edit}
@@ -144,6 +153,7 @@ export function AgendaView() {
         />
       ) : (
         <TimeGrid
+          key={`${view}-${periodo.from}`}
           days={view === 'dia' ? [anchor] : weekDays(anchor)}
           eventos={eventos}
           onSelectEvento={edit}

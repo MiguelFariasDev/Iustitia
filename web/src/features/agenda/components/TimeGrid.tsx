@@ -35,7 +35,11 @@ export function TimeGrid({ days, eventos, onSelectEvento, onCreateAt, onMove }: 
     })
 
   return (
-    <div role="grid" aria-label="Agenda por horário" className="overflow-hidden rounded-lg border">
+    <div
+      role="grid"
+      aria-label="Agenda por horário"
+      className="animate-iu-in overflow-hidden rounded-lg border"
+    >
       <div role="row" style={colunas} className="grid border-b bg-muted/50 text-xs font-medium">
         <div role="columnheader" className="px-2 py-1.5" />
         {days.map((day) => (
@@ -87,7 +91,10 @@ export function TimeGrid({ days, eventos, onSelectEvento, onCreateAt, onMove }: 
                 if (evento) onMove(evento, moveToSlot(evento, day, hora))
               }}
               onDoubleClick={() => onCreateAt(day, hora)}
-              className="min-h-10 space-y-1 border-l p-1"
+              className={cn(
+                'min-h-10 space-y-1 border-l p-1',
+                isSameDay(day, today) && 'bg-brand-soft'
+              )}
             >
               {naHora(day, hora).map((evento) => (
                 <EventoChip key={evento.id} evento={evento} onSelect={onSelectEvento} />

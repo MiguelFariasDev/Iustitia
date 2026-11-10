@@ -173,3 +173,7 @@ está **ligada**, para a demonstração mostrar a revisão da IA.
 **Gaveta de notificações.** O sino abre uma gaveta modal à direita (400px; 0,25s abrindo, 0,15s fechando), com foco devolvido ao sino. Divergências: sem legenda "Sistema/IA" (o alerta não traz origem) e alertas lidos não ficam a 35% de opacidade (não passaria no contraste AA).
 
 **Athena.** Botão flutuante + painel escuro de 410px. É DEMONSTRAÇÃO: só aparece com mocks ligados e para quem acessa processos (a API de IA exige LawyerOrAbove). "Prazos de hoje" lista os prazos reais da agenda; qualquer outra pergunta recebe a resposta honesta de que a IA não está conectada. Precisa de backend: serviço de IA, histórico de conversa e leitura de publicações/processos.
+
+## Agenda (5.4)
+
+Visão Mês/Semana/Dia virou `SegmentedControl`; a grade entra com `animate-iu-in` a cada troca de visão ou período; o dia de hoje ganha fundo `brand-soft`. **Semana segue começando na segunda** (decisão do produto; o protótipo usa domingo). Ao filtrar por tipo, só o ponto colorido dos tipos fora do filtro esmaece a 50% — o texto do chip fica pleno para manter contraste AA. Tudo já funcionava com a API real; nada aqui é só demonstração.
