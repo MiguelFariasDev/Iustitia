@@ -32,6 +32,7 @@ builder.Services.AddPlatformAuth(builder.Configuration);
 builder.Services.AddPlatformApplication(builder.Configuration);
 builder.Services.AddPlatformApi(builder.Configuration);
 builder.Services.AddAdvocaciaRateLimiting();
+builder.Services.AddAdvocaciaForwardedHeaders(builder.Configuration);
 
 // Módulos de negócio. AddCnjIntegration registra o ICnjClient consumido pelo job de captura
 // do Legal — Legal.Infrastructure depende só da porta (Integrations.CNJ.Application), então
@@ -46,6 +47,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Primeiro de tudo: HTTPS redirection, CORS, rate limit e log dependem do IP/esquema já corrigidos
+// (atrás de Cloudflare Tunnel ou outro proxy — ver docs/operacao-cloudflare-tunnel.md).
+app.UseAdvocaciaForwardedHeaders();
 
 app.UseHttpsRedirection();
 
