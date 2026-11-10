@@ -88,6 +88,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Primeiro de tudo: HTTPS redirection, CORS, rate limit e log dependem do IP/esquema já corrigidos
+// (atrás de Cloudflare Tunnel ou outro proxy — ver docs/operacao-cloudflare-tunnel.md).
+app.UseAdvocaciaForwardedHeaders();
+
 app.UseHttpsRedirection();
 
 app.UseCors(Advocacia.Platform.Api.Extensions.ServiceCollectionExtensions.CorsPolicyName);

@@ -43,6 +43,8 @@ provisionamento de infra (`infra/terraform`), fora do escopo de código.
 | `ASPNETCORE_URLS`              | `http://+:8080`                 | Porta que o Kestrel escuta dentro do container |
 | `APP_NAME` / `AppName`         | `Iustitia`                       | Nome exibido na UI — a marca só existe aqui, nunca em namespace/recurso (ADR-023) |
 | `KeyVault__Uri`                | `https://kv-advocacia-prod.vault.azure.net/` | Habilita `AddAdvocaciaKeyVault` |
+| `ForwardedHeaders__Enabled`    | `true`                          | Atrás de proxy reverso/tunnel: usa o IP e o esquema reais do cliente. Ver [operacao-cloudflare-tunnel](../operacao-cloudflare-tunnel.md) |
+| `ForwardedHeaders__KnownNetworks__0` | `172.18.0.0/16`           | Rede do proxy confiável (padrão: só loopback). Nunca `/0` — a API recusa subir |
 
 ## appsettings.Production.json
 
