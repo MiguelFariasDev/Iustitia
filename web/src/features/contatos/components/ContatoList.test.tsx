@@ -35,18 +35,19 @@ describe('ContatoList', () => {
     expect(within(linha).getAllByText('—')).toHaveLength(2) // sem documento e sem telefone
   })
 
-  it('filtra por tipo pelo chip e desfaz ao clicar de novo', async () => {
+  it('filtra por tipo no controle segmentado e volta a "Todos"', async () => {
     const { user } = await renderList()
-    const chip = screen.getByRole('button', { name: 'Testemunha' })
+    const chip = screen.getByRole('radio', { name: 'Testemunha' })
+    expect(screen.getByRole('radio', { name: 'Todos' })).toBeChecked()
 
     await user.click(chip)
-    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    expect(chip).toBeChecked()
     await waitFor(() =>
       expect(screen.queryByText('Carlos Eduardo Pereira')).not.toBeInTheDocument()
     )
     expect(screen.getByText('Helena Rocha Martins')).toBeInTheDocument()
 
-    await user.click(chip)
+    await user.click(screen.getByRole('radio', { name: 'Todos' }))
     expect(await screen.findByText('Carlos Eduardo Pereira')).toBeInTheDocument()
   })
 

@@ -185,3 +185,7 @@ A inbox de três colunas e o fluxo (assumir, devolver ao bot, encerrar, vincular
 ## Processos (5.6)
 
 Situação virou controle segmentado (Todos · Ativos · Suspensos · Encerrados · Arquivados) e Lista/Quadro também; a tabela entra com `animate-iu-in` e as linhas ganham hover. **Divergência:** o protótipo tem 4 filtros (sem "Encerrados"), mas o backend tem 4 situações reais (Ativo, Suspenso, Encerrado, Arquivado); omitir uma esconderia processos. O painel de movimentações já existe na aba "Movimentos" do detalhe (consulta ao DataJud, ver ADR-064) e não foi alterado. Tudo usa a API real; a tela não tem mocks.
+
+## Contatos (5.7)
+
+O filtro por tipo trocou os chips alternáveis por controle segmentado (Todos · Parte contrária · Testemunha · Fornecedor · Outros), com "Todos" explícito em vez de "clicar de novo para desfazer"; a lista entra com `animate-iu-in`. O aviso de dados de demonstração e a exclusão com confirmação continuam como estavam. **Precisa de backend:** o módulo CRM em `src/Modules/CRM` nunca foi compilado nem migrado (ver pendências); sem mocks a tela depende dele.
