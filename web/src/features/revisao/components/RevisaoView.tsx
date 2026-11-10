@@ -279,7 +279,7 @@ function PainelB({ item, resultado, pending, onDecidir }: Omit<DecisaoProps, 'la
       </section>
 
       {/* Barra de decisão: fica grudada na base enquanto o texto rola. */}
-      <div className="sticky bottom-0 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="sticky bottom-14 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 md:bottom-0 lg:-mx-8 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <Decisao
             key={publication.id}
