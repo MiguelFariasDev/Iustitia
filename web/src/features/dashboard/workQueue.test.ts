@@ -45,6 +45,7 @@ describe('buildQueue', () => {
       events: [evento('c', 3, 9), evento('a', 0, 18), evento('b', 0, 9), evento('d', 1, 8)],
       processNumbers: vazio,
       reviews: [],
+      aiEnabled: true,
       now: NOW,
     })
 
@@ -57,6 +58,7 @@ describe('buildQueue', () => {
       events: [evento('ontem', -1, 9), evento('hoje', 0, 9)],
       processNumbers: vazio,
       reviews: [],
+      aiEnabled: true,
       now: NOW,
     })
 
@@ -69,6 +71,7 @@ describe('buildQueue', () => {
       events: [evento('limite', QUEUE_WINDOW_DAYS, 9), evento('fora', QUEUE_WINDOW_DAYS + 1, 9)],
       processNumbers: vazio,
       reviews: [],
+      aiEnabled: true,
       now: NOW,
     })
 
@@ -80,6 +83,7 @@ describe('buildQueue', () => {
       events: [evento('a', 0, 9, { processoId: 'p1' }), evento('b', 0, 10, { processoId: 'p9' })],
       processNumbers: new Map([['p1', '0000777-07.2018.8.06.0100']]),
       reviews: [],
+      aiEnabled: true,
       now: NOW,
     })
 
@@ -87,11 +91,25 @@ describe('buildQueue', () => {
     expect(fila[1]!.processLabel).toBeNull()
   })
 
+  it('sem a IA ligada, a revisão é só "a revisar": sem selo de IA e sem dizer que sugeriu prazo', () => {
+    const fila = buildQueue({
+      events: [],
+      processNumbers: vazio,
+      reviews: [{ id: 'pub1', processNumber: null, source: 'TJCE' }],
+      aiEnabled: false,
+      now: NOW,
+    })
+
+    expect(fila[0]).toMatchObject({ ai: false, urgency: 'review' })
+    expect(fila[0]!.title).not.toMatch(/sugest/i)
+  })
+
   it('publicações a revisar entram depois dos compromissos, marcadas como da IA', () => {
     const fila = buildQueue({
       events: [evento('a', 5, 9)],
       processNumbers: vazio,
       reviews: [{ id: 'pub1', processNumber: '0001-00.2026.8.06.0001', source: 'TJCE' }],
+      aiEnabled: true,
       now: NOW,
     })
 
@@ -110,6 +128,7 @@ describe('filterQueue', () => {
     events: [evento('hoje', 0, 9), evento('amanha', 1, 9)],
     processNumbers: vazio,
     reviews: [{ id: 'p', processNumber: null, source: 'TJCE' }],
+    aiEnabled: true,
     now: NOW,
   })
 

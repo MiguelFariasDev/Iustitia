@@ -10,6 +10,7 @@ import { UrgencyBadge } from '@/components/shared/UrgencyBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatHora } from '@/features/agenda/dates'
 import { cn } from '@/lib/utils'
+import { useTenantStore } from '@/stores/tenantStore'
 import { filterQueue, type QueueFilter, type QueueItem } from '../workQueue'
 
 const filtros: { value: QueueFilter; label: string }[] = [
@@ -41,6 +42,9 @@ interface WorkQueueProps {
  */
 export function WorkQueue({ items, isPending, isError, onRetry, className }: WorkQueueProps) {
   const [filter, setFilter] = useState<QueueFilter>('all')
+  const aiEnabled = useTenantStore((s) => s.featureFlags['ai.classification'] === true)
+  // Sem a IA ligada não há "sugeridos pela IA" para filtrar: a opção nem aparece.
+  const opcoes = aiEnabled ? filtros : filtros.filter((opcao) => opcao.value !== 'ai')
   const visiveis = filterQueue(items, filter)
 
   return (
@@ -52,7 +56,7 @@ export function WorkQueue({ items, isPending, isError, onRetry, className }: Wor
         <SegmentedControl
           value={filter}
           onChange={setFilter}
-          options={filtros}
+          options={opcoes}
           label="Filtrar a fila de trabalho"
         />
       </div>
@@ -97,7 +101,7 @@ export function WorkQueue({ items, isPending, isError, onRetry, className }: Wor
                 >
                   <span>
                     <UrgencyBadge
-                      level={item.urgency}
+                      level={item.urgency === 'review' && !item.ai ? 'pending' : item.urgency}
                       // Só prazo "vence"; audiência, reunião e tarefa simplesmente acontecem hoje.
                       label={item.urgency === 'today' && item.kind !== 'Prazo' ? 'Hoje' : undefined}
                     />

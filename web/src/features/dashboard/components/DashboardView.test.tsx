@@ -11,6 +11,7 @@ import type { AccountType, UserRole } from '@/lib/auth/types'
 import { notify } from '@/lib/notify'
 import { queryKeys } from '@/lib/query/queryKeys'
 import { useAuthStore } from '@/stores/authStore'
+import { useTenantStore } from '@/stores/tenantStore'
 import { useUiStore } from '@/stores/uiStore'
 import { createTestQueryClient, renderWithProviders } from '@/test/render'
 import type { DashboardSummary } from '../types'
@@ -88,6 +89,8 @@ function render() {
 }
 
 beforeEach(() => {
+  // Escritório com a classificação por IA ligada (os testes sem IA desligam a flag).
+  useTenantStore.setState({ featureFlags: { 'ai.classification': true } })
   vi.mocked(useNow).mockReturnValue(NOW)
   vi.mocked(agendaApi.listEventos).mockResolvedValue(eventos)
   vi.mocked(publicationsApi.getPublications).mockResolvedValue({
@@ -121,6 +124,7 @@ afterEach(() => {
   vi.resetAllMocks()
   useAuthStore.setState({ user: null })
   useUiStore.setState({ dashboardVariant: 'A' })
+  useTenantStore.getState().clear()
 })
 
 describe('DashboardView — cabeçalho', () => {
@@ -221,7 +225,22 @@ describe('DashboardView — advogado(a), variação A', () => {
 
     await user.click(within(fila).getByRole('radio', { name: 'Sugeridos pela IA' }))
     expect(within(fila).queryByText('Réplica Reis')).toBeNull()
-    expect(within(fila).getByText(/Revisar sugestão de prazo/)).toBeInTheDocument()
+    expect(within(fila).getByText(/Revisar publicação/)).toBeInTheDocument()
+  })
+
+  it('sem a IA ligada, a pendência é só "a revisar": sem selo ✨ e sem o filtro "Sugeridos pela IA"', async () => {
+    useTenantStore.setState({ featureFlags: { 'ai.classification': false } })
+    entrar('Lawyer')
+    render()
+    const fila = await screen.findByRole('region', { name: 'Fila de trabalho' })
+    await within(fila).findByText(/Revisar publicação/)
+
+    expect(within(fila).queryByText('(sugerido pela IA)')).toBeNull()
+    expect(within(fila).queryByRole('radio', { name: 'Sugeridos pela IA' })).toBeNull()
+    expect(within(fila).getByRole('radio', { name: 'Hoje e atrasados' })).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'Indicadores' })).getByText('aguardando revisão')
+    ).toBeInTheDocument()
   })
 
   it('se a agenda falhar, mostra o erro com "tentar de novo" em vez de uma fila vazia', async () => {

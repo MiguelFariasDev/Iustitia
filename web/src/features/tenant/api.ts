@@ -26,7 +26,7 @@ const mockTenant: CurrentTenant = {
   featureFlags: {
     'legal.module': false,
     'workflow.module': false,
-    'ai.classification': false,
+    'ai.classification': true,
     'athena.assistant': false,
   },
 }

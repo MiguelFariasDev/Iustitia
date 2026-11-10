@@ -22,7 +22,10 @@ export interface QueueItem {
   /** ISO do compromisso; `null` na revisão de publicação, que não tem data própria. */
   due: string | null
   urgency: QueueUrgency
-  /** Veio da IA (sugestão a revisar): recebe o selo ✨. */
+  /**
+   * A IA está envolvida na revisão (flag `ai.classification` do escritório): recebe o selo ✨. A API
+   * não diz, por publicação, se houve sugestão; sem a flag, a pendência é só "a revisar".
+   */
   ai: boolean
   href: string
 }
@@ -58,9 +61,11 @@ export function buildQueue(input: {
   events: readonly AgendaEvento[]
   processNumbers: ReadonlyMap<string, string>
   reviews: readonly ReviewPublication[]
+  /** Flag `ai.classification` do escritório. */
+  aiEnabled: boolean
   now: Date
 }): QueueItem[] {
-  const { events, processNumbers, reviews, now } = input
+  const { events, processNumbers, reviews, aiEnabled, now } = input
   const from = startOfDay(now)
   const to = addDays(from, QUEUE_WINDOW_DAYS + 1)
 
@@ -86,11 +91,11 @@ export function buildQueue(input: {
   const revisoes: QueueItem[] = reviews.map((publication) => ({
     id: `revisao-${publication.id}`,
     kind: 'Revisao',
-    title: `Revisar sugestão de prazo · ${publication.source}`,
+    title: `Revisar publicação · ${publication.source}`,
     processLabel: publication.processNumber,
     due: null,
     urgency: 'review',
-    ai: true,
+    ai: aiEnabled,
     href: `/publicacoes/${publication.id}`,
   }))
 

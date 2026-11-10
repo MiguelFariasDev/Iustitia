@@ -81,3 +81,39 @@ Divergências do protótipo:
 - **Cada perfil só busca o que a API lhe permite ler.** Secretária e Financeiro não disparam
   nenhuma consulta (a API lhes recusaria publicações e processos); o Sócio só busca a agenda.
 - A variação A/B do advogado é guardada no navegador (`uiStore`).
+
+## Publicações (item 5.2)
+
+- **Cartões:** "Não tratadas hoje", "Aguardando revisão" e "Tratadas na semana", no estilo do v4. Cada
+  um leva à lista com o **mesmo número**: o link de "hoje" filtra também pela data de hoje, e o de
+  "semana", desde a segunda-feira (no fuso local). Antes o clique abria o total, um número diferente do
+  do cartão. Sem "agora" (antes de hidratar) os links saem sem data.
+- **Visões rápidas** `Todas | Não lidas | Aguardando revisão | Tratadas`, derivadas da URL (status e
+  `isRead`). "Aguardando revisão" é o `untreated` do domínio. Os chips que já existiam ficaram só com
+  o que as visões não cobrem (Descartada, Arquivada, Lidas), para não duplicar controles.
+- **Linha:** o bloco inteiro é o link para a publicação (antes só o número era link, e uma publicação
+  **sem processo não tinha como ser aberta**), bolinha violeta e texto em destaque quando não lida,
+  tempo relativo, e a coluna Status passou a caber na tela larga.
+- **Atualizar** agora diz o que aconteceu: "N publicações novas" ou "Nenhuma publicação nova desde
+  HH:mm", com a hora em que a contagem anterior foi carregada (o protótipo fixa "06:00").
+- **Quem revisa:** só Owner, Partner e Lawyer abrem uma publicação em revisão da IA; os demais recebem
+  "Revisão da IA é feita por advogado ou sócio" e não navegam. Hoje essa regra raramente dispara, porque
+  a API já não admite esses papéis em publicações (ver RBAC acima).
+
+### O selo "IA sugeriu prazo" não existe — de propósito
+
+O contrato da API de publicações **não informa, por publicação, se a IA sugeriu um prazo**. O app sabe
+o estado (`untreated`) e a flag `ai.classification` do escritório. Por isso:
+
+| Situação | Selo |
+| --- | --- |
+| Pendente, com processo, IA ligada | **Revisão da IA** (violeta, ✨) — não afirma que um prazo foi sugerido |
+| Pendente, com processo, IA desligada | **Aguardando revisão** (sem ✨) |
+| Pendente, sem processo | **Sem processo** |
+| Tratada | **Tratada** |
+
+A mesma regra vale no **Painel**: a fila chamava toda pendência de "sugestão de prazo" com ✨, o que era
+uma afirmação sem lastro (corrigido). Sem a flag, o item é só "Revisar publicação", sem ✨, e o filtro
+"Sugeridos pela IA" nem aparece. Quando a API expuser a sugestão por publicação, `statusBadgeOf`
+(`publicacoes/view.ts`) e `buildQueue` são os dois únicos pontos a ajustar. No mock do tenant a flag
+está **ligada**, para a demonstração mostrar a revisão da IA.

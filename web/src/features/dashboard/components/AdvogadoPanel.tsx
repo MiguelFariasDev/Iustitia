@@ -1,6 +1,7 @@
 'use client'
 
 import { routes } from '@/config/routes'
+import { useTenantStore } from '@/stores/tenantStore'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { formatHora } from '@/features/agenda/dates'
 import { isSameDay } from '../time'
@@ -32,6 +33,7 @@ function dicaPrazosHoje(prazos: ReturnType<typeof prazosDoDia>, now: Date) {
 const plural = (n: number, um: string, varios: string) => (n === 1 ? `1 ${um}` : `${n} ${varios}`)
 
 export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProps) {
+  const aiEnabled = useTenantStore((s) => s.featureFlags['ai.classification'] === true)
   const agora = now ?? new Date(0)
   const prazosHoje = now ? prazosDoDia(work.eventos, now) : []
   const fila = now
@@ -39,6 +41,7 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
         events: work.eventos,
         processNumbers: work.processNumbers,
         reviews: work.reviews,
+        aiEnabled,
         now,
       })
     : []
@@ -76,7 +79,7 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
       key="revisar"
       label="Para revisar"
       value={paraRevisar}
-      hint="sugestões da IA"
+      hint={aiEnabled ? 'revisão da IA' : 'aguardando revisão'}
       tone="ia"
       href={`${routes.publications}?status=untreated`}
       hrefLabel="Para revisar — ver as publicações"

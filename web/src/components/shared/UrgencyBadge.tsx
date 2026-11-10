@@ -3,12 +3,13 @@ import {
   CalendarClock,
   CalendarDays,
   Clock,
+  FileSearch,
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type UrgencyLevel = 'overdue' | 'today' | 'tomorrow' | 'week' | 'review'
+export type UrgencyLevel = 'overdue' | 'today' | 'tomorrow' | 'week' | 'review' | 'pending'
 
 const meta: Record<UrgencyLevel, { label: string; icon: LucideIcon; classes: string }> = {
   overdue: {
@@ -29,6 +30,12 @@ const meta: Record<UrgencyLevel, { label: string; icon: LucideIcon; classes: str
   week: {
     label: 'Esta semana',
     icon: CalendarDays,
+    classes: 'border-border bg-muted text-muted-foreground',
+  },
+  // Pendência de revisão humana SEM IA envolvida: mesmo assunto, sem o violeta nem o ✨.
+  pending: {
+    label: 'Para revisar',
+    icon: FileSearch,
     classes: 'border-border bg-muted text-muted-foreground',
   },
   review: {

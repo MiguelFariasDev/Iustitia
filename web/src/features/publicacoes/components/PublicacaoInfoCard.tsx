@@ -66,7 +66,7 @@ export function PublicacaoInfoCard({ publication }: { publication: Publication }
           </Field>
           <Field label="Situação">
             <span className="flex flex-wrap items-center gap-1.5">
-              <PublicacaoStatusBadge status={publication.status} />
+              <PublicacaoStatusBadge publication={publication} />
               <StatusBadge tone={publication.isRead ? 'neutral' : 'brand'} hideDot>
                 {publication.isRead ? 'Lida' : 'Não lida'}
               </StatusBadge>

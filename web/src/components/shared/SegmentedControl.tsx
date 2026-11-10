@@ -3,7 +3,8 @@
 import { cn } from '@/lib/utils'
 
 interface SegmentedControlProps<T extends string> {
-  value: T
+  /** `null` = o estado atual não é nenhuma das opções (ex.: filtro combinado): nada marcado. */
+  value: T | null
   onChange: (value: T) => void
   options: readonly { value: T; label: string }[]
   /** Nome acessível do grupo (ex.: "Filtrar a fila"). */
@@ -32,7 +33,9 @@ export function SegmentedControl<T extends string>({
     if (passo === 0) return
     event.preventDefault()
     const atual = options.findIndex((opcao) => opcao.value === value)
-    const proximo = options[(atual + passo + options.length) % options.length]
+    // Sem opção marcada, a seta para a frente vai à primeira e a de volta, à última.
+    const base = atual === -1 ? (passo === 1 ? -1 : 0) : atual
+    const proximo = options[(base + passo + options.length) % options.length]
     if (proximo) onChange(proximo.value)
   }
 
@@ -41,10 +44,15 @@ export function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={label}
       onKeyDown={onKeyDown}
-      className={cn('inline-flex gap-0.5 rounded-sm border bg-muted p-0.5', className)}
+      className={cn(
+        'inline-flex max-w-full gap-0.5 overflow-x-auto rounded-sm border bg-muted p-0.5',
+        className
+      )}
     >
-      {options.map((opcao) => {
+      {options.map((opcao, indice) => {
         const ativo = opcao.value === value
+        // Roving tabindex: a marcada entra na ordem de Tab; sem marcada, a primeira.
+        const entraNoTab = ativo || (value === null && indice === 0)
 
         return (
           <button
@@ -52,11 +60,10 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={ativo}
-            // Roving tabindex: só a opção marcada entra na ordem de Tab; as setas trocam.
-            tabIndex={ativo ? 0 : -1}
+            tabIndex={entraNoTab ? 0 : -1}
             onClick={() => onChange(opcao.value)}
             className={cn(
-              'rounded-xs px-3 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'shrink-0 rounded-xs px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
               ativo
                 ? 'bg-card text-foreground shadow-xs'
                 : 'text-muted-foreground hover:bg-accent hover:text-foreground'
