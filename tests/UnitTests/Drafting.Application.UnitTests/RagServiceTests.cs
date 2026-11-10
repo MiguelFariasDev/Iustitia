@@ -135,7 +135,7 @@ public class RagServiceTests
         var store = new FakeVectorStore(hits);
 
         var context = await Service(
-            store, new FakeEmbeddings(), new RagOptions { MaxContextTokens = 3000, CharsPorToken = 3.5, LimiteResultados = 10 })
+            store, new FakeEmbeddings(), new RagOptions { MaxTokensContexto = 3000, CharsPorToken = 3.5, LimiteResultados = 10 })
             .RetrieveAsync(Query());
 
         context.Chunks.Should().HaveCount(2);

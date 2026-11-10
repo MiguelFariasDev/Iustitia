@@ -9,10 +9,10 @@ namespace Advocacia.Modules.Drafting.Api;
 /// Escreve os eventos como NDJSON: UMA linha de JSON válido por evento (campo "tipo" identifica o evento),
 /// descarregada (flush) a cada evento para o texto aparecer conforme é gerado.
 ///
-/// Os cabeçalhos saem ANTES do primeiro evento — por isso validação e persistência inicial
-/// acontecem antes (PrepareAsync) e viram HTTP 4xx normal. Depois de aberto o stream, uma falha só
-/// pode ser um evento {"tipo":"erro"} (o status já é 200). Cliente que desconecta cancela o token
-/// da requisição, e a geração (e a GPU) para junto.
+/// Os cabeçalhos saem ANTES do primeiro evento — por isso acesso e estado são verificados antes
+/// (AbrirStreamAsync) e viram HTTP 4xx normal. Depois de aberto o stream, uma falha só pode ser um
+/// evento {"tipo":"erro"} (o status já é 200). Cliente que desconecta só encerra o ACOMPANHAMENTO:
+/// a geração continua no worker (cancelar a geração é POST /pecas/{id}/cancelar).
 /// </summary>
 public sealed class NdjsonStreamResult(IAsyncEnumerable<GenerationEvent> events) : IResult
 {

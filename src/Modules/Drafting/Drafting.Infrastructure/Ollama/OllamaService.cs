@@ -10,16 +10,19 @@ using Microsoft.Extensions.Options;
 namespace Advocacia.Modules.Drafting.Infrastructure.Ollama;
 
 /// <summary>
-/// Cliente do Ollama: <c>POST /api/chat</c> em streaming NDJSON (geração) e <c>POST /api/embed</c>
-/// (BGE-M3). Implementa as portas <see cref="ILlmService"/> e <see cref="IEmbeddingService"/>, então
-/// trocar de modelo ou de provedor não toca em mais nada.
+/// Cliente do Ollama: <c>POST /api/chat</c> em streaming NDJSON (geração), <c>POST /api/embed</c>
+/// (BGE-M3) e <c>GET /api/tags</c> (saúde e modelos instalados). Implementa as portas
+/// <see cref="ILlmService"/>, <see cref="IEmbeddingService"/> e <see cref="ILlmHealth"/> (reunidas em
+/// <see cref="IOllamaService"/>), então trocar de modelo ou de provedor não toca em mais nada.
+/// O endereço vem de <see cref="IOllamaEndpoint"/> a CADA chamada: ele pode mudar quando a GPU reinicia.
 ///
 /// Erros viram <see cref="LlmServiceException"/> (rede, HTTP, linha inválida) ou
 /// <see cref="TimeoutException"/> (prazo da geração estourou). Cancelamento do chamador continua
 /// sendo <see cref="OperationCanceledException"/>. Nenhuma mensagem de erro carrega prompt ou texto.
 /// </summary>
-public sealed class OllamaService(HttpClient httpClient, IOptions<OllamaOptions> options, ILogger<OllamaService> logger)
-    : ILlmService, IEmbeddingService
+public sealed class OllamaService(
+    HttpClient httpClient, IOllamaEndpoint endpoint, IOptions<OllamaOptions> options, ILogger<OllamaService> logger)
+    : IOllamaService
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -42,11 +45,11 @@ public sealed class OllamaService(HttpClient httpClient, IOptions<OllamaOptions>
             Stream: true,
             // Modelos de raciocínio (qwen3): pensar gasta minutos de GPU e não vira texto de peça.
             Think: false,
-            new ChatOptions(_options.Temperature, _options.NumCtx, _options.NumPredict),
+            new ChatOptions(_options.Temperatura, _options.TopP, _options.NumCtx, _options.NumPredict),
             _options.KeepAlive);
 
         using var response = await SendAsync(
-            () => new HttpRequestMessage(HttpMethod.Post, "api/chat") { Content = JsonContent.Create(body, options: Json) },
+            () => new HttpRequestMessage(HttpMethod.Post, Url("api/chat")) { Content = JsonContent.Create(body, options: Json) },
             HttpCompletionOption.ResponseHeadersRead,
             deadline,
             cancellationToken);
@@ -98,7 +101,7 @@ public sealed class OllamaService(HttpClient httpClient, IOptions<OllamaOptions>
         deadline.CancelAfter(TimeSpan.FromSeconds(Math.Min(_options.TimeoutSegundos, 120)));
 
         using var response = await SendAsync(
-            () => new HttpRequestMessage(HttpMethod.Post, "api/embed")
+            () => new HttpRequestMessage(HttpMethod.Post, Url("api/embed"))
             {
                 Content = JsonContent.Create(new EmbedBody(_options.ModeloEmbedding, inputs), options: Json),
             },
@@ -116,6 +119,48 @@ public sealed class OllamaService(HttpClient httpClient, IOptions<OllamaOptions>
 
         return embeddings;
     }
+
+    public async Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(10));
+
+        try
+        {
+            using var response = await SendAsync(
+                () => new HttpRequestMessage(HttpMethod.Get, Url("api/tags")),
+                HttpCompletionOption.ResponseHeadersRead,
+                deadline,
+                cancellationToken);
+
+            return true;
+        }
+        catch (Exception exception) when (exception is LlmServiceException or TimeoutException)
+        {
+            // Ainda subindo, fora do ar ou sem rota: "não está saudável", não é erro de quem pergunta.
+            return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> ListarModelosAsync(CancellationToken cancellationToken = default)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(30));
+
+        using var response = await SendAsync(
+            () => new HttpRequestMessage(HttpMethod.Get, Url("api/tags")),
+            HttpCompletionOption.ResponseContentRead,
+            deadline,
+            cancellationToken);
+
+        var payload = await ReadAsync(
+            () => response.Content.ReadFromJsonAsync<TagsResult>(Json, deadline.Token), deadline, cancellationToken);
+
+        return payload?.Models?.Select(m => m.Name ?? string.Empty).Where(n => n.Length > 0).ToList()
+               ?? throw new LlmServiceException("O Ollama devolveu a lista de modelos em formato inesperado.");
+    }
+
+    private Uri Url(string path) => new(endpoint.BaseAddress, path);
 
     /// <summary>Interpreta UMA linha NDJSON do /api/chat. Pública para o teste de parsing.</summary>
     public static ChatLine ParseChatLine(string line)
@@ -203,7 +248,7 @@ public sealed class OllamaService(HttpClient httpClient, IOptions<OllamaOptions>
 
     private sealed record ChatMessage(string Role, string Content);
 
-    private sealed record ChatOptions(double Temperature, [property: JsonPropertyName("num_ctx")] int NumCtx, [property: JsonPropertyName("num_predict")] int NumPredict);
+    private sealed record ChatOptions(double Temperature, [property: JsonPropertyName("top_p")] double TopP, [property: JsonPropertyName("num_ctx")] int NumCtx, [property: JsonPropertyName("num_predict")] int NumPredict);
 
     private sealed record ChatBody(
         string Model,
@@ -216,6 +261,10 @@ public sealed class OllamaService(HttpClient httpClient, IOptions<OllamaOptions>
     private sealed record EmbedBody(string Model, IReadOnlyList<string> Input);
 
     private sealed record EmbedResult(List<float[]>? Embeddings);
+
+    private sealed record TagsResult(List<TagModel>? Models);
+
+    private sealed record TagModel(string? Name);
 
     private sealed class ChatLineDto
     {

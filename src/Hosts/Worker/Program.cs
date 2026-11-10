@@ -5,6 +5,7 @@ using Advocacia.Modules.Integrations.Anthropic.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs;
+using Advocacia.Modules.Drafting.Infrastructure;
 using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
 using Advocacia.Modules.Workflow.Infrastructure;
@@ -35,6 +36,9 @@ builder.Services.AddLegalInfrastructure(builder.Configuration);
 builder.Services.AddCrmInfrastructure(builder.Configuration);
 builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 builder.Services.AddAtendimentoInfrastructure(builder.Configuration);
+// Peças com IA: o worker consome a fila e liga/desliga a GPU (a API só enfileira e consulta).
+builder.Services.AddDraftingInfrastructure(builder.Configuration);
+builder.Services.AddDraftingWorker();
 
 var host = builder.Build();
 

@@ -18,11 +18,16 @@ public sealed class OllamaOptions
     public string? ApiKey { get; set; }
 
     /// <summary>Baixa = mais fiel ao texto fornecido. Peça jurídica não é lugar de criatividade.</summary>
-    public double Temperature { get; set; } = 0.2;
+    public double Temperatura { get; set; } = 0.2;
+
+    public double TopP { get; set; } = 0.9;
 
     /// <summary>
-    /// Janela de contexto pedida ao Ollama. O padrão dele é 4096 e TRUNCA EM SILÊNCIO o começo do
-    /// prompt (o system prompt!) quando estoura — com ~8.000 tokens de contexto precisa ser maior.
+    /// Janela de contexto pedida ao Ollama (prompt + resposta). O padrão dele é 4096 e TRUNCA EM
+    /// SILÊNCIO o começo do prompt (o system prompt!) quando estoura. Orçamento: ~450 (system) +
+    /// até ~3.500 (fatos/pedidos/instruções) + 8.000 (contexto do RAG) + 4.096 (resposta) ≈ 16.000.
+    /// Com 8192 e contexto de 8.000 tokens a conta NÃO fecha — reduza <c>Rag:MaxTokensContexto</c>
+    /// (para ~2.500) se precisar de uma janela menor.
     /// </summary>
     public int NumCtx { get; set; } = 16384;
 

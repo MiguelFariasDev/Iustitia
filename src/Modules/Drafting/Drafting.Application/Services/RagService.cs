@@ -39,11 +39,12 @@ public sealed class RagService(
                 limit * 2,
                 Area: query.Area,
                 DocumentosIds: query.DocumentosIds.Count == 0 ? null : query.DocumentosIds,
-                ScoreMinimo: settings.ScoreMinimo),
+                ScoreMinimo: settings.ScoreMinimo,
+                UsuarioId: query.UsuarioId),
             cancellationToken);
 
         var inScope = hits.Where(hit => IsInScope(hit, query)).ToList();
-        var context = ContextSelector.Select(inScope, limit, settings.MaxContextTokens, settings.CharsPorToken, settings.ScoreMinimo);
+        var context = ContextSelector.Select(inScope, limit, settings.MaxTokensContexto, settings.CharsPorToken, settings.ScoreMinimo);
 
         // Só contagens: o texto dos trechos e da consulta nunca vai para o log.
         logger.LogInformation(

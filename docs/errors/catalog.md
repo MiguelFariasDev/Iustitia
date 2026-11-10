@@ -234,6 +234,16 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `DRAFTING_REQUEST_NOT_FOUND` | Solicitação de peça não encontrada. | 404 | NotFound | `pecaOrigemId` inexistente neste escritório. | Conferir o identificador. |
 | `DRAFTING_GENERATION_FAILED` | Não foi possível gerar a peça. Tente novamente. | 500 | Failure | Falha do Ollama/Qdrant, timeout ou cancelamento. O detalhe técnico fica no log e na solicitação, nunca na resposta. | Tentar de novo; se persistir, conferir a saúde da instância de IA. |
 | `DRAFTING_TOO_MANY_DOCUMENTS` | Informe no máximo {0} documentos. | 400 | Validation | `documentosIds` acima do limite. | Reduzir a lista. |
+| `DRAFTING_CANNOT_CANCEL` | Esta solicitação já foi concluída, falhou ou foi cancelada e não pode mais ser cancelada. | 409 | Conflict | `POST /pecas/{id}/cancelar` em solicitação terminal. | Nada a fazer; use regenerar para uma nova versão. |
+| `DRAFTING_CONFIRMATION_REQUIRED` | Confirme a regeração enviando "confirmar": true. | 400 | Validation | `POST /pecas/{id}/regenerar` sem confirmação. | Reenviar com `confirmar: true`. |
+| `DRAFTING_UNSUPPORTED_FILE` | Arquivo não suportado ou ilegível. Envie PDF com texto, DOCX ou TXT. | 400 | Validation | Extensão fora da lista, arquivo corrompido ou PDF escaneado (sem camada de texto; OCR não implementado). | Converter para PDF com texto/DOCX/TXT. |
+| `DRAFTING_FILE_TOO_LARGE` | O arquivo excede o limite de {0} MB. | 400 | Validation | Upload acima de `Drafting:Ingestao:MaxMegabytes`. | Dividir o arquivo. |
+| `DRAFTING_DOCUMENT_NOT_FOUND` | Documento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório/usuário (privado). | Conferir o identificador. |
+| `DRAFTING_DOCUMENT_DUPLICATE` | Este documento já foi enviado (mesmo conteúdo). | 409 | Conflict | Mesmo hash de conteúdo no escritório. | Usar o documento existente. |
+| `DRAFTING_NOT_STREAMING` | A solicitação não está em processamento; consulte o resultado em GET /pecas/{id}. | 409 | Conflict | `GET /pecas/{id}/stream` em solicitação já terminal. | Consultar `GET /pecas/{id}`. |
+| `DRAFTING_NOT_READY` | A minuta ainda não está pronta. Acompanhe o status da solicitação. | 409 | Conflict | Reservado para consumidores que exijam a minuta concluída. | Acompanhar `GET /pecas/{id}/status`. |
+| `DRAFTING_GPU_UNAVAILABLE` | A infraestrutura de IA não está disponível no momento. | 500 | Failure | A instância de GPU não subiu no prazo, o circuito está aberto ou a API da Vast.ai falhou. O detalhe fica em `gpu_instance_logs`; a solicitação continua na fila. | Verificar saldo/estado da instância na Vast.ai; o worker tenta de novo sozinho. |
+| `DRAFTING_VECTOR_STORE_UNAVAILABLE` | O acervo de documentos está indisponível no momento. Tente novamente. | 500 | Failure | O Qdrant não respondeu ao remover um documento. | Tentar de novo; conferir o Qdrant. |
 
 ## Internal (9000–9999)
 

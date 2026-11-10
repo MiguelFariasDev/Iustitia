@@ -30,7 +30,7 @@ public sealed class RetrievedSource : Entity<Guid>, IHasTenant
     public string? MetadadosJson { get; private set; }
 
     /// <summary>Verdadeiro se o texto gerado cita esta fonte (verificação feita depois da geração).</summary>
-    public bool Citada { get; private set; }
+    public bool UtilizadaNaGeracao { get; private set; }
 
     private RetrievedSource()
     {
@@ -47,7 +47,7 @@ public sealed class RetrievedSource : Entity<Guid>, IHasTenant
         string trecho,
         double score,
         string? metadadosJson,
-        bool citada)
+        bool utilizadaNaGeracao)
         : base(Guid.NewGuid())
     {
         TenantId = tenantId;
@@ -59,6 +59,6 @@ public sealed class RetrievedSource : Entity<Guid>, IHasTenant
         Trecho = trecho;
         Score = score;
         MetadadosJson = metadadosJson;
-        Citada = citada;
+        UtilizadaNaGeracao = utilizadaNaGeracao;
     }
 }

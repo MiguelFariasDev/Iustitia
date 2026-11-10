@@ -302,6 +302,29 @@ public static class ErrorCatalog
             [ErrorCode.DRAFTING_TOO_MANY_DOCUMENTS] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_TOO_MANY_DOCUMENTS),
                 "Informe no máximo {0} documentos.", 400, ErrorType.Validation),
 
+            [ErrorCode.DRAFTING_CANNOT_CANCEL] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_CANNOT_CANCEL),
+                "Esta solicitação já foi concluída, falhou ou foi cancelada e não pode mais ser cancelada.", 409, ErrorType.Conflict),
+            [ErrorCode.DRAFTING_CONFIRMATION_REQUIRED] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_CONFIRMATION_REQUIRED),
+                "Confirme a regeração enviando \"confirmar\": true.", 400, ErrorType.Validation),
+            [ErrorCode.DRAFTING_UNSUPPORTED_FILE] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_UNSUPPORTED_FILE),
+                "Arquivo não suportado ou ilegível. Envie PDF com texto, DOCX ou TXT.", 400, ErrorType.Validation),
+            [ErrorCode.DRAFTING_FILE_TOO_LARGE] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_FILE_TOO_LARGE),
+                "O arquivo excede o limite de {0} MB.", 400, ErrorType.Validation),
+            [ErrorCode.DRAFTING_DOCUMENT_NOT_FOUND] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_DOCUMENT_NOT_FOUND),
+                "Documento não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.DRAFTING_DOCUMENT_DUPLICATE] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_DOCUMENT_DUPLICATE),
+                "Este documento já foi enviado (mesmo conteúdo).", 409, ErrorType.Conflict),
+            [ErrorCode.DRAFTING_NOT_STREAMING] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_NOT_STREAMING),
+                "A solicitação não está em processamento; consulte o resultado em GET /pecas/{id}.", 409, ErrorType.Conflict),
+            [ErrorCode.DRAFTING_NOT_READY] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_NOT_READY),
+                "A minuta ainda não está pronta. Acompanhe o status da solicitação.", 409, ErrorType.Conflict),
+
+            [ErrorCode.DRAFTING_GPU_UNAVAILABLE] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_GPU_UNAVAILABLE),
+                "A infraestrutura de IA não está disponível no momento.", 500, ErrorType.Failure),
+
+            [ErrorCode.DRAFTING_VECTOR_STORE_UNAVAILABLE] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_VECTOR_STORE_UNAVAILABLE),
+                "O acervo de documentos está indisponível no momento. Tente novamente.", 500, ErrorType.Failure),
+
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),
                 "O serviço de publicações do CNJ está indisponível no momento.", 500, ErrorType.Failure),

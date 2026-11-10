@@ -27,6 +27,12 @@ public static class PecaCatalogo
         ["empresarial"] = "empresarial",
     };
 
+    /// <summary>Tipos de documento aceitos no acervo (campo <c>tipoDocumento</c> do upload).</summary>
+    public static readonly IReadOnlySet<string> TiposDocumento = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "lei", "jurisprudencia", "sumula", "doutrina", "contrato", "peticao", "sentenca", "acordao", "parecer", "outro",
+    };
+
     public static string RotuloTipo(string chave) => Tipos.TryGetValue(chave, out var rotulo) ? rotulo : chave;
 
     public static string RotuloArea(string chave) => Areas.TryGetValue(chave, out var rotulo) ? rotulo : chave;

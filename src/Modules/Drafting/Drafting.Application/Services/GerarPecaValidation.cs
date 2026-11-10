@@ -30,13 +30,13 @@ public static class GerarPecaValidation
         }
 
         var fatos = InputSanitizer.Clean(request.Fatos);
-        var pedidos = InputSanitizer.Clean(request.Pedidos);
+        var pedidos = InputSanitizer.Clean(request.Pedidos);  // opcional: vazio é aceito
         var instrucoes = InputSanitizer.Clean(request.InstrucoesAdicionais);
 
         var campos = new (string Nome, string Valor, int Max, bool Obrigatorio)[]
         {
             ("fatos", fatos, FatosMax, true),
-            ("pedidos", pedidos, PedidosMax, true),
+            ("pedidos", pedidos, PedidosMax, false),
             ("instrucoesAdicionais", instrucoes, InstrucoesMax, false),
         };
 
@@ -65,6 +65,6 @@ public static class GerarPecaValidation
         }
 
         return Result.Success(new PecaInput(
-            tipo, area, fatos, pedidos, instrucoes.Length == 0 ? null : instrucoes, documentos, request.PecaOrigemId));
+            tipo, area, fatos, pedidos, instrucoes.Length == 0 ? null : instrucoes, documentos, null));
     }
 }

@@ -11,12 +11,14 @@ public class QdrantServiceTests
 
     private static string? Keyword(Condition condition) => condition.Field?.Match?.Keyword;
 
+    private static IEnumerable<Condition> FieldConditions(Filter filter) => filter.Must.Where(c => c.Field is not null);
+
     [Fact]
     public void ToDaBuscaTemOFiltroDeTenantObrigatorio_MesmoSemNenhumOutroFiltro()
     {
         var filter = QdrantService.BuildFilter(new VectorSearchQuery(Tenant, [0.1f], 5));
 
-        var condition = filter.Must.Should().ContainSingle().Subject;
+        var condition = FieldConditions(filter).Should().ContainSingle().Subject;
         condition.Field.Key.Should().Be("tenantId");
         Keyword(condition).Should().Be(Tenant.ToString());
     }
@@ -33,13 +35,13 @@ public class QdrantServiceTests
             PublicadoAte: new DateOnly(2024, 12, 31),
             DocumentosIds: [doc]));
 
-        filter.Must.Select(c => c.Field.Key)
+        FieldConditions(filter).Select(c => c.Field.Key)
             .Should().BeEquivalentTo("tenantId", "area", "tipoDocumento", "documentoOrigemId", "dataPublicacao");
-        filter.Must.First(c => c.Field.Key == "tenantId").Field.Match.Keyword.Should().Be(Tenant.ToString());
-        filter.Must.First(c => c.Field.Key == "area").Field.Match.Keyword.Should().Be("civel");
-        filter.Must.First(c => c.Field.Key == "documentoOrigemId").Field.Match.Keywords.Strings
+        FieldConditions(filter).First(c => c.Field.Key == "tenantId").Field.Match.Keyword.Should().Be(Tenant.ToString());
+        FieldConditions(filter).First(c => c.Field.Key == "area").Field.Match.Keyword.Should().Be("civel");
+        FieldConditions(filter).First(c => c.Field.Key == "documentoOrigemId").Field.Match.Keywords.Strings
             .Should().Equal(doc.ToString());
-        filter.Must.First(c => c.Field.Key == "dataPublicacao").Field.DatetimeRange.Should().NotBeNull();
+        FieldConditions(filter).First(c => c.Field.Key == "dataPublicacao").Field.DatetimeRange.Should().NotBeNull();
     }
 
     [Fact]
@@ -51,11 +53,44 @@ public class QdrantServiceTests
     }
 
     [Fact]
+    public void ControleDeAcesso_DocumentoDoEscritorioOuPrivadoDoProprioUsuario()
+    {
+        var usuario = Guid.NewGuid();
+
+        var filter = QdrantService.BuildFilter(new VectorSearchQuery(Tenant, [0.1f], 5, UsuarioId: usuario));
+
+        var visibilidade = filter.Must.Single(c => c.Filter is not null).Filter;
+        // OU: do escritório, ou do próprio usuário. Nunca o privado de outro usuário.
+        visibilidade.Should.Select(c => c.Field.Key).Should().BeEquivalentTo("visibilidade", "usuarioId");
+        visibilidade.Should.First(c => c.Field.Key == "visibilidade").Field.Match.Keyword.Should().Be("escritorio");
+        visibilidade.Should.First(c => c.Field.Key == "usuarioId").Field.Match.Keyword.Should().Be(usuario.ToString());
+    }
+
+    [Fact]
+    public void SemUsuarioInformado_SoEnxergaOQueEDoEscritorio()
+    {
+        var filter = QdrantService.BuildFilter(new VectorSearchQuery(Tenant, [0.1f], 5));
+
+        var visibilidade = filter.Must.Single(c => c.Filter is not null).Filter;
+
+        visibilidade.Should.Select(c => c.Field.Key).Should().Equal("visibilidade");
+    }
+
+    [Fact]
+    public void FiltroPorTribunalEAcrescentado()
+    {
+        var filter = QdrantService.BuildFilter(new VectorSearchQuery(Tenant, [0.1f], 5, Tribunal: "TJSP"));
+
+        FieldConditions(filter).First(c => c.Field.Key == "tribunal").Field.Match.Keyword.Should().Be("TJSP");
+    }
+
+    [Fact]
     public void ConverteOPontoComTenantETodoOPayloadEDeVolta()
     {
         var doc = Guid.NewGuid();
         var meta = new ChunkMetadata(
-            doc, "contrato.pdf", 7, "contrato", "civel", "TJSP", new DateOnly(2024, 5, 1), "https://exemplo.com/c", "HASH");
+            doc, "contrato.pdf", 7, "contrato", "civel", "TJSP", new DateOnly(2024, 5, 1), "https://exemplo.com/c", "HASH",
+            ["dano moral", "consumidor"], Guid.Parse("22222222-2222-2222-2222-222222222222"), "escritorio", "Art. 186");
         var pointId = Guid.NewGuid().ToString();
         var point = QdrantService.ToPoint(new VectorPoint(Tenant, pointId, [0.1f, 0.2f], "Texto do trecho.", meta));
 

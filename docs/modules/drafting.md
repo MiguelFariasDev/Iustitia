@@ -1,250 +1,113 @@
-# Módulo Drafting — geração assistida de peças com RAG local
+# Módulo Drafting — geração assistida de peças (RAG + Ollama na Vast.ai, GPU sob demanda)
 
-Decisão e riscos: [ADR-072](../adr/072-geracao-de-pecas-com-rag-local.md). Leia a seção
-"Estado da verificação" antes de confiar neste código.
+Decisão e riscos: [ADR-072](../adr/072-geracao-de-pecas-com-rag-local.md).
 
-## Fluxo
+> **Estado da verificação:** o código foi escrito sem SDK .NET disponível no ambiente. Nada foi compilado nem executado,
+> e a migração EF não foi gerada. Rode `dotnet build` e `dotnet test` antes de confiar nele. O recurso nasce
+> **desligado** (`Drafting:Enabled=false`).
 
-```
-Frontend ──POST /api/v1/pecas/gerar (JWT)──▶ PecasEndpoints
-   1. PrepareAsync   valida + sanitiza + grava solicitação (Pendente)         → erro aqui = HTTP 4xx
-   2. RagService     embedding (BGE-M3/Ollama) → busca no Qdrant (filtro tenant+área) → dedupe → ≤ 8.000 tokens
-   3. PromptBuilder  system prompt fixo + user prompt (fatos, pedidos, contexto)
-   4. OllamaService  POST /api/chat em streaming NDJSON (qwen3:8b)
-   5. NDJSON ao frontend: {"tipo":"fragmento",…}… {"tipo":"fim",fontes,avisos,aviso,tempoGeracaoMs,…}
-   6. CitationVerifier + persistência (texto, fontes, modelo, tempo, eventos)
-```
-
-O frontend nunca recebe URL, porta, chave ou ponto do Qdrant, nem endereço do Ollama/Vast.ai.
-
-## Estrutura de pastas
+## Fluxo (assíncrono)
 
 ```
-src/Modules/Drafting/
-├── Drafting.Domain/Pecas/
-│   ├── LegalDocumentRequest.cs      # agregado: solicitação + texto + versionamento
-│   ├── RetrievedSource.cs           # trecho que entrou no prompt (e se foi citado)
-│   ├── LegalDocumentEvent.cs        # trilha de auditoria (só metadados)
-│   ├── LegalDocumentRequestId.cs · LegalDocumentStatus.cs
-├── Drafting.Application/
-│   ├── Abstractions/                # ILlmService, IEmbeddingService, IVectorStore, IRagService,
-│   │                                # IPromptBuilder, ILegalDocumentService, IDraftingAuditService,
-│   │                                # IPecaGenerationService, IDocumentIndexer, repositório/UoW
-│   ├── Models/                      # GerarPecaRequest, eventos NDJSON, RAG (chunks, hits, query)
-│   └── Services/
-│       ├── PecaGenerationService.cs # orquestração (stream, falhas, cancelamento)
-│       ├── RagService.cs · ContextSelector.cs · TokenEstimator.cs
-│       ├── PromptBuilder.cs · SystemPrompt.cs
-│       ├── InputSanitizer.cs · PromptInjectionGuard.cs · GerarPecaValidation.cs · PecaCatalogo.cs
-│       ├── CitationVerifier.cs
-│       ├── LegalDocumentService.cs · DraftingAuditService.cs · DocumentIndexer.cs
-├── Drafting.Infrastructure/
-│   ├── Ollama/   OllamaService.cs · OllamaOptions.cs (+TransportGuard) · ThinkTagFilter.cs
-│   ├── Qdrant/   QdrantService.cs · QdrantOptions.cs
-│   └── Persistence/  DraftingDbContext · Configurations/ · Repositories/ · DraftingUnitOfWork
-└── Drafting.Api/  PecasEndpoints.cs · NdjsonStreamResult.cs
-infra/supabase/migrations/016_drafting.sql        # RLS
-tests/UnitTests/Drafting.{Application,Infrastructure,Api}.UnitTests/
+Frontend ─POST /api/v1/pecas/gerar (JWT)─▶ API: valida + sanitiza + grava Pendente + enfileira ─▶ 202 {id}
+                                            (a API nunca fala com Ollama, Qdrant ou Vast.ai)
+Worker (GeracaoPecaWorker) ─▶ FilaCoordinator
+   NaFila ─▶ PreparandoGpu  GpuOrchestrator liga a instância (só se há trabalho) e espera Ollama + modelos
+          ─▶ BuscandoContexto  embedding BGE-M3 → Qdrant (tenant + visibilidade + área) → dedupe → ≤ 8.000 tokens
+          ─▶ Gerando  system prompt fixo + user prompt → /api/chat NDJSON (texto parcial gravado no banco)
+          ─▶ Salvando  CitationVerifier, fontes, tokens, custo estimado, tempo → Concluido + notificação
+Fila vazia por IdleTimeoutMinutes (10) ─▶ instância PARADA (stop). Nunca destruída.
 ```
 
-## Endpoints
+O stream do `GET /{id}/stream` lê o texto parcial do banco; por isso funciona com API e worker em processos distintos.
 
-Versionados pelo padrão do projeto (`/api/v1/...`; a spec dizia `/api/pecas/gerar`).
+## Endpoints (`/api/v1`, JWT; advogado ou superior)
 
-| Método | Rota | Papel | Observação |
-|---|---|---|---|
-| POST | `/api/v1/pecas/gerar` | Owner/Partner/Lawyer | 6 por minuto por usuário (`ai-generation`) |
-| POST | `/api/v1/pecas/indexar` | Owner/Partner | Indexa o **texto já extraído** de um documento (substitui a indexação anterior) |
+| Método | Rota | Resultado |
+|---|---|---|
+| POST | `/pecas/gerar` | 202 + `id`, `Location` (rate limit `ai-generation`, 6/min/usuário) |
+| GET | `/pecas/{id}/status` | etapa, progresso, tentativas |
+| GET | `/pecas/{id}` | minuta, fontes, avisos (sem modelo/infra) |
+| GET | `/pecas/{id}/stream` | NDJSON; 409 se não estiver em processamento |
+| POST | `/pecas/{id}/cancelar` | 200; 409 se já terminal |
+| POST | `/pecas/{id}/regenerar` | nova versão (exige confirmação) |
+| GET | `/pecas`, `/pecas/admin/metricas` | listagem; métricas (sócio ou superior) |
+| POST | `/documentos/upload` | 202; multipart: `arquivo`, `tipoDocumento`, `area`, `tribunal`, `dataPublicacao`, `tags`, `visibilidade` |
+| GET/DELETE | `/documentos`, `/documentos/{id}` | acervo do escritório (privados só do autor) |
 
-Request de `gerar` (`documentosIds` são **GUIDs** do módulo Documents, não inteiros):
+Acesso a uma peça: dono ou Owner/Partner; os demais recebem 404. Status: Pendente, NaFila, PreparandoGpu,
+BuscandoContexto, Gerando, Salvando, Concluido, Falhou, Cancelado.
 
-```json
-{
-  "tipoPeca": "peticao_inicial",
-  "area": "civel",
-  "fatos": "…",
-  "pedidos": "…",
-  "documentosIds": ["3f2b…"],
-  "instrucoesAdicionais": null,
-  "stream": true,
-  "pecaOrigemId": null
-}
-```
-
-`tipoPeca`: `peticao_inicial`, `contestacao`, `replica`, `recurso_apelacao`, `embargos_declaracao`,
-`agravo_instrumento`, `contrarrazoes`, `manifestacao`. `area`: `civel`, `trabalhista`,
-`previdenciario`, `tributario`, `familia`, `consumidor`, `administrativo`, `empresarial`.
-Limites: fatos 8.000 · pedidos 4.000 · instruções 2.000 caracteres · 20 documentos.
-
-### Exemplo (curl)
+### Exemplos
 
 ```bash
-# --no-buffer: sem isso o curl segura o NDJSON e você só vê o texto no final.
-curl --no-buffer -X POST "https://api.exemplo.com.br/api/v1/pecas/gerar" \
-  -H "Authorization: Bearer $JWT" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tipoPeca": "peticao_inicial",
-    "area": "civel",
-    "fatos": "O autor contratou o serviço X em 10/03/2025 e pagou R$ 3.000,00 antecipadamente; o serviço não foi prestado.",
-    "pedidos": "Restituição do valor pago e indenização por danos morais.",
-    "stream": true
-  }'
-```
+curl -X POST https://api.exemplo/api/v1/pecas/gerar -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+  -d '{"tipoPeca":"peticao_inicial","area":"civel","fatos":"...","pedidos":["..."]}'
+# 202 {"id":"…","status":"Pendente"}
 
-Saída (uma linha de JSON por evento):
+curl -N https://api.exemplo/api/v1/pecas/$ID/stream -H "Authorization: Bearer $JWT"
+# {"tipo":"status","etapa":"Gerando"}
+# {"tipo":"fragmento","texto":"DOS FATOS\n"}
+# {"tipo":"fim","fontes":[…],"avisos":[…],"tempoGeracaoMs":41200}
 
-```
-{"tipo":"fragmento","conteudo":"ENDEREÇAMENTO\nExcelentíssimo…"}
-{"tipo":"fragmento","conteudo":" Senhor Doutor Juiz…"}
-{"tipo":"fim","solicitacaoId":"…","versao":1,"fontes":[{"nomeArquivo":"contrato.pdf","pagina":3,"score":0.91,"citada":true,…}],"avisos":[],"aviso":"Minuta gerada por IA. Requer revisão e validação por profissional habilitado.","tempoGeracaoMs":48213,"traceId":"…"}
-```
-
-Falha depois do stream aberto: `{"tipo":"erro","mensagem":"Não foi possível gerar a peça. Tente novamente.","solicitacaoId":"…"}`.
-`"stream": false` devolve um JSON único (`textoGerado`, `fontes`, `avisos`, `aviso`, …).
-
-### Indexar um documento
-
-```bash
-curl -X POST "https://api.exemplo.com.br/api/v1/pecas/indexar" \
-  -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
-  -d '{"documentoOrigemId":"…","nomeArquivo":"contrato.pdf","tipoDocumento":"contrato","area":"civel",
-       "tribunal":null,"dataPublicacao":null,"urlOrigem":null,
-       "paginas":[{"numero":1,"texto":"Cláusula primeira…"}]}'
+curl -X POST https://api.exemplo/api/v1/documentos/upload -H "Authorization: Bearer $JWT" \
+  -F arquivo=@acordao.pdf -F tipoDocumento=jurisprudencia -F area=civel -F tribunal=TJSP -F tags="dano moral"
 ```
 
 ## Configuração
 
-`appsettings.json` (seções `Drafting`, `Ollama`, `Qdrant` — valores reais **só** por variável de
-ambiente/User Secrets, nunca no arquivo versionado):
+Segredos **só** por variável de ambiente (nunca no appsettings versionado):
 
-| Chave | Variável de ambiente | Padrão |
-|---|---|---|
-| `Drafting:Enabled` | `DRAFTING__ENABLED` | `false` |
-| `Ollama:BaseUrl` | `OLLAMA__BASEURL` | placeholder inválido (de propósito) |
-| `Ollama:ApiKey` | `OLLAMA__APIKEY` | vazio (token do proxy reverso) |
-| `Ollama:Modelo` / `ModeloEmbedding` | `OLLAMA__MODELO` … | `qwen3:8b` / `bge-m3` |
-| `Ollama:TimeoutSegundos` | | `600` |
-| `Ollama:NumCtx` / `NumPredict` | | `16384` / `4096` |
-| `Qdrant:BaseUrl` | `QDRANT__BASEURL` | placeholder inválido — **porta gRPC (6334)** |
-| `Qdrant:ApiKey` | `QDRANT__APIKEY` | vazio |
-| `Qdrant:Colecao` / `LimiteResultados` | | `juridico_chunks` / `8` (força 5–10) |
-| `*:AllowInsecureHttp` | | `false` (ver ADR-072) |
+| Variável | Uso |
+|---|---|
+| `DRAFTING__ENABLED` | liga o módulo |
+| `VASTAI__APIKEY`, `VASTAI__INSTANCEID` | controle da instância |
+| `VASTAI__ENABLED` | `false` = Ollama sempre ligado (dev) |
+| `OLLAMA__BASEURL`, `OLLAMA__APIKEY` | endpoint **com TLS** (ou túnel/proxy autenticado) |
+| `QDRANT__BASEURL`, `QDRANT__APIKEY` | gRPC (6334) com TLS |
+| `ConnectionStrings__…` | Postgres |
 
-Desenvolvimento local: `appsettings.Development.json` liga o módulo contra `localhost:11434` e
-`localhost:6334`; `dotnet user-secrets set "Ollama:BaseUrl" …` para sobrescrever.
+Seções: `Drafting`, `Drafting:Fila`, `Drafting:Custo`, `Drafting:Ingestao`, `Rag`, `VastAi` (Polling 15 s, StartTimeout 10 min,
+IdleTimeout 10 min, MaxRetries 3), `Ollama` (qwen3:8b, bge-m3, Temperatura 0.2, TopP 0.9), `Qdrant`.
 
-## Banco de dados
+> **Correção sobre o pedido:** o exemplo sugeria `NumCtx: 8192`, mas o contexto recuperado pode chegar a ~8.000 tokens e ainda
+> há system prompt, fatos e a resposta. Com 8192 o Ollama trunca silenciosamente o início do prompt (incluindo as regras).
+> O padrão aqui é **16384**.
 
-1. Gerar a migração do EF (não foi gerada: o ambiente de escrita não tinha o SDK):
-   ```bash
-   dotnet ef migrations add InitialDrafting \
-     --project src/Modules/Drafting/Drafting.Infrastructure \
-     --startup-project src/Hosts/Api --context DraftingDbContext \
-     --output-dir Persistence/Migrations
-   dotnet ef database update --project src/Modules/Drafting/Drafting.Infrastructure \
-     --startup-project src/Hosts/Api --context DraftingDbContext
-   ```
-2. Aplicar `infra/supabase/migrations/016_drafting.sql` (RLS e grants; sem DELETE para `app_user`).
+## Deploy na Vast.ai
 
-Tabelas: `legal_document_requests` (a spec chamava de `LegalDocumentRequest`), `retrieved_sources`
-(`RetrievedSource`), `legal_document_events` (trilha). Além dos campos pedidos, a solicitação tem
-`tenant_id` (RLS), `versao`, `request_origem_id`, `prompt_versao` e `documentos_ids_json`; a fonte
-tem `tenant_id` e `citada`.
+1. Crie uma instância com GPU (≥ 12 GB para qwen3:8b quantizado) e imagem com Ollama. Anote o `INSTANCEID`.
+2. Dentro dela: `ollama pull qwen3:8b && ollama pull bge-m3`. **Parar** a instância preserva o disco; destruir apaga os modelos.
+3. Exponha o Ollama apenas por TLS com autenticação (túnel/proxy reverso com token). Nunca a porta 11434 aberta.
+4. Gere uma chave da API da Vast com o menor escopo possível e injete em `VASTAI__APIKEY`.
+5. Qdrant fica em host **sempre ligado** (barato, sem GPU), com API key e TLS. Coleção `juridico_chunks` (1024 dimensões, cosseno).
+6. Rode o host `Worker` (único componente que liga/desliga a GPU). Dockerfile opcional: publicar `src/Hosts/Worker` com a imagem `mcr.microsoft.com/dotnet/aspnet`.
+7. Migração: aplique `infra/supabase/migrations/016_drafting.sql` (ou `dotnet ef migrations add InitialDrafting` no projeto Infrastructure — **não gerada**).
 
-## Implantação na Vast.ai (Ollama + Qdrant)
+Enquanto a GPU está parada, o armazenamento da instância ainda é cobrado pela Vast; confira a tabela de preços atual.
 
-> **Antes de qualquer coisa:** a instância é uma máquina de **terceiro** num marketplace. Não envie
-> dado real de cliente sem cumprir o checklist abaixo. Para testar, use fatos fictícios.
+## Indexação
 
-1. **Alugar** uma instância com GPU de ≥ 16 GB de VRAM (qwen3:8b em q4 usa ~6 GB; o contexto de
-   16k e o BGE-M3 carregado junto pedem folga), disco de ≥ 60 GB, template com Docker. Prefira
-   hosts verificados (datacenter) e **instância "on-demand"**, não "interruptible": uma peça de
-   minutos não pode ser interrompida no meio.
-2. **Não exponha as portas do Ollama (11434) e do Qdrant (6333/6334) direto na internet.** Escolha:
-   - **Recomendado:** um proxy reverso na própria instância (Caddy) com TLS e `Authorization: Bearer`,
-     publicando só `443`; ou
-   - **Túnel** (Cloudflare Tunnel / WireGuard) entre a API e a instância, sem porta pública.
-3. **Subir os serviços** (na instância):
-   ```bash
-   # Qdrant com chave de API e disco persistente
-   docker run -d --name qdrant --restart unless-stopped \
-     -p 127.0.0.1:6333:6333 -p 127.0.0.1:6334:6334 \
-     -e QDRANT__SERVICE__API_KEY="$QDRANT_KEY" \
-     -v /workspace/qdrant:/qdrant/storage qdrant/qdrant
+`POST /documentos/upload` grava metadados e enfileira. O worker extrai texto (PDF com camada de texto, DOCX, TXT), divide em
+trechos de 800–1.200 caracteres com overlap, preservando artigo/cláusula, gera embeddings em lote (cache por hash) e grava no Qdrant com
+`tenant_id`, visibilidade, tribunal, data e tags. PDF escaneado é recusado (sem OCR). A indexação usa a GPU, então também a liga sob demanda.
 
-   # Ollama
-   docker run -d --name ollama --gpus all --restart unless-stopped \
-     -p 127.0.0.1:11434:11434 -e OLLAMA_KEEP_ALIVE=10m \
-     -v /workspace/ollama:/root/.ollama ollama/ollama
-   docker exec ollama ollama pull qwen3:8b
-   docker exec ollama ollama pull bge-m3
-   ```
-4. **Proxy com TLS** (exemplo de `Caddyfile`; troque o domínio e o token):
-   ```
-   ia.exemplo.com.br {
-     @auth header Authorization "Bearer {env.PROXY_TOKEN}"
-     handle @auth { reverse_proxy 127.0.0.1:11434 }
-     respond 401
-   }
-   ```
-   O Qdrant (gRPC) precisa de `h2`/gRPC no proxy (`reverse_proxy h2c://127.0.0.1:6334`) ou de túnel.
-5. **Configurar a API** (variáveis de ambiente do host, nunca no repositório):
-   ```
-   OLLAMA__BASEURL=https://ia.exemplo.com.br
-   OLLAMA__APIKEY=<token do proxy>
-   QDRANT__BASEURL=https://qdrant.exemplo.com.br:443
-   QDRANT__APIKEY=<chave do Qdrant>
-   DRAFTING__ENABLED=true
-   ```
-6. **Aquecer e testar:** `curl https://ia.exemplo.com.br/api/tags -H "Authorization: Bearer …"`
-   (modelos listados); indexar um documento fictício; gerar uma peça com `stream:false`. A
-   primeira chamada é lenta (carrega o modelo na GPU).
-7. **Parar a instância** quando não estiver em uso: a cobrança é por hora, e o volume `/workspace`
-   persiste enquanto o disco existir. Perder a instância sem backup perde o índice vetorial — ele
-   é reconstruível reindexando, **o texto das peças fica no Postgres**.
+## Segurança e economia
 
-## Checklist de segurança e privacidade
+Tenant em todo filtro do Qdrant; `generation_queue` e `gpu_instance_logs` guardam só ids/estados (sem RLS), as demais têm RLS;
+`InputSanitizer` e `PromptInjectionGuard` (filtro, não garantia); `TransportGuard` recusa HTTP fora de loopback e qualquer chave sob HTTP;
+circuit breaker de GPU; embeddings em cache; parada por ociosidade medida pela fila no banco.
 
-- [ ] **Decisão formal** do responsável (LGPD/OAB) sobre enviar dado de caso a um host de terceiro;
-      contrato/termos do provedor de GPU lidos; DPIA atualizado (ADR-072).
-- [ ] `OLLAMA__BASEURL` e `QDRANT__BASEURL` em **https://** (ou túnel); `AllowInsecureHttp` **falso**.
-- [ ] Portas 11434/6333/6334 **fechadas** para a internet; só o proxy (443) ou o túnel.
-- [ ] Token do proxy e chave do Qdrant **fortes**, em Key Vault/variáveis de ambiente, rotacionados.
-- [ ] Nenhum segredo, URL ou IP da instância em `appsettings.json` versionado, logs ou frontend.
-- [ ] Instância **on-demand**, em provedor/host verificado; disco com dados **apagado** ao encerrar
-      a locação (`rm -rf /workspace/*` e destruir a instância).
-- [ ] `Drafting:Enabled=false` em ambientes sem o aceite acima (é o padrão).
-- [ ] Dado fictício em teste/staging; nunca documentos reais de cliente antes do aceite.
-- [ ] RLS aplicado (`016_drafting.sql`) e verificado com `app_user`; **filtro por `tenantId` do
-      Qdrant** coberto por teste (`QdrantServiceTests`).
-- [ ] Logs sem fatos/pedidos/trechos/texto (só ids, contagens e tempos) — revisar o que o provedor
-      de logs captura.
-- [ ] Rate limit `ai-generation` ativo (6/min/usuário); alarme para falhas e latência.
-- [ ] Interface exibe **"Minuta gerada por IA. Requer revisão e validação por profissional
-      habilitada."** e nunca "pronta para protocolo"; `avisos` do evento final são mostrados.
-- [ ] Revisão humana obrigatória: a peça não vira ato sem aprovação do advogado (princípio 1).
-- [ ] Transparência ao cliente final sobre uso de IA (Recomendação OAB nº 001/2024).
-- [ ] Avaliar criptografia de campo para `fatos`/`pedidos`/`texto_gerado` (ADR-068).
-- [ ] Rotina de exclusão sob pedido do titular, incluindo os pontos no Qdrant
-      (`DeleteByDocumentAsync`) e as linhas de `legal_document_*`.
-- [ ] Teste de regressão do system prompt atualizado a cada mudança de `SystemPrompt.Versao`.
+## Checklist antes de produção
 
-## Estado da verificação
+- [ ] `dotnet build`/`test` verdes; testes de integração com Postgres rodando
+- [ ] TLS e autenticação em Ollama e Qdrant; nenhuma porta pública sem auth
+- [ ] Segredos só no cofre/variáveis; chave Vast com escopo mínimo
+- [ ] Parada ociosa verificada manualmente (instância `stopped` após 10 min)
+- [ ] Aceite jurídico: dados de clientes saem para host de terceiro (Vast.ai) — avaliar LGPD e sigilo profissional (OAB) e contrato
+- [ ] Revisão humana obrigatória: o aviso aparece em toda minuta; `CitationVerifier` sinaliza citações sem fonte
+- [ ] Avaliação de qualidade com peças reais antes de liberar (modelo 8B pode errar; não é jurisprudência verificada)
 
-- **Nada foi compilado nem executado.** O ambiente em que este código foi escrito não tem SDK .NET;
-  as suítes de teste abaixo foram escritas e conferidas "no olho". **Rode `dotnet build` (Release
-  trata warnings como erro) e `dotnet test` antes de qualquer outra coisa** e espere corrigir
-  alguns erros de compilação.
-- A API do cliente Qdrant foi conferida contra a documentação XML do pacote `Qdrant.Client 1.15.1`
-  (construtor, `SearchAsync`, `UpsertAsync`, `DeleteAsync`, `Conditions.*`), mas não compilada.
-- Os testes de endpoint usam servidor em memória + EF InMemory: **não** exercitam RLS, índices
-  nem o Postgres. Os testes de `OllamaService` usam um `HttpMessageHandler` falso: **não** foram
-  contra um Ollama de verdade (formato NDJSON conforme a documentação do Ollama).
-- O comportamento do qwen3:8b com este system prompt (obediência às 12 regras, qualidade das
-  citações) **não foi avaliado**. Faça uma bateria com casos reais anonimizados antes de confiar.
+## Fora do escopo desta entrega
 
-Testes: `Drafting.Application.UnitTests` (PromptBuilder, RAG/contexto, sanitização, injeção,
-validação, citações, orquestração, indexador), `Drafting.Infrastructure.UnitTests` (Ollama: NDJSON,
-HTTP, timeout, cancelamento, `think`; Qdrant: filtros; persistência), `Drafting.Api.UnitTests`
-(autenticação 401/403, validação 400, stream NDJSON, persistência).
+Interface no frontend, exportação DOCX/PDF, OCR, cache semântico, geração por seções, SignalR/e-mail, painel visual de custos.

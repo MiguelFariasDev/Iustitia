@@ -53,6 +53,10 @@
     <!-- Banco vetorial (módulo Drafting, ADR-072): cliente oficial do Qdrant, gRPC. -->
     <PackageVersion Include="Qdrant.Client" Version="1.15.1" />
 
+    <!-- Extração de texto do acervo (módulo Drafting, ADR-072): PDF com camada de texto e DOCX. Ambas sem custo e com licença permissiva (Apache-2.0 / MIT). -->
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
+    <PackageVersion Include="DocumentFormat.OpenXml" Version="3.3.0" />
+
     <!-- Jobs / Mensageria -->
     <PackageVersion Include="Hangfire.Core" Version="1.8.15" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.20.10" />

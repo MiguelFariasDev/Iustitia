@@ -121,6 +121,18 @@ public class GerarPecaValidationTests
     }
 
     [Fact]
+    public void PedidosSaoOpcionais_VazioOuAusenteViraVazio()
+    {
+        var vazio = GerarPecaValidation.Validate(Valid(f => f["pedidos"] = "   "));
+        var ausente = GerarPecaValidation.Validate(new GerarPecaRequest("peticao_inicial", "civel", "Fatos."));
+
+        vazio.IsSuccess.Should().BeTrue();
+        vazio.Value.Pedidos.Should().BeEmpty();
+        ausente.IsSuccess.Should().BeTrue();
+        ausente.Value.Pedidos.Should().BeEmpty();
+    }
+
+    [Fact]
     public void NormalizaCaixaEEspacosDeTipoEArea()
     {
         var result = GerarPecaValidation.Validate(Valid(f => { f["tipo"] = " CONTESTACAO "; f["area"] = "Trabalhista"; }));
@@ -133,7 +145,6 @@ public class GerarPecaValidationTests
     [InlineData("tipo", "texto_livre", ErrorCode.DRAFTING_INVALID_PIECE_TYPE)]
     [InlineData("area", "astrologia", ErrorCode.DRAFTING_INVALID_AREA)]
     [InlineData("fatos", "   ", ErrorCode.DRAFTING_FIELD_REQUIRED)]
-    [InlineData("pedidos", "", ErrorCode.DRAFTING_FIELD_REQUIRED)]
     public void RejeitaCampoInvalido(string campo, string valor, ErrorCode esperado)
     {
         var result = GerarPecaValidation.Validate(Valid(f => f[campo] = valor));

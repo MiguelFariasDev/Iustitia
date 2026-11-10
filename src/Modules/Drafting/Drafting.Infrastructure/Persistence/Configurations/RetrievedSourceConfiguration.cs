@@ -20,6 +20,7 @@ public sealed class RetrievedSourceConfiguration : IEntityTypeConfiguration<Retr
         builder.Property(source => source.QdrantPointId).HasMaxLength(64).IsRequired();
         builder.Property(source => source.NomeArquivo).HasMaxLength(RetrievedSource.FileNameMaxLength).IsRequired();
         builder.Property(source => source.Trecho).IsRequired();
+        builder.Property(source => source.UtilizadaNaGeracao).IsRequired();
         builder.Property(source => source.MetadadosJson).HasColumnType("jsonb");
 
         builder.HasIndex(source => source.LegalDocumentRequestId).HasDatabaseName("ix_retrieved_sources_request");

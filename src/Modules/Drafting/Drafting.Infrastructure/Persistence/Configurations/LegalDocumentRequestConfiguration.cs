@@ -27,7 +27,12 @@ public sealed class LegalDocumentRequestConfiguration : IEntityTypeConfiguration
         builder.Property(request => request.Fatos).IsRequired();
         builder.Property(request => request.Pedidos).IsRequired();
         builder.Property(request => request.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(request => request.EtapaAtual).HasMaxLength(LegalDocumentRequest.EtapaMaxLength);
+        builder.Property(request => request.Progresso).IsRequired();
+        builder.Property(request => request.Tentativas).IsRequired();
         builder.Property(request => request.CriadoEm).IsRequired();
+        builder.Property(request => request.CustoEstimadoUsd).HasPrecision(12, 6);
+        builder.Property(request => request.AvisosJson).HasColumnType("jsonb");
         builder.Property(request => request.ModeloUtilizado).HasMaxLength(LegalDocumentRequest.ModeloMaxLength);
         builder.Property(request => request.Erro).HasMaxLength(LegalDocumentRequest.ErroMaxLength);
         builder.Property(request => request.Versao).IsRequired();
@@ -35,6 +40,9 @@ public sealed class LegalDocumentRequestConfiguration : IEntityTypeConfiguration
         builder.Property(request => request.DocumentosIdsJson).HasColumnType("jsonb");
         builder.Property(request => request.CreatedBy).HasMaxLength(100);
         builder.Property(request => request.UpdatedBy).HasMaxLength(100);
+
+        builder.HasIndex(request => new { request.TenantId, request.Status, request.CriadoEm })
+            .HasDatabaseName("ix_legal_document_requests_tenant_status");
 
         builder.HasMany(request => request.Sources)
             .WithOne()

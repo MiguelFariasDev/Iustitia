@@ -1,5 +1,8 @@
 using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.DbContext;
+using Advocacia.Modules.Drafting.Domain.Acervo;
+using Advocacia.Modules.Drafting.Domain.Fila;
+using Advocacia.Modules.Drafting.Domain.Gpu;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,4 +17,10 @@ public sealed class DraftingDbContext(DbContextOptions<DraftingDbContext> option
     public DbSet<RetrievedSource> RetrievedSources => Set<RetrievedSource>();
 
     public DbSet<LegalDocumentEvent> LegalDocumentEvents => Set<LegalDocumentEvent>();
+
+    public DbSet<GenerationQueueItem> GenerationQueue => Set<GenerationQueueItem>();
+
+    public DbSet<GpuInstanceLog> GpuInstanceLogs => Set<GpuInstanceLog>();
+
+    public DbSet<IndexedDocument> IndexedDocuments => Set<IndexedDocument>();
 }

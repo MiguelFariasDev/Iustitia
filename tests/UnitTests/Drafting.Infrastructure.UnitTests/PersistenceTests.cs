@@ -3,7 +3,10 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Application.Services;
+using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Pecas;
+using Advocacia.Modules.Drafting.Infrastructure.Fila;
+using Microsoft.Extensions.Options;
 using Advocacia.Modules.Drafting.Infrastructure.Persistence;
 using Advocacia.Modules.Drafting.Infrastructure.Persistence.Repositories;
 using FluentAssertions;
@@ -77,7 +80,9 @@ public class PersistenceTests
 
         return new Scope(
             db,
-            new LegalDocumentService(repository, unitOfWork, new FixedUser(tenantId), clock),
+            new LegalDocumentService(
+                repository, new GeracaoPecaFila(db, clock), unitOfWork, new FixedUser(tenantId), clock,
+                Options.Create(new CustoOptions { GpuUsdPorHora = 0.40m })),
             new DraftingAuditService(repository, unitOfWork, clock, NullLogger<DraftingAuditService>.Instance));
     }
 
@@ -97,7 +102,7 @@ public class PersistenceTests
         await using (var scope = Open(options, TenantA))
         {
             var service = scope.Service;
-            var created = await service.CreateAsync(Input());
+            var created = await service.CreateAndEnqueueAsync(Input());
             created.IsSuccess.Should().BeTrue();
             id = created.Value.Id.Value;
         }
@@ -114,6 +119,13 @@ public class PersistenceTests
         request.Status.Should().Be(LegalDocumentStatus.Pendente);
         request.Versao.Should().Be(1);
         request.DocumentosIdsJson.Should().Contain("33333333-3333-3333-3333-333333333333");
+
+        // E o item da fila foi gravado na MESMA transação, apontando para a solicitação.
+        var item = await verify.GenerationQueue.SingleAsync();
+        item.ReferenciaId.Should().Be(id);
+        item.TenantId.Should().Be(TenantA);
+        item.Tipo.Should().Be(QueueItemKind.Geracao);
+        item.Status.Should().Be(QueueItemStatus.Pendente);
     }
 
     [Fact]
@@ -124,11 +136,11 @@ public class PersistenceTests
         await using (var scope = Open(options, TenantA))
         {
             var (service, audit) = (scope.Service, scope.Audit);
-            var request = (await service.CreateAsync(Input())).Value;
+            var request = (await service.CreateAndEnqueueAsync(Input())).Value;
             id = request.Id.Value;
             await audit.RecordAsync(request, "Recebida", new { documentos = 1 });
-            await service.StartAsync(request, SystemPrompt.Versao, "qwen3:8b");
-            await service.CompleteAsync(request, "Minuta pronta.", 1234, [(Chunk(), true)]);
+            await service.StartGenerationAsync(request, SystemPrompt.Versao, "qwen3:8b");
+            await service.CompleteAsync(request, "Minuta pronta.", 1234, 100, 200, [(Chunk(), true)], ["Aviso de teste"]);
             await audit.RecordAsync(request, "GeracaoConcluida", new { tempoMs = 1234 });
         }
 
@@ -144,13 +156,19 @@ public class PersistenceTests
         saved.ModeloUtilizado.Should().Be("qwen3:8b");
         saved.PromptVersao.Should().Be(SystemPrompt.Versao);
         saved.TempoGeracaoMs.Should().Be(1234);
+        saved.TokensEntrada.Should().Be(100);
+        saved.TokensSaida.Should().Be(200);
+        // 1,234 s a US$ 0,40/h
+        saved.CustoEstimadoUsd.Should().BeApproximately(0.000137m, 0.000001m);
+        saved.AvisosJson.Should().Contain("Aviso de teste");
+        saved.Progresso.Should().Be(100);
         saved.ConcluidoEm.Should().NotBeNull();
 
         var fonte = saved.Sources.Should().ContainSingle().Subject;
         fonte.NomeArquivo.Should().Be("contrato.pdf");
         fonte.Pagina.Should().Be(3);
         fonte.Score.Should().BeApproximately(0.91, 0.0001);
-        fonte.Citada.Should().BeTrue();
+        fonte.UtilizadaNaGeracao.Should().BeTrue();
         fonte.TenantId.Should().Be(TenantA);
         fonte.MetadadosJson.Should().Contain("TJSP").And.Contain("2024-05-01");
 
@@ -166,7 +184,7 @@ public class PersistenceTests
         await using (var scope = Open(options, TenantA))
         {
             var service = scope.Service;
-            var request = (await service.CreateAsync(Input())).Value;
+            var request = (await service.CreateAndEnqueueAsync(Input())).Value;
             id = request.Id.Value;
             await service.FailAsync(request, "TimeoutException: prazo", "Texto até aqui.", 600_000, [(Chunk(), false)]);
         }
@@ -178,7 +196,7 @@ public class PersistenceTests
         saved.Status.Should().Be(LegalDocumentStatus.Falhou);
         saved.Erro.Should().Be("TimeoutException: prazo");
         saved.TextoGerado.Should().Be("Texto até aqui.");
-        saved.Sources.Should().ContainSingle().Which.Citada.Should().BeFalse();
+        saved.Sources.Should().ContainSingle().Which.UtilizadaNaGeracao.Should().BeFalse();
     }
 
     [Fact]
@@ -190,10 +208,10 @@ public class PersistenceTests
         await using (var scope = Open(options, TenantA))
         {
             var service = scope.Service;
-            var primeira = (await service.CreateAsync(Input())).Value;
-            await service.CompleteAsync(primeira, "Versão 1.", 10, []);
+            var primeira = (await service.CreateAndEnqueueAsync(Input())).Value;
+            await service.CompleteAsync(primeira, "Versão 1.", 10, null, null, [], []);
             primeiraId = primeira.Id.Value;
-            var segunda = (await service.CreateAsync(Input(origem: primeiraId))).Value;
+            var segunda = (await service.CreateAndEnqueueAsync(Input(origem: primeiraId))).Value;
             segundaId = segunda.Id.Value;
         }
 
@@ -216,14 +234,14 @@ public class PersistenceTests
         await using (var scope = Open(options, TenantA))
         {
             var service = scope.Service;
-            idDeA = (await service.CreateAsync(Input())).Value.Id.Value;
+            idDeA = (await service.CreateAndEnqueueAsync(Input())).Value.Id.Value;
         }
 
         await using var scopeB = Open(options, TenantB);
         var (dbB, serviceB) = (scopeB.Db, scopeB.Service);
         (await dbB.LegalDocumentRequests.CountAsync()).Should().Be(0);
 
-        var tentativa = await serviceB.CreateAsync(Input(origem: idDeA));
+        var tentativa = await serviceB.CreateAndEnqueueAsync(Input(origem: idDeA));
 
         tentativa.IsFailure.Should().BeTrue();
         tentativa.Error.Code.Should().Be(nameof(ErrorCode.DRAFTING_REQUEST_NOT_FOUND));
@@ -235,9 +253,11 @@ public class PersistenceTests
         var options = NewDatabase();
         await using var db = new DraftingDbContext(options, new FixedTenant(TenantA));
         var repository = new LegalDocumentRepository(db);
-        var service = new LegalDocumentService(repository, new DraftingUnitOfWork(db), new NoTenantUser(), new FixedClock());
+        var service = new LegalDocumentService(
+            repository, new GeracaoPecaFila(db, new FixedClock()), new DraftingUnitOfWork(db), new NoTenantUser(), new FixedClock(),
+            Options.Create(new CustoOptions()));
 
-        var result = await service.CreateAsync(Input());
+        var result = await service.CreateAndEnqueueAsync(Input());
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be(nameof(ErrorCode.AUTHORIZATION_TENANT_MISMATCH));

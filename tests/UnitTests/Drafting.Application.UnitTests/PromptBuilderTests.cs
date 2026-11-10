@@ -86,6 +86,14 @@ public class PromptBuilderTests
     }
 
     [Fact]
+    public void SemPedidos_DizIssoExplicitamente_ParaOModeloNaoInventarPedidos()
+    {
+        var bundle = _builder.Build(Samples.Input() with { Pedidos = string.Empty }, []);
+
+        bundle.User.Should().Contain($"PEDIDOS:\n{PromptBuilder.SemPedidos}");
+    }
+
+    [Fact]
     public void Build_EhDeterministico()
     {
         var chunks = new[] { Samples.Chunk(), Samples.Chunk("Outro.", "x.pdf", 9) };

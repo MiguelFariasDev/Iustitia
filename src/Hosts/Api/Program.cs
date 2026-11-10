@@ -136,6 +136,7 @@ app.MapCalendarEndpoints();
 app.MapAtendimentosEndpoints();
 app.MapBotEndpoints();
 app.MapPecasEndpoints();
+app.MapDocumentosEndpoints();
 
 var hangfireOptions = app.Services.GetRequiredService<IOptions<HangfireOptions>>().Value;
 if (hangfireOptions.DashboardEnabled)

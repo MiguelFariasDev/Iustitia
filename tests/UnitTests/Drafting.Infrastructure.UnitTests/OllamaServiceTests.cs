@@ -46,8 +46,11 @@ public class OllamaServiceTests
         var options = new OllamaOptions { BaseUrl = "http://localhost:11434", TimeoutSegundos = 30 };
         tweak?.Invoke(options);
 
+        var endpoint = new OllamaEndpoint(Options.Create(options));
+
         return new OllamaService(
-            new HttpClient(handler) { BaseAddress = new Uri("http://localhost:11434/"), Timeout = Timeout.InfiniteTimeSpan },
+            new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan },
+            endpoint,
             Options.Create(options),
             NullLogger<OllamaService>.Instance);
     }
@@ -100,6 +103,7 @@ public class OllamaServiceTests
         root.GetProperty("keep_alive").GetString().Should().Be("10m");
         root.GetProperty("options").GetProperty("num_ctx").GetInt32().Should().Be(16384);
         root.GetProperty("options").GetProperty("temperature").GetDouble().Should().Be(0.2);
+        root.GetProperty("options").GetProperty("top_p").GetDouble().Should().Be(0.9);
         root.GetProperty("messages").EnumerateArray().Select(m => m.GetProperty("role").GetString())
             .Should().Equal("system", "user");
     }
@@ -275,6 +279,138 @@ public class OllamaServiceTests
         var act = () => Service(handler).EmbedAsync(["um"]);
 
         await act.Should().ThrowAsync<LlmServiceException>().WithMessage("*503*");
+    }
+
+    // ------------------------------------------------------------ saúde, modelos e endereço dinâmico
+
+    [Fact]
+    public async Task Saude_EhVerdadeiraQuandoApiTagsResponde200()
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"models\":[]}", Encoding.UTF8, "application/json"),
+        }));
+
+        var saudavel = await Service(handler).VerificarSaudeAsync();
+
+        saudavel.Should().BeTrue();
+        var (request, _) = handler.Calls.Single();
+        request.Method.Should().Be(HttpMethod.Get);
+        request.RequestUri!.AbsolutePath.Should().Be("/api/tags");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.NotFound)]
+    public async Task Saude_EhFalsaComErroHttp_SemLancar(HttpStatusCode codigo)
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(new HttpResponseMessage(codigo)));
+
+        (await Service(handler).VerificarSaudeAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Saude_EhFalsaQuandoNaoConecta_ENaoLanca()
+    {
+        var handler = new StubHandler((_, _) => throw new HttpRequestException("connection refused"));
+
+        (await Service(handler).VerificarSaudeAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Saude_PropagaCancelamentoDoChamador()
+    {
+        var handler = new StubHandler(async (_, ct) =>
+        {
+            await Task.Delay(Timeout.Infinite, ct);
+
+            return Ndjson();
+        });
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+
+        var act = () => Service(handler).VerificarSaudeAsync(cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task ListarModelos_DevolveOsNomesInstalados()
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                "{\"models\":[{\"name\":\"qwen3:8b\",\"size\":123},{\"name\":\"bge-m3:latest\"}]}", Encoding.UTF8, "application/json"),
+        }));
+
+        var modelos = await Service(handler).ListarModelosAsync();
+
+        modelos.Should().Equal("qwen3:8b", "bge-m3:latest");
+    }
+
+    [Fact]
+    public async Task ListarModelos_ComCorpoInesperado_EhErro()
+    {
+        var handler = new StubHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"outra\":1}", Encoding.UTF8, "application/json"),
+        }));
+
+        var act = () => Service(handler).ListarModelosAsync();
+
+        await act.Should().ThrowAsync<LlmServiceException>();
+    }
+
+    [Fact]
+    public async Task OEnderecoVemDoEndpointACadaChamada_EPodeMudarComAGpuReiniciando()
+    {
+        var options = new OllamaOptions { BaseUrl = "https://ia1.exemplo.com.br", TimeoutSegundos = 30 };
+        var endpoint = new OllamaEndpoint(Options.Create(options));
+        var handler = new StubHandler((_, _) => Task.FromResult(Ndjson(Line(string.Empty, done: true))));
+        var service = new OllamaService(new HttpClient(handler), endpoint, Options.Create(options), NullLogger<OllamaService>.Instance);
+
+        await Collect(service.ChatStreamAsync(Chat()));
+        endpoint.Set(new Uri("https://ia2.exemplo.com.br/"));
+        await Collect(service.ChatStreamAsync(Chat()));
+
+        handler.Calls[0].Request.RequestUri!.Host.Should().Be("ia1.exemplo.com.br");
+        handler.Calls[1].Request.RequestUri!.Host.Should().Be("ia2.exemplo.com.br");
+    }
+
+    [Fact]
+    public void Endpoint_RecusaHttpParaHostPublico_ComoOGuardDeTransporte()
+    {
+        var endpoint = new OllamaEndpoint(Options.Create(new OllamaOptions { BaseUrl = "https://ia.exemplo.com.br" }));
+
+        var act = () => endpoint.Set(new Uri("http://203.0.113.9:41234/"));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*AllowInsecureHttp*");
+        endpoint.BaseAddress.Host.Should().Be("ia.exemplo.com.br");
+    }
+
+    [Fact]
+    public void Endpoint_ComUrlDePlaceholderNaoSubstituida_FalhaAltoNoPrimeiroUso()
+    {
+        var endpoint = new OllamaEndpoint(Options.Create(new OllamaOptions { BaseUrl = "https://IA_HOST_COM_TLS:PORTA" }));
+
+        var act = () => endpoint.BaseAddress;
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*inválida*");
+    }
+
+    [Fact]
+    public async Task EnderecoInvalido_NaoViraEspera_ViraErroDeConfiguracao()
+    {
+        var options = new OllamaOptions { BaseUrl = "https://IA_HOST_COM_TLS:PORTA" };
+        var service = new OllamaService(
+            new HttpClient(new StubHandler((_, _) => Task.FromResult(Ndjson()))),
+            new OllamaEndpoint(Options.Create(options)),
+            Options.Create(options),
+            NullLogger<OllamaService>.Instance);
+
+        var act = () => service.VerificarSaudeAsync();
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]

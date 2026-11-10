@@ -11,6 +11,7 @@ namespace Advocacia.Modules.Drafting.Application.Services;
 public sealed class PromptBuilder : IPromptBuilder
 {
     public const string SemInstrucoes = "Nenhuma.";
+    public const string SemPedidos = "Não informados.";
     public const string SemContexto = "(nenhum trecho relevante foi recuperado)";
 
     public PromptBundle Build(PecaInput input, IReadOnlyList<RetrievedChunk> chunks)
@@ -22,7 +23,7 @@ public sealed class PromptBuilder : IPromptBuilder
         user.Append("TIPO DE PEÇA:\n").Append(tipo).Append("\n\n");
         user.Append("ÁREA:\n").Append(area).Append("\n\n");
         user.Append("FATOS:\n").Append(input.Fatos).Append("\n\n");
-        user.Append("PEDIDOS:\n").Append(input.Pedidos).Append("\n\n");
+        user.Append("PEDIDOS:\n").Append(string.IsNullOrWhiteSpace(input.Pedidos) ? SemPedidos : input.Pedidos).Append("\n\n");
         user.Append("INSTRUÇÕES ADICIONAIS:\n")
             .Append(string.IsNullOrWhiteSpace(input.InstrucoesAdicionais) ? SemInstrucoes : input.InstrucoesAdicionais)
             .Append("\n\n");
