@@ -1,4 +1,5 @@
 import { env } from '@/config/env'
+import { AthenaLayer } from '@/features/athena/components/AthenaLayer'
 import { AccessGuard } from './AccessGuard'
 import { AppBootstrap } from './AppBootstrap'
 import { CommandPaletteLoader } from './CommandPaletteLoader'
@@ -40,6 +41,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <AppBootstrap />
       <CommandPaletteLoader />
+      <AthenaLayer />
     </div>
   )
 }

@@ -6,7 +6,13 @@ import { useState } from 'react'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useAlertas,
@@ -36,8 +42,8 @@ export function NotificationsDropdown() {
   const label = unread > 0 ? `Notificações (${unread} não lidas)` : 'Notificações'
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" aria-label={label}>
           <Bell aria-hidden />
           {unread > 0 ? (
@@ -49,10 +55,20 @@ export function NotificationsDropdown() {
             </span>
           ) : null}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(24rem,calc(100vw-2rem))] p-0">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">Notificações</h2>
+      </SheetTrigger>
+      {/*
+        Gaveta à direita (400px) com fundo escurecido: é um diálogo modal (foco preso, Esc e clique no
+        fundo fecham). A entrada leva 0,25s (token --dur-layer) em vez dos 0,5s padrão da Sheet.
+      */}
+      <SheetContent
+        side="right"
+        className="w-full gap-0 p-0 data-[state=closed]:duration-150 data-[state=open]:duration-[250ms] sm:max-w-[400px]"
+      >
+        <div className="flex items-center justify-between gap-2 border-b py-3 pr-12 pl-4">
+          <SheetTitle className="text-base">Notificações</SheetTitle>
+          <SheetDescription className="sr-only">
+            Últimos alertas do escritório. Fechar com Esc ou clicando fora.
+          </SheetDescription>
           <Button
             variant="ghost"
             size="xs"
@@ -86,7 +102,7 @@ export function NotificationsDropdown() {
             className="m-4"
           />
         ) : (
-          <ul className="max-h-96 divide-y overflow-y-auto" aria-label="Últimos alertas">
+          <ul className="flex-1 divide-y overflow-y-auto" aria-label="Últimos alertas">
             {latest.data.items.map((alerta) => (
               <NotificationItem
                 key={alerta.id}
@@ -98,7 +114,7 @@ export function NotificationsDropdown() {
           </ul>
         )}
 
-        <div className="border-t p-2">
+        <div className="mt-auto border-t p-2">
           <Button variant="ghost" size="sm" className="w-full" asChild>
             <Link href={routes.alerts} onClick={() => setOpen(false)}>
               Ver todos
@@ -106,7 +122,7 @@ export function NotificationsDropdown() {
             </Link>
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </SheetContent>
+    </Sheet>
   )
 }

@@ -167,3 +167,9 @@ está **ligada**, para a demonstração mostrar a revisão da IA.
   aparece enquanto houver Tarefas ou Indicadores a mostrar.
 - O prazo `yyyy-MM-dd` é lido como dia **local** (`new Date('2026-11-05')` seria meia-noite UTC, o dia
   anterior no Brasil e um prazo "vencido" um dia antes).
+
+## Camadas globais (5.13)
+
+**Gaveta de notificações.** O sino abre uma gaveta modal à direita (400px; 0,25s abrindo, 0,15s fechando), com foco devolvido ao sino. Divergências: sem legenda "Sistema/IA" (o alerta não traz origem) e alertas lidos não ficam a 35% de opacidade (não passaria no contraste AA).
+
+**Athena.** Botão flutuante + painel escuro de 410px. É DEMONSTRAÇÃO: só aparece com mocks ligados e para quem acessa processos (a API de IA exige LawyerOrAbove). "Prazos de hoje" lista os prazos reais da agenda; qualquer outra pergunta recebe a resposta honesta de que a IA não está conectada. Precisa de backend: serviço de IA, histórico de conversa e leitura de publicações/processos.
