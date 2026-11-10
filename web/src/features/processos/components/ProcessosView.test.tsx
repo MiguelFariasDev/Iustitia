@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import { navigationState } from '@/test/navigation'
 import { renderWithProviders } from '@/test/render'
-import * as queries from '../queries'
+import type * as queries from '../queries'
 import { ProcessosView } from './ProcessosView'
 
 const processosQuery = vi.fn()
