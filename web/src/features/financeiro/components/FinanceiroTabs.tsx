@@ -93,7 +93,7 @@ export function FinanceiroTabs({ lancamentos, fluxoCaixa }: FinanceiroTabsProps)
 
   return (
     <Tabs value={aba} onValueChange={(valor) => setAba(valor as Aba)}>
-      <TabsList>
+      <TabsList className="max-w-full justify-start overflow-x-auto">
         {abas.map((a) => (
           <TabsTrigger key={a.valor} value={a.valor}>
             {a.rotulo}
