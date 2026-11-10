@@ -4,8 +4,8 @@ import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { ErrorState } from '@/components/shared/ErrorState'
-import { FilterChip } from '@/components/shared/FilterChip'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useIndicadores } from '../hooks'
 import { periodoLabels, periodos, type Periodo } from '../types'
@@ -38,16 +38,13 @@ export function IndicadoresView() {
       </DemoNotice>
 
       <div className="flex flex-wrap items-center gap-3">
-        <span id="periodo-label" className="text-sm font-medium">
-          Período
-        </span>
-        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="periodo-label">
-          {periodos.map((valor) => (
-            <FilterChip key={valor} active={periodo === valor} onClick={() => setPeriodo(valor)}>
-              {periodoLabels[valor]}
-            </FilterChip>
-          ))}
-        </div>
+        <span className="text-sm font-medium">Período</span>
+        <SegmentedControl
+          label="Período"
+          value={periodo}
+          onChange={setPeriodo}
+          options={periodos.map((valor) => ({ value: valor, label: periodoLabels[valor] }))}
+        />
       </div>
 
       {isError ? (
@@ -61,7 +58,7 @@ export function IndicadoresView() {
           <LoadingSpinner label="Carregando indicadores…" />
         </div>
       ) : (
-        <div className="space-y-6" aria-busy={isPlaceholderData}>
+        <div className="animate-iu-in space-y-6" aria-busy={isPlaceholderData}>
           <KpiCards kpis={data.kpis} processosPorArea={data.processosPorArea} />
 
           <div className="grid gap-6 xl:grid-cols-2">
