@@ -203,6 +203,7 @@ public enum ErrorCode
     DRAFTING_NOT_READY = 2616,
     DRAFTING_GPU_UNAVAILABLE = 2617,
     DRAFTING_VECTOR_STORE_UNAVAILABLE = 2618,
+    DRAFTING_NORMA_NOT_FOUND = 2619,
     // AI (1600-1699) — integração com a Anthropic (Etapa 3.1) e validação das respostas (Etapa 3.2)
     AI_INVALID_REQUEST = 1600,
     AI_UNAUTHORIZED = 1601,

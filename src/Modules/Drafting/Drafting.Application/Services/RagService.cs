@@ -1,5 +1,6 @@
 using Advocacia.Modules.Drafting.Application.Abstractions;
 using Advocacia.Modules.Drafting.Application.Models;
+using Advocacia.Modules.Drafting.Application.Normas;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -14,10 +15,14 @@ public sealed class RagService(
     IEmbeddingService embeddings,
     IVectorStore vectorStore,
     IOptions<RagOptions> options,
-    ILogger<RagService> logger) : IRagService
+    ILogger<RagService> logger,
+    IHybridSearchService? normas = null) : IRagService
 {
     /// <summary>Quanto da consulta vira texto de embedding: o começo dos fatos já carrega o assunto.</summary>
     private const int ConsultaMaxChars = 2000;
+
+    /// <summary>Bônus aos trechos de documentos escolhidos pelo usuário, para vencerem normas de score parecido.</summary>
+    private const double ClientePriorizadoBonus = 0.5;
 
     public async Task<RagContext> RetrieveAsync(RagQuery query, CancellationToken cancellationToken = default)
     {
@@ -44,12 +49,36 @@ public sealed class RagService(
             cancellationToken);
 
         var inScope = hits.Where(hit => IsInScope(hit, query)).ToList();
-        var context = ContextSelector.Select(inScope, limit, settings.MaxTokensContexto, settings.CharsPorToken, settings.ScoreMinimo);
+
+        // Acervo normativo público (leis, jurisprudência…): busca híbrida + reranking. Ausente em testes/dev sem acervo.
+        IReadOnlyList<VectorHit> normHits = normas is null
+            ? []
+            : await normas.BuscarAsync(
+                new NormaBusca(queryText, new NormaFiltro(Area: string.IsNullOrWhiteSpace(query.Area) ? null : query.Area)),
+                vectors[0],
+                cancellationToken);
+
+        RagContext context;
+        if (normHits.Count == 0)
+        {
+            context = ContextSelector.Select(inScope, limit, settings.MaxTokensContexto, settings.CharsPorToken, settings.ScoreMinimo);
+        }
+        else
+        {
+            // Os scores dos dois lados não são comparáveis (cosseno × reranking): documentos que o usuário
+            // escolheu levam prioridade explícita; os demais do escritório entram pelo próprio score.
+            var prioridade = query.DocumentosIds.Count > 0 ? ClientePriorizadoBonus : 0;
+            var cliente = inScope
+                .Where(hit => settings.ScoreMinimo is not { } minimo || hit.Score >= minimo)
+                .Select(hit => hit with { Score = hit.Score + prioridade });
+            context = ContextSelector.Select(
+                cliente.Concat(normHits), limit, settings.MaxTokensContexto, settings.CharsPorToken);
+        }
 
         // Só contagens: o texto dos trechos e da consulta nunca vai para o log.
         logger.LogInformation(
-            "RAG: {Recuperados} hits, {Fora} fora do escopo, {Escolhidos} no contexto (~{Tokens} tokens), {Descartados} descartados.",
-            hits.Count, hits.Count - inScope.Count, context.Chunks.Count, context.TokensAproximados, context.Descartados);
+            "RAG: {Recuperados} hits do escritório, {Fora} fora do escopo, {Normas} do acervo normativo, {Escolhidos} no contexto (~{Tokens} tokens), {Descartados} descartados.",
+            hits.Count, hits.Count - inScope.Count, normHits.Count, context.Chunks.Count, context.TokensAproximados, context.Descartados);
 
         return context;
     }

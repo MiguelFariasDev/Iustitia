@@ -298,6 +298,8 @@ public sealed class GeracaoPecaService(
                 UrlOf(s.MetadadosJson)))
             .ToList();
 
+        var avisos = ParseStrings(r.AvisosJson);
+
         return new PecaDetalheResponse(
             r.Id.Value,
             r.Status.ToString(),
@@ -308,11 +310,13 @@ public sealed class GeracaoPecaService(
             // Só é "a minuta" quando concluída; antes disso é texto parcial e não deve ser copiado como peça.
             r.Status == LegalDocumentStatus.Concluido ? r.TextoGerado : null,
             fontes,
-            ParseStrings(r.AvisosJson),
+            avisos,
             Aviso,
             r.TempoGeracaoMs,
             r.CriadoEm,
-            r.ConcluidoEm);
+            r.ConcluidoEm,
+            ExportacaoBloqueada: r.Status == LegalDocumentStatus.Concluido
+                && avisos.Any(a => a.StartsWith(Normas.NormaCitationValidator.MarcadorBloqueio, StringComparison.Ordinal)));
     }
 
     private static string? UrlOf(string? metadadosJson)

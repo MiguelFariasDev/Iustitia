@@ -14,7 +14,33 @@ public sealed record ChunkMetadata(
     IReadOnlyList<string>? Tags = null,
     Guid? UsuarioId = null,
     string? Visibilidade = null,
-    string? Referencia = null);
+    string? Referencia = null,
+    NormaRef? Norma = null);
+
+/// <summary>
+/// Presente só em trechos do acervo normativo público (leis, jurisprudência…). Carrega o necessário para
+/// citar com rastreabilidade: qual norma, qual dispositivo, qual versão, qual arquivo Markdown e qual a
+/// fonte oficial. Trechos de documentos do cliente não têm isto.
+/// </summary>
+public sealed record NormaRef(
+    Guid NormaId,
+    string Titulo,
+    string Tipo,
+    string? Numero,
+    string? Urn,
+    string Situacao,
+    bool Revogada,
+    string VersaoTexto,
+    string Esfera,
+    string? Uf,
+    string? Municipio,
+    string Colecao,
+    string ArquivoMarkdownPath,
+    string? Artigo,
+    string? Paragrafo,
+    string? Inciso,
+    string? Hierarquia,
+    int VersaoNumero);
 
 /// <summary>Ponto a gravar no banco vetorial. <see cref="TenantId"/> é obrigatório e vira filtro de toda busca.</summary>
 public sealed record VectorPoint(Guid TenantId, string Id, float[] Vector, string Texto, ChunkMetadata Meta);
@@ -42,7 +68,9 @@ public sealed record VectorSearchQuery(
 public sealed record RetrievedChunk(string PointId, string Texto, double Score, ChunkMetadata Meta)
 {
     /// <summary>Rótulo de citação: o que o modelo deve escrever entre colchetes. Fonte única de verdade.</summary>
-    public string Rotulo => CitationLabel.For(Meta.NomeArquivo, Meta.Pagina);
+    public string Rotulo => Meta.Norma is { } norma
+        ? CitationLabel.For(norma)
+        : CitationLabel.For(Meta.NomeArquivo, Meta.Pagina);
 }
 
 public sealed record RagQuery(
@@ -59,6 +87,14 @@ public sealed record RagContext(IReadOnlyList<RetrievedChunk> Chunks, int Tokens
 public static class CitationLabel
 {
     /// <summary>"[" e "]" no nome quebrariam o formato [ARQUIVO, p. X]; viram parênteses.</summary>
+    /// <summary>Norma do acervo: "[NORMA, art. X]". Sem artigo (súmula, decisão) o sufixo é "texto".</summary>
+    public static string For(NormaRef norma)
+    {
+        var nome = norma.Titulo.Replace('[', '(').Replace(']', ')').Replace(',', ';').Trim();
+
+        return string.IsNullOrWhiteSpace(norma.Artigo) ? $"{nome}, texto" : $"{nome}, art. {norma.Artigo.Trim()}";
+    }
+
     public static string For(string nomeArquivo, int? pagina)
     {
         var nome = nomeArquivo.Replace('[', '(').Replace(']', ')').Replace(',', ';').Trim();

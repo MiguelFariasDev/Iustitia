@@ -41,7 +41,7 @@ public class DraftingModuleConventionTests
     }
 
     [Fact]
-    public void QdrantClient_IsOnlyUsedInsideQdrantService_WhichAlwaysAppliesTheTenantFilter()
+    public void QdrantClient_IsOnlyUsedInsideTheQdrantNamespace_WhereClientDataStoreAlwaysAppliesTheTenantFilter()
     {
         var result = Types.InAssembly(Infrastructure)
             .That().DoNotResideInNamespace("Advocacia.Modules.Drafting.Infrastructure.Qdrant")
@@ -49,7 +49,7 @@ public class DraftingModuleConventionTests
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue(
-            $"o Qdrant não tem RLS: só QdrantService (que sempre filtra por tenant) pode falar com o cliente. Violam: {string.Join(", ", result.FailingTypes?.Select(t => t.FullName) ?? [])}");
+            $"o Qdrant não tem RLS: só QdrantService (que sempre filtra por tenant) e NormaQdrantStore (acervo público, sem dado de cliente) podem falar com o cliente. Violam: {string.Join(", ", result.FailingTypes?.Select(t => t.FullName) ?? [])}");
     }
 
     [Fact]

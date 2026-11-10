@@ -9,18 +9,19 @@ public class PromptBuilderTests
     private readonly PromptBuilder _builder = new();
 
     [Fact]
-    public void SystemPrompt_TrazAsDozeRegrasAbsolutasEAEstruturaObrigatoria()
+    public void SystemPrompt_TrazAsQuinzeRegrasAbsolutasEAEstruturaObrigatoria()
     {
         var bundle = _builder.Build(Samples.Input(), []);
 
         bundle.System.Should().StartWith("Você é um assistente de redação jurídica brasileira.");
         bundle.System.Should().Contain("Regras absolutas:");
-        for (var regra = 1; regra <= 12; regra++)
+        for (var regra = 1; regra <= 15; regra++)
         {
             bundle.System.Should().Contain($"{regra}. ");
         }
 
-        bundle.System.Should().Contain("[ARQUIVO, p. X]");
+        bundle.System.Should().Contain("[ARQUIVO, p. X] ou [NORMA, art. X]");
+        bundle.System.Should().Contain("Não apresente norma revogada como vigente sem indicar a data");
         bundle.System.Should().Contain("“FUNDAMENTO PENDENTE DE VERIFICAÇÃO”");
         bundle.System.Should().Contain("“FONTES UTILIZADAS”");
         bundle.System.Should().Contain("“PONTOS PARA REVISÃO HUMANA”");

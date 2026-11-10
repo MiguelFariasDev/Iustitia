@@ -98,6 +98,86 @@ Tenant em todo filtro do Qdrant; `generation_queue` e `gpu_instance_logs` guarda
 `InputSanitizer` e `PromptInjectionGuard` (filtro, não garantia); `TransportGuard` recusa HTTP fora de loopback e qualquer chave sob HTTP;
 circuit breaker de GPU; embeddings em cache; parada por ociosidade medida pela fila no banco.
 
+## Acervo normativo (ADR-073): ctresb/leis em Markdown
+
+```
+git sparse (shallow, sem blobs de fora) ─▶ Markdown ─▶ SHA-256 ─▶ mudou? ─▶ YAML + fallback ─▶ chunks jurídicos
+        │                                                                              │
+        └─ nunca _fonte/, .git/, scripts/, "_*", não-.md                              embeddings BGE-M3 (GPU sob demanda)
+                                                                                       │
+ object storage (Markdown + versões)   PostgreSQL (norma, versão, chunk, job, full-text)   Qdrant (7 coleções públicas)
+```
+
+**Busca na geração:** o `RagService` embute a consulta uma vez; o acervo do escritório (`documentos_cliente`, filtro de
+tenant) e o acervo normativo (busca híbrida) são consultados; documentos que o usuário escolheu têm bônus de prioridade.
+Híbrida = vetor (60) + palavra-chave (40) → fusão RRF → dedupe → reranking por regras → 5–10 trechos.
+
+**Reranker (regras):** similaridade, termos jurídicos, hierarquia normativa (CF > LC > lei > decreto > portaria; súmula
+vinculante e tribunais superiores no topo), autoridade da fonte (planalto/normas.leg/tribunais), vigência (revogada
+perde 0,15 mas **não** é descartada), área, UF, recência e dispositivo citado na consulta (art. N + número da norma).
+
+**Citação:** `[NORMA, art. X]` (ex.: `[Lei nº 10.406 de 10/01/2002, art. 186]`) ou `[ARQUIVO, p. X]` para documentos do
+cliente. Depois da geração, cada citação é classificada; `PecaDetalheResponse.ExportacaoBloqueada` fica `true` enquanto
+houver `PendenteDeVerificacao` ou `PossivelAlucinacao`. (Não há endpoint de exportação nesta entrega: o frontend deve
+respeitar o campo.)
+
+### Endpoints do acervo
+
+| Método | Rota | Quem | Função |
+|---|---|---|---|
+| POST | `/normas/admin/sincronizar[?reprocessar=true]` | sócio+ | pede sincronização (202); o worker executa |
+| GET | `/normas/admin/jobs` | sócio+ | histórico: total, processados, ignorados, erros, commit |
+| GET | `/normas/{id}` | advogado+ | metadados, vigência e fonte oficial da norma por trás de uma citação |
+
+```bash
+curl -X POST "https://api.exemplo/api/v1/normas/admin/sincronizar" -H "Authorization: Bearer $JWT"
+curl "https://api.exemplo/api/v1/normas/admin/jobs" -H "Authorization: Bearer $JWT"
+```
+
+### Configuração (`Ingestao`, `Rag:Chunking`, `Rag:Busca`)
+
+```jsonc
+"Ingestao": {
+  "RepositorioUrl": "https://github.com/ctresb/leis.git", "Branch": "main",
+  "PastasIncluidas": ["constituicao.md", "federal", "jurisprudencia", "tratados", "reguladores", "estaduais/CE", "municipais/CE/fortaleza"],
+  "PastasExcluidas": ["_fonte", ".git", "scripts"], "ProfundidadeGit": 1, "BaixarOriginais": false,
+  "WorkerHabilitado": false, "IntervaloHoras": 24, "LimiteArquivosPorCiclo": 5000,
+  "Filtros": { "Ufs": [], "Municipios": [], "Tipos": [], "Areas": [], "AnoDe": null, "AnoAte": null },
+  "Storage": { "Provedor": "S3", "Bucket": "juridico", "Endpoint": "https://CONTA.r2.cloudflarestorage.com", "Regiao": "auto" }
+}
+```
+
+Segredos por variável de ambiente: `Ingestao__Storage__AccessKey`, `Ingestao__Storage__SecretKey`. UFs e municípios novos:
+`Ingestao__PastasIncluidas__5=estaduais/BA` (os nomes de pasta seguem a caixa do Git: UF maiúscula, município minúsculo).
+
+### Implantação do acervo
+
+1. Instale `git` no host do Worker (a imagem `aspnet` não traz). Disco: o clone parcial de `federal` + `jurisprudencia` +
+   `tratados` + `estaduais/CE` ocupa poucos GB; `reguladores` sozinho tem ~273 mil arquivos.
+2. Crie o bucket (R2 ou B2) e uma chave com permissão só nesse bucket; configure `Ingestao__Storage__*`.
+3. Aplique `infra/supabase/migrations/017_normas_juridicas.sql` (depois da migration do EF).
+4. `Ingestao__WorkerHabilitado=true` no **Worker**. O primeiro ciclo clona e ingere em fatias de `LimiteArquivosPorCiclo`,
+   por prioridade (Constituição → leis → súmulas → jurisprudência → tratados → resto). Acompanhe em `GET /normas/admin/jobs`.
+5. Comece pequeno: `PastasIncluidas = ["constituicao.md", "federal/leis-complementares", "federal/leis-ordinarias", "federal/decretos-lei", "jurisprudencia", "tratados"]`,
+   valide a qualidade das minutas e só então amplie.
+
+### Estimativa de volume (medida no repositório real, commit c9f21b4)
+
+Arquivos `.md`: federal ~207 mil (≈104 mil são auditoria em `_fonte/` e ficam de fora) · jurisprudência ~11,7 mil ·
+tratados 161 · reguladores ~273 mil · estaduais ~728 mil no total (CE ≈ 11,2 mil) · municipais ~39 mil (Fortaleza ≈ 850).
+Tamanho médio de amostra ≈ 12 KB por arquivo. O número de chunks (e portanto de embeddings) só se conhece medindo na
+primeira carga — **não há estimativa confiável de custo de GPU antes disso**; rode um ciclo pequeno e extrapole.
+
+## Checklist do acervo normativo
+
+- [ ] Acervo: `PastasIncluidas` com os nomes na caixa correta; `_fonte` e `.git` ausentes do disco do worker
+- [ ] Storage: bucket privado, versionamento/lifecycle configurados, chave de escopo mínimo
+- [ ] Qdrant: sete coleções criadas (int8, vetores em disco); backup/snapshot agendado
+- [ ] Qualidade: 20+ minutas reais revisadas por advogado; conferir se as citações `[NORMA, art. X]` batem com o texto oficial
+- [ ] Vigência: lembrar que ela vem da fonte (`revogada`/`situacao`); campo ausente = "Não informada"
+- [ ] Licença: o repositório de origem é MIT para os *scripts* e declara que os textos oficiais não são objeto de proteção autoral; confirme com o jurídico antes de redistribuir trechos e mantenha o aviso de que o texto é informativo
+- [ ] Custo: medir chunks e tempo de GPU num ciclo pequeno antes de liberar `reguladores`
+
 ## Checklist antes de produção
 
 - [ ] `dotnet build`/`test` verdes; testes de integração com Postgres rodando
@@ -110,4 +190,4 @@ circuit breaker de GPU; embeddings em cache; parada por ociosidade medida pela f
 
 ## Fora do escopo desta entrega
 
-Interface no frontend, exportação DOCX/PDF, OCR, cache semântico, geração por seções, SignalR/e-mail, painel visual de custos.
+Interface no frontend (incluindo a trava de exportação), exportação DOCX/PDF, OCR, cache semântico, geração por seções, SignalR/e-mail, painel visual de custos, reranker com modelo (cross-encoder), BM25 real, motor de vigência por data, coerência de datas na validação de citações, coleção `modelos_de_peca` (criada, mas sem ingestão).

@@ -37,8 +37,21 @@ public sealed class PromptBuilder : IPromptBuilder
         {
             foreach (var chunk in chunks)
             {
-                user.Append('[').Append(chunk.Rotulo).Append("]\n")
-                    .Append(chunk.Texto.Trim())
+                user.Append('[').Append(chunk.Rotulo).Append("]\n");
+                if (chunk.Meta.Norma is { } norma)
+                {
+                    // Vigência e versão vão no contexto para o modelo cumprir as regras 14 e 15.
+                    user.Append("(Situação: ").Append(norma.Revogada ? "REVOGADA" : norma.Situacao)
+                        .Append(" · Texto: ").Append(norma.VersaoTexto);
+                    if (!string.IsNullOrWhiteSpace(chunk.Meta.UrlOrigem))
+                    {
+                        user.Append(" · Fonte: ").Append(chunk.Meta.UrlOrigem);
+                    }
+
+                    user.Append(")\n");
+                }
+
+                user.Append(chunk.Texto.Trim())
                     .Append("\n\n");
             }
         }

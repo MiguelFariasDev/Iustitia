@@ -16,7 +16,7 @@ public sealed record CitationReport(
 /// </summary>
 public static partial class CitationVerifier
 {
-    [GeneratedRegex(@"\[([^\[\]\n]{1,300}?,\s*p\.\s*[^\[\]\n]{1,20}?)\]", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"\[([^\[\]\n]{1,300}?,\s*(?:p\.\s*[^\[\]\n]{1,20}?|art\.\s*[^\[\]\n]{1,20}?|texto))\]", RegexOptions.CultureInvariant)]
     private static partial Regex CitationPattern();
 
     [GeneratedRegex(@"\b(art(?:igo)?s?\.?\s*\d+[ºo°]?(?:-[A-Z])?|s[úu]mula\s+(?:vinculante\s+)?(?:n[ºo°.]?\s*)?\d+|resp\s*\d[\d\.\-/]*|adi\s*\d+|adpf\s*\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]

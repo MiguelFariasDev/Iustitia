@@ -1,7 +1,9 @@
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Interceptors;
 using Advocacia.Modules.Drafting.Application;
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Normas;
 using Advocacia.Modules.Drafting.Application.Services;
+using Advocacia.Modules.Drafting.Infrastructure.Normas;
 using Advocacia.Modules.Drafting.Infrastructure.BackgroundJobs;
 using Advocacia.Modules.Drafting.Infrastructure.Extracao;
 using Advocacia.Modules.Drafting.Infrastructure.Fila;
@@ -80,6 +82,25 @@ public static class DependencyInjection
         // API da Vast.ai: só HTTPS (validado no serviço) e timeout curto por chamada.
         services.AddHttpClient<IVastAiService, VastAiService>(client => client.Timeout = TimeSpan.FromSeconds(30));
 
+        // Acervo normativo público (ADR-073): configuração, persistência, storage, Qdrant e git.
+        services.Configure<NormasIngestaoOptions>(configuration.GetSection(NormasIngestaoOptions.SectionName));
+        services.Configure<ChunkingOptions>(configuration.GetSection(ChunkingOptions.SectionName));
+        services.Configure<BuscaNormasOptions>(configuration.GetSection(BuscaNormasOptions.SectionName));
+        services.AddScoped<NormaRepository>();
+        services.AddScoped<INormaStore>(serviceProvider => serviceProvider.GetRequiredService<NormaRepository>());
+        services.AddScoped<INormaSearchIndex>(serviceProvider => serviceProvider.GetRequiredService<NormaRepository>());
+        services.AddSingleton<NormaQdrantStore>();
+        services.AddSingleton<INormaVectorStore>(serviceProvider => serviceProvider.GetRequiredService<NormaQdrantStore>());
+        services.AddSingleton<IRepositorySync, GitSparseRepositorySync>();
+        if (string.Equals(configuration["Ingestao:Storage:Provedor"], "S3", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddHttpClient<IObjectStorage, S3ObjectStorage>(client => client.Timeout = TimeSpan.FromMinutes(2));
+        }
+        else
+        {
+            services.AddSingleton<IObjectStorage, LocalObjectStorage>();
+        }
+
         // O cliente gRPC do Qdrant é thread-safe e caro de criar: um só por processo.
         services.AddSingleton<QdrantService>();
         services.AddSingleton<IVectorStore>(serviceProvider => serviceProvider.GetRequiredService<QdrantService>());
@@ -91,6 +112,7 @@ public static class DependencyInjection
     public static IServiceCollection AddDraftingWorker(this IServiceCollection services)
     {
         services.AddHostedService<GeracaoPecaWorker>();
+        services.AddHostedService<NormaIngestaoWorker>();
 
         return services;
     }

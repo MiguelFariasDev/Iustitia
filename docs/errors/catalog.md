@@ -243,6 +243,7 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `DRAFTING_NOT_STREAMING` | A solicitação não está em processamento; consulte o resultado em GET /pecas/{id}. | 409 | Conflict | `GET /pecas/{id}/stream` em solicitação já terminal. | Consultar `GET /pecas/{id}`. |
 | `DRAFTING_NOT_READY` | A minuta ainda não está pronta. Acompanhe o status da solicitação. | 409 | Conflict | Reservado para consumidores que exijam a minuta concluída. | Acompanhar `GET /pecas/{id}/status`. |
 | `DRAFTING_GPU_UNAVAILABLE` | A infraestrutura de IA não está disponível no momento. | 500 | Failure | A instância de GPU não subiu no prazo, o circuito está aberto ou a API da Vast.ai falhou. O detalhe fica em `gpu_instance_logs`; a solicitação continua na fila. | Verificar saldo/estado da instância na Vast.ai; o worker tenta de novo sozinho. |
+| `DRAFTING_NORMA_NOT_FOUND` | Norma não encontrada no acervo. | 404 | NotFound | Id inexistente ou norma removida do acervo normativo público. | Conferir o identificador (o `normaId` vem das fontes da peça). |
 | `DRAFTING_VECTOR_STORE_UNAVAILABLE` | O acervo de documentos está indisponível no momento. Tente novamente. | 500 | Failure | O Qdrant não respondeu ao remover um documento. | Tentar de novo; conferir o Qdrant. |
 
 ## Internal (9000–9999)

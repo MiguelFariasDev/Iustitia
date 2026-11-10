@@ -325,6 +325,9 @@ public static class ErrorCatalog
             [ErrorCode.DRAFTING_VECTOR_STORE_UNAVAILABLE] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_VECTOR_STORE_UNAVAILABLE),
                 "O acervo de documentos está indisponível no momento. Tente novamente.", 500, ErrorType.Failure),
 
+            [ErrorCode.DRAFTING_NORMA_NOT_FOUND] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_NORMA_NOT_FOUND),
+                "Norma não encontrada no acervo.", 404, ErrorType.NotFound),
+
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),
                 "O serviço de publicações do CNJ está indisponível no momento.", 500, ErrorType.Failure),

@@ -1,5 +1,7 @@
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Normas;
 using Advocacia.Modules.Drafting.Application.Services;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Advocacia.Modules.Drafting.Application;
@@ -22,6 +24,15 @@ public static class DependencyInjection
         services.AddScoped<IDocumentIndexer, DocumentIndexer>();
         services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
         services.AddScoped<IGpuOrchestrator, GpuOrchestrator>();
+
+        // Acervo normativo (ADR-073): ingestão incremental de Markdown, busca híbrida, reranking e validação de citações.
+        services.AddSingleton(serviceProvider => new NormaChunker(serviceProvider.GetRequiredService<IOptions<ChunkingOptions>>().Value));
+        services.AddSingleton<INormaReranker, RuleBasedNormaReranker>();
+        services.AddSingleton<INormaSyncOrchestrator, NormaSyncOrchestrator>();
+        services.AddScoped<INormaIngestionService, NormaIngestionService>();
+        services.AddScoped<IHybridSearchService, HybridSearchService>();
+        services.AddScoped<NormaCitationService>();
+        services.AddScoped<INormaAdminService, NormaAdminService>();
 
         // Quem sabe processar cada tipo de item da fila (o coordenador escolhe pelo Tipo).
         services.AddScoped<IQueueWorkHandler, PecaProcessor>();

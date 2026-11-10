@@ -68,7 +68,8 @@ public sealed record PecaDetalheResponse(
     string Aviso,
     long? TempoGeracaoMs,
     DateTimeOffset CriadoEm,
-    DateTimeOffset? ConcluidoEm);
+    DateTimeOffset? ConcluidoEm,
+    bool ExportacaoBloqueada = false);
 
 public sealed record PecaResumoResponse(
     Guid Id, string TipoPeca, string Area, string Status, int Versao, DateTimeOffset CriadoEm, DateTimeOffset? ConcluidoEm);

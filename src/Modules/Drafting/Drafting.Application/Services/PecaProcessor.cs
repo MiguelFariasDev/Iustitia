@@ -5,6 +5,7 @@ using System.Text.Json;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Drafting.Application.Abstractions;
 using Advocacia.Modules.Drafting.Application.Models;
+using Advocacia.Modules.Drafting.Application.Normas;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 using Microsoft.Extensions.Logging;
@@ -36,7 +37,8 @@ public sealed class PecaProcessor(
     INotificacaoService notificacao,
     IOptions<FilaOptions> filaOptions,
     IDateTimeProvider clock,
-    ILogger<PecaProcessor> logger) : IQueueWorkHandler
+    ILogger<PecaProcessor> logger,
+    NormaCitationService? normaCitations = null) : IQueueWorkHandler
 {
     /// <summary>Tamanho típico de uma minuta, só para a barra de progresso (40–90%).</summary>
     private const int TokensEsperados = 2500;
@@ -208,6 +210,10 @@ public sealed class PecaProcessor(
         var caseText = $"{request.Fatos}\n{request.Pedidos}\n{request.InstrucoesAdicionais}";
         var report = CitationVerifier.Verify(text, context.Chunks, caseText);
         var avisos = BuildWarnings(text, context, report);
+        var validacao = normaCitations is null
+            ? NormaCitationValidator.Validar(text, context.Chunks, caseText)
+            : await normaCitations.ValidarAsync(text, context.Chunks, caseText, ct);
+        avisos.AddRange(CitationWarnings(validacao, report));
         var fontes = context.Chunks.Select(chunk => (chunk, CitationVerifier.WasCited(chunk, report))).ToList();
 
         await documents.CompleteAsync(
@@ -326,6 +332,24 @@ public sealed class PecaProcessor(
         catch (Exception)
         {
             // Melhor esforço durante o desligamento.
+        }
+    }
+
+    /// <summary>
+    /// Avisos da validação de citações que o <see cref="CitationVerifier"/> ainda não deu (revogada, conflito
+    /// de versão, tribunal divergente, aspas inexistentes, URN) + a trava de exportação.
+    /// </summary>
+    internal static IEnumerable<string> CitationWarnings(ValidacaoCitacoes validacao, CitationReport report)
+    {
+        var jaAvisadas = report.UnknownCitations.Concat(report.UnsupportedReferences).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in validacao.Problemas.Where(i => !jaAvisadas.Contains(i.Texto)).Take(20))
+        {
+            yield return $"[{item.Status}] {item.Texto}: {item.Detalhe}";
+        }
+
+        if (validacao.ExportacaoBloqueada)
+        {
+            yield return $"{NormaCitationValidator.MarcadorBloqueio}: há citações pendentes de verificação ou possivelmente inventadas. A exportação final exige revisão humana.";
         }
     }
 

@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Infrastructure.Persistence.DbContext;
 using Advocacia.Modules.Drafting.Domain.Acervo;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Gpu;
+using Advocacia.Modules.Drafting.Domain.Normas;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,4 +24,12 @@ public sealed class DraftingDbContext(DbContextOptions<DraftingDbContext> option
     public DbSet<GpuInstanceLog> GpuInstanceLogs => Set<GpuInstanceLog>();
 
     public DbSet<IndexedDocument> IndexedDocuments => Set<IndexedDocument>();
+
+    public DbSet<NormaJuridica> Normas => Set<NormaJuridica>();
+
+    public DbSet<NormaChunk> NormaChunks => Set<NormaChunk>();
+
+    public DbSet<NormaVersao> NormaVersoes => Set<NormaVersao>();
+
+    public DbSet<IngestaoJob> IngestaoJobs => Set<IngestaoJob>();
 }

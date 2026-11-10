@@ -78,6 +78,8 @@ public sealed class GpuStateService(IOptions<VastAiOptions> options) : IGpuState
         }
     }
 
+    public void RegistrarUso(DateTimeOffset agora) => RegistrarInicio(agora);
+
     public GpuSnapshot Snapshot(DateTimeOffset agora)
     {
         var aberto = CircuitoAberto(agora);

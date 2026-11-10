@@ -336,6 +336,9 @@ public interface IGpuStateService
 
     void RegistrarInicio(DateTimeOffset agora);
 
+    /// <summary>Marca a GPU como em uso agora (ingestão do acervo usa sem passar pela fila): adia a parada por ociosidade.</summary>
+    void RegistrarUso(DateTimeOffset agora);
+
     DateTimeOffset? UltimoInicio { get; }
 
     GpuSnapshot Snapshot(DateTimeOffset agora);
