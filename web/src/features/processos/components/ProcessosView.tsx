@@ -5,7 +5,7 @@ import { BriefcaseBusiness, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
-import { FilterChip } from '@/components/shared/FilterChip'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Pagination } from '@/components/shared/Pagination'
@@ -99,35 +99,15 @@ export function ProcessosView() {
         />
 
         <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Modo de exibição" className="flex gap-1">
-            <FilterChip active={visao === 'lista'} onClick={() => setVisao('lista')}>
-              Lista
-            </FilterChip>
-            <FilterChip active={visao === 'quadro'} onClick={() => setVisao('quadro')}>
-              Quadro
-            </FilterChip>
-          </div>
-
-          {visao === 'quadro' ? null : (
-            <Select
-              value={filters.status ?? TODOS}
-              onValueChange={(value) =>
-                updateFilters({ status: value === TODOS ? null : (value as StatusProcesso) })
-              }
-            >
-              <SelectTrigger className="w-40" aria-label="Filtrar por situação">
-                <SelectValue placeholder="Situação" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TODOS}>Todas as situações</SelectItem>
-                {statusProcesso.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {statusProcessoMeta[value].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <SegmentedControl
+            label="Modo de exibição"
+            value={visao}
+            onChange={setVisao}
+            options={[
+              { value: 'lista', label: 'Lista' },
+              { value: 'quadro', label: 'Quadro' },
+            ]}
+          />
 
           <Select
             value={filters.area ?? TODOS}
@@ -162,6 +142,23 @@ export function ProcessosView() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
+        {visao === 'quadro' ? null : (
+          <SegmentedControl
+            label="Filtrar por situação"
+            value={filters.status ?? TODOS}
+            onChange={(value) =>
+              updateFilters({ status: value === TODOS ? null : (value as StatusProcesso) })
+            }
+            options={[
+              { value: TODOS, label: 'Todos' },
+              ...statusProcesso.map((value) => ({
+                value,
+                label: statusProcessoMeta[value].label + 's',
+              })),
+            ]}
+          />
+        )}
+
         {hasTeam ? (
           <Select
             value={filters.responsavelUserId ?? TODOS}
@@ -242,7 +239,7 @@ export function ProcessosView() {
         <>
           <div
             className={cn(
-              'rounded-xl border transition-opacity',
+              'animate-iu-in rounded-xl border transition-opacity',
               isFetching ? 'opacity-60' : 'opacity-100'
             )}
             aria-busy={isFetching}
@@ -259,7 +256,7 @@ export function ProcessosView() {
               </TableHeader>
               <TableBody>
                 {data.items.map((processo) => (
-                  <TableRow key={processo.id}>
+                  <TableRow key={processo.id} className="hover:bg-accent">
                     <TableCell>
                       <Link
                         href={`${routes.processes}/${processo.id}` as never}

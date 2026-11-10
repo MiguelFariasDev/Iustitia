@@ -181,3 +181,7 @@ Visão Mês/Semana/Dia virou `SegmentedControl`; a grade entra com `animate-iu-i
 ## Atendimentos (5.5)
 
 A inbox de três colunas e o fluxo (assumir, devolver ao bot, encerrar, vincular cliente) já existiam e seguem iguais. Ajustes v4: conversa e contexto entram com `animate-iu-in`, mensagens novas também, linha selecionada com borda `brand`, leve elevação no hover (só com movimento permitido). **Não feito, por falta de dado:** contador de "Aguardando" na aba (a lista já vem filtrada pela aba; a API não devolve totais por status) e indicador de não lidas (sem campo na API). Ambos dependem de backend.
+
+## Processos (5.6)
+
+Situação virou controle segmentado (Todos · Ativos · Suspensos · Encerrados · Arquivados) e Lista/Quadro também; a tabela entra com `animate-iu-in` e as linhas ganham hover. **Divergência:** o protótipo tem 4 filtros (sem "Encerrados"), mas o backend tem 4 situações reais (Ativo, Suspenso, Encerrado, Arquivado); omitir uma esconderia processos. O painel de movimentações já existe na aba "Movimentos" do detalhe (consulta ao DataJud, ver ADR-064) e não foi alterado. Tudo usa a API real; a tela não tem mocks.
