@@ -22,6 +22,11 @@ import { publicationStatuses, type PublicationsFilters } from '../types'
 
 const TODOS = '__todos__'
 
+/** Situações que NÃO são visão rápida: descartadas e arquivadas. */
+const situacoesExtras = publicationStatuses.filter(
+  (status) => status !== 'untreated' && status !== 'treated'
+)
+
 interface PublicacaoFiltersProps {
   filters: PublicationsFilters
   /** Qualquer mudança de filtro volta para a página 1 (feito por quem usa). */
@@ -121,7 +126,8 @@ export function PublicacaoFilters({ filters, onChange, onClear }: PublicacaoFilt
           role="group"
           aria-label="Filtrar por status"
         >
-          {publicationStatuses.map((value) => (
+          {/* Aguardando revisão e Tratadas são as visões rápidas do topo (SegmentedControl). */}
+          {situacoesExtras.map((value) => (
             <Chip
               key={value}
               active={filters.status === value}
@@ -139,12 +145,7 @@ export function PublicacaoFilters({ filters, onChange, onClear }: PublicacaoFilt
           role="group"
           aria-label="Filtrar por leitura"
         >
-          <Chip
-            active={filters.isRead === false}
-            onClick={() => onChange({ isRead: filters.isRead === false ? null : false })}
-          >
-            Não lidas
-          </Chip>
+          {/* "Não lidas" é uma visão rápida do topo; aqui ficam só as lidas. */}
           <Chip
             active={filters.isRead === true}
             onClick={() => onChange({ isRead: filters.isRead === true ? null : true })}

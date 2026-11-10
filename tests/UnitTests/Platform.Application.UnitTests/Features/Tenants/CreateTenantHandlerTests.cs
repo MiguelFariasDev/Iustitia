@@ -73,6 +73,107 @@ public class CreateTenantHandlerTests
         await _supabaseAuthService.DidNotReceiveWithAnyArgs().SignUpAsync(default!, default!, cancellationToken: default);
     }
 
+    private const string ValidCpf = "52998224725";
+
+    [Fact]
+    public async Task Handle_SoloWithValidCpf_CreatesSoloTenantWithoutCnpj()
+    {
+        ArrangeSignUp();
+        var command = ValidCommand() with { AccountType = "Solo", Cnpj = null, Cpf = ValidCpf };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _tenantRepository.Received(1).Add(
+            Arg.Is<Tenant>(t => t.AccountType == AccountType.Solo && t.Cnpj == null && t.Cpf != null));
+        _userRepository.Received(1).Add(Arg.Is<User>(u => u.Role == UserRole.Owner && u.IsActive));
+    }
+
+    [Fact]
+    public async Task Handle_SoloIgnoresAnyCnpjSent()
+    {
+        ArrangeSignUp();
+        var command = ValidCommand() with { AccountType = "Solo", Cnpj = "00000000000000", Cpf = ValidCpf };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_SoloWithInvalidCpf_FailsWithoutCallingSupabase()
+    {
+        var command = ValidCommand() with { AccountType = "Solo", Cnpj = null, Cpf = "11111111111" };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.Error.Code.Should().Be(nameof(ErrorCode.TENANT_CPF_INVALID));
+        await _supabaseAuthService.DidNotReceiveWithAnyArgs().SignUpAsync(default!, default!, cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task Handle_FirmIgnoresAnyCpfSent()
+    {
+        ArrangeSignUp();
+        var command = ValidCommand() with { Cpf = "123" };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _tenantRepository.Received(1).Add(Arg.Is<Tenant>(t => t.AccountType == AccountType.Firm && t.Cpf == null));
+    }
+
+    [Fact]
+    public async Task Handle_WithUnknownAccountType_Fails()
+    {
+        var command = ValidCommand() with { AccountType = "Franquia" };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.Error.Code.Should().Be(nameof(ErrorCode.TENANT_ACCOUNT_TYPE_INVALID));
+    }
+
+    [Fact]
+    public async Task Handle_WithOabAndPhone_StoresThemOnTheOwner()
+    {
+        ArrangeSignUp();
+        var command = ValidCommand() with
+        {
+            AdminOabNumber = "123456",
+            AdminOabState = "CE",
+            AdminPhone = "(85) 99999-1234",
+        };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _userRepository.Received(1).Add(Arg.Is<User>(u =>
+            u.OabNumber != null && u.OabNumber.Number == "123456" && u.OabNumber.StateCode == "CE"
+            && u.Phone == "85999991234"));
+    }
+
+    [Fact]
+    public async Task Handle_WithOabNumberButNoState_FailsWithoutCallingSupabase()
+    {
+        var command = ValidCommand() with { AdminOabNumber = "123456", AdminOabState = null };
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.Error.Code.Should().Be(nameof(ErrorCode.USER_OAB_INVALID));
+        await _supabaseAuthService.DidNotReceiveWithAnyArgs().SignUpAsync(default!, default!, cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutOab_LeavesItEmpty()
+    {
+        ArrangeSignUp();
+
+        var result = await CreateHandler().Handle(ValidCommand(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _userRepository.Received(1).Add(Arg.Is<User>(u => u.OabNumber == null && u.Phone == null));
+    }
+
     [Fact]
     public async Task Handle_WhenSupabaseSignUpFails_ReturnsFailureWithoutTouchingRepositories()
     {

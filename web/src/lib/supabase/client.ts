@@ -1,6 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
+import { COOKIE_OPTIONS } from './cookieOptions'
 
 let browserClient: SupabaseClient | undefined
 
@@ -18,6 +19,8 @@ export function getSupabaseBrowserClient(): SupabaseClient {
       'Supabase não configurado: defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY (ou use NEXT_PUBLIC_AUTH_MODE=mock em desenvolvimento).'
     )
   }
-  browserClient ??= createBrowserClient(env.supabaseUrl, env.supabaseAnonKey)
+  browserClient ??= createBrowserClient(env.supabaseUrl, env.supabaseAnonKey, {
+    cookieOptions: COOKIE_OPTIONS,
+  })
   return browserClient
 }

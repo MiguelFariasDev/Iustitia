@@ -7,6 +7,10 @@ export type OnboardingHintId = 'publications-intake' | 'alerts-classification' |
 
 interface UiState {
   theme: Theme
+  /** Variação do painel do advogado (A: cartões + fila; B: leitura editorial). */
+  dashboardVariant: 'A' | 'B'
+  /** Variação da tela de revisão da IA (A: dividida; B: leitura com barra de decisão). */
+  reviewVariant: 'A' | 'B'
   sidebarCollapsed: boolean
   mobileNavOpen: boolean
   commandPaletteOpen: boolean
@@ -14,6 +18,8 @@ interface UiState {
   hydrated: boolean
   dismissedHints: OnboardingHintId[]
   setTheme: (theme: Theme) => void
+  setDashboardVariant: (variant: 'A' | 'B') => void
+  setReviewVariant: (variant: 'A' | 'B') => void
   toggleSidebar: () => void
   setMobileNavOpen: (open: boolean) => void
   setCommandPaletteOpen: (open: boolean) => void
@@ -33,12 +39,16 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       theme: 'system',
+      dashboardVariant: 'A',
+      reviewVariant: 'A',
       sidebarCollapsed: false,
       mobileNavOpen: false,
       commandPaletteOpen: false,
       hydrated: false,
       dismissedHints: [],
       setTheme: (theme) => set({ theme }),
+      setDashboardVariant: (dashboardVariant) => set({ dashboardVariant }),
+      setReviewVariant: (reviewVariant) => set({ reviewVariant }),
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
       setCommandPaletteOpen: (commandPaletteOpen) => set({ commandPaletteOpen }),
@@ -54,6 +64,8 @@ export const useUiStore = create<UiState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         theme: s.theme,
+        dashboardVariant: s.dashboardVariant,
+        reviewVariant: s.reviewVariant,
         sidebarCollapsed: s.sidebarCollapsed,
         dismissedHints: s.dismissedHints,
       }),

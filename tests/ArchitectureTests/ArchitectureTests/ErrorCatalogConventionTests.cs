@@ -21,6 +21,21 @@ public class ErrorCatalogConventionTests
     }
 
     [Fact]
+    public void ErrorCodes_HaveUniqueValues()
+    {
+        // Dois membros com o mesmo valor compilam, mas o ErrorCatalog (indexado pelo código)
+        // deixaria a última definição sobrescrever a primeira em silêncio. Acontece quando
+        // duas branches abrem a mesma faixa numérica e o merge textual não acusa conflito.
+        var duplicated = Enum.GetNames<ErrorCode>()
+            .GroupBy(name => (int)Enum.Parse<ErrorCode>(name))
+            .Where(group => group.Count() > 1)
+            .Select(group => $"{group.Key}: {string.Join(", ", group)}")
+            .ToList();
+
+        duplicated.Should().BeEmpty("cada ErrorCode precisa de um valor numérico exclusivo");
+    }
+
+    [Fact]
     public void PlatformApplicationSourceFiles_NeverConstructErrorDirectly()
     {
         // Result.Failure(Error.Validation/NotFound/Conflict/Unauthorized/Forbidden(...))
@@ -51,6 +66,30 @@ public class ErrorCatalogConventionTests
     {
         var offendingFiles = FindFilesConstructingErrorDirectly(
             FindSourceDirectory("Modules", "Legal", projectFolderName));
+
+        offendingFiles.Should().BeEmpty(
+            $"erros de negócio em {projectFolderName} devem usar ErrorFactory.From(ErrorCode.X), nunca Error.X(\"...\", \"...\") direto");
+    }
+
+    [Theory]
+    [InlineData("Atendimento.Domain")]
+    [InlineData("Atendimento.Application")]
+    public void AtendimentoSourceFiles_NeverConstructErrorDirectly(string projectFolderName)
+    {
+        var offendingFiles = FindFilesConstructingErrorDirectly(
+            FindSourceDirectory("Modules", "Atendimento", projectFolderName));
+
+        offendingFiles.Should().BeEmpty(
+            $"erros de negócio em {projectFolderName} devem usar ErrorFactory.From(ErrorCode.X), nunca Error.X(\"...\", \"...\") direto");
+    }
+
+    [Theory]
+    [InlineData("Drafting.Domain")]
+    [InlineData("Drafting.Application")]
+    public void DraftingSourceFiles_NeverConstructErrorDirectly(string projectFolderName)
+    {
+        var offendingFiles = FindFilesConstructingErrorDirectly(
+            FindSourceDirectory("Modules", "Drafting", projectFolderName));
 
         offendingFiles.Should().BeEmpty(
             $"erros de negócio em {projectFolderName} devem usar ErrorFactory.From(ErrorCode.X), nunca Error.X(\"...\", \"...\") direto");

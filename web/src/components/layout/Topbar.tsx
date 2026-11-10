@@ -38,11 +38,11 @@ export function Topbar() {
           onClick={() => openPalette(true)}
           aria-label="Buscar (Ctrl+K)"
           aria-keyshortcuts="Control+K Meta+K"
-          className="h-9 gap-2 px-2.5 text-muted-foreground sm:w-56 sm:justify-start md:w-64"
+          className="h-10 gap-2 px-3 text-muted-foreground sm:w-[250px] sm:justify-start"
         >
           <Search aria-hidden />
           <span className="hidden sm:inline">Buscar…</span>
-          <kbd className="pointer-events-none ml-auto hidden rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:inline-block">
+          <kbd className="pointer-events-none ml-auto hidden rounded-xs border bg-muted px-1.5 font-mono text-[10px] font-medium sm:inline-block">
             Ctrl K
           </kbd>
         </Button>

@@ -30,8 +30,16 @@ namespace Advocacia.Platform.Infrastructure;
 /// <summary>Composition root da infraestrutura de Platform, chamado pelos Hosts (Api/Worker).</summary>
 public static class DependencyInjection
 {
+    /// <param name="configureModuleConsumers">
+    /// Gancho para os módulos de negócio registrarem os seus consumers no MESMO bus do
+    /// MassTransit (AddMassTransit só pode ser chamado uma vez por container). O host passa,
+    /// por exemplo, <c>bus =&gt; bus.AddAtendimentoConsumers()</c> — o Platform não conhece os módulos.
+    /// </param>
     public static IServiceCollection AddPlatformInfrastructure(
-        this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        Action<MassTransit.IBusRegistrationConfigurator>? configureModuleConsumers = null)
     {
         services.AddBuildingBlocksInfrastructure(configuration, environment);
 
@@ -55,6 +63,24 @@ public static class DependencyInjection
         // Repository<T>/UnitOfWork dependem do DbContext base (reutilizável por qualquer
         // módulo); resolve para a instância de PlatformDbContext registrada no escopo.
         services.AddScoped<EfDbContext>(serviceProvider => serviceProvider.GetRequiredService<PlatformDbContext>());
+        services.AddScoped<Advocacia.Platform.Infrastructure.Jobs.Jobs.UserEncryptionBackfillJob>();
+
+        // Retenção/arquivamento de audit_logs (Etapa 3.9, ADR-069). Sem AuditArchive:AccountUrl o
+        // storage é o "não configurado" e o job não arquiva nem apaga nada.
+        services.Configure<Advocacia.Platform.Infrastructure.Auditing.Retention.AuditArchiveOptions>(
+            configuration.GetSection(Advocacia.Platform.Infrastructure.Auditing.Retention.AuditArchiveOptions.SectionName));
+        services.AddScoped<Advocacia.Platform.Infrastructure.Auditing.Retention.IAuditLogMaintenanceStore,
+            Advocacia.Platform.Infrastructure.Auditing.Retention.AuditLogMaintenanceStore>();
+        if (!string.IsNullOrWhiteSpace(configuration[$"{Advocacia.Platform.Infrastructure.Auditing.Retention.AuditArchiveOptions.SectionName}:AccountUrl"]))
+        {
+            services.AddSingleton<Advocacia.Platform.Infrastructure.Auditing.Retention.IAuditArchiveStore,
+                Advocacia.Platform.Infrastructure.Auditing.Retention.AzureBlobAuditArchiveStore>();
+        }
+        else
+        {
+            services.AddSingleton<Advocacia.Platform.Infrastructure.Auditing.Retention.IAuditArchiveStore,
+                Advocacia.Platform.Infrastructure.Auditing.Retention.NotConfiguredAuditArchiveStore>();
+        }
 
         services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
         services.AddScoped(typeof(IReadRepository<,>), typeof(ReadRepository<,>));
@@ -74,6 +100,8 @@ public static class DependencyInjection
             bus.AddConsumer<TenantCreatedConsumer>();
             bus.AddConsumer<AuditLogCreatedConsumer>();
             bus.AddConsumer<AlertCreatedConsumer>();
+
+            configureModuleConsumers?.Invoke(bus);
         });
 
         services.AddScoped<INotificationService, EmailService>();

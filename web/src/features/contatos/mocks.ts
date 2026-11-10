@@ -4,11 +4,9 @@ import type { ContatoFormValues } from './schemas'
 import type { Contato, ContatosFilters } from './types'
 
 /**
- * DADOS DE DEMONSTRAÇÃO. O módulo Contatos não existe no backend: este é um repositório EM
- * MEMÓRIA, que reimplementa as regras que a API terá (ordenação por nome, filtro por tipo,
- * campos vazios viram `null`). Recarregar a página volta ao estado inicial.
- *
- * TODO(contatos-backend): trocar por `endpoints.contatos` em api.ts quando o endpoint existir.
+ * DADOS DE DEMONSTRAÇÃO: repositório EM MEMÓRIA que reimplementa as regras da API de contatos
+ * (ordenação por nome, filtro por tipo, campos vazios viram `null`). Recarregar a página volta
+ * ao estado inicial. Usado por api.ts com NEXT_PUBLIC_API_MOCKS ligado; desligado, vale a API real.
  */
 function seed(): Contato[] {
   const base = (c: Omit<Contato, 'createdAt'> & { dias: number }): Contato => {

@@ -42,6 +42,16 @@ export const endpoints = {
    * O painel é composto NO CLIENTE, a partir dos endpoints de cada módulo. Ver
    * features/dashboard/api.ts.
    */
+  contatos: {
+    list: '/contatos',
+    byId: (id: string) => `/contatos/${id}`,
+    reactivate: (id: string) => `/contatos/${id}/reactivate`,
+  },
+  agenda: {
+    eventos: '/agenda/eventos',
+    eventoById: (id: string) => `/agenda/eventos/${id}`,
+    reschedule: (id: string) => `/agenda/eventos/${id}/reschedule`,
+  },
   clientes: {
     list: '/clientes',
     byId: (id: string) => `/clientes/${id}`,
@@ -69,6 +79,16 @@ export const endpoints = {
     /** PATCH { status, notes } — revisão humana (ADR-012). */
     status: (id: string) => `/publications/${id}/status`,
   },
+  /** Inbox do advogado (JWT). O Bot usa /bot/atendimentos com chave de API — nunca daqui. */
+  atendimentos: {
+    list: '/atendimentos',
+    byId: (id: string) => `/atendimentos/${id}`,
+    mensagens: (id: string) => `/atendimentos/${id}/mensagens`,
+    /** PATCH { status } — Human (assumir), Bot (devolver) ou Closed (encerrar). */
+    status: (id: string) => `/atendimentos/${id}/status`,
+    /** PUT { clienteId } — vincula a conversa a um cliente do escritório. */
+    cliente: (id: string) => `/atendimentos/${id}/cliente`,
+  },
   alerts: {
     list: '/alerts',
     byId: (id: string) => `/alerts/${id}`,
@@ -79,9 +99,6 @@ export const endpoints = {
     read: (id: string) => `/alerts/${id}/read`,
     /** DELETE — descarta (some das listagens; o registro permanece). */
     dismiss: (id: string) => `/alerts/${id}`,
-  },
-  agenda: {
-    events: '/agenda/events',
   },
   search: {
     global: '/search',

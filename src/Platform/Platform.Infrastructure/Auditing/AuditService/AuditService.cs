@@ -22,6 +22,7 @@ namespace Advocacia.Platform.Infrastructure.Auditing.AuditService;
 public sealed class AuditService(
     EfDbContext dbContext,
     ICurrentUser currentUser,
+    IRequestOrigin requestOrigin,
     IDateTimeProvider dateTimeProvider,
     IIntegrationEventPublisher integrationEventPublisher,
     ILogger<AuditService> logger) : IAuditService
@@ -58,8 +59,8 @@ public sealed class AuditService(
             entityId,
             before is null ? null : JsonSerializer.Serialize(before),
             effectiveAfter is null ? null : JsonSerializer.Serialize(effectiveAfter),
-            ip: null,
-            userAgent: null,
+            requestOrigin.IpAddress,
+            requestOrigin.UserAgent,
             dateTimeProvider.UtcNow);
 
         if (auditLogResult.IsFailure)

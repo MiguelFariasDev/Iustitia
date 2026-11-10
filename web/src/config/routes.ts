@@ -17,6 +17,7 @@ export const routes = {
   finance: '/financeiro',
   drafting: '/criacao-de-pecas',
   documents: '/documentos',
+  tasks: '/tarefas',
   indicators: '/indicadores',
   settings: {
     root: '/configuracoes',

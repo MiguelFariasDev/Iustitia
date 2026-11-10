@@ -1,8 +1,17 @@
 using Advocacia.BuildingBlocks.Infrastructure.Observability;
+using Advocacia.Modules.CRM.Infrastructure;
+using Advocacia.Modules.Atendimentos.Infrastructure;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure;
+using Advocacia.Modules.Legal.Infrastructure.Jobs;
+using Advocacia.Modules.Drafting.Infrastructure;
+using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
+using Advocacia.Modules.Workflow.Infrastructure;
+using Advocacia.Modules.Workflow.Infrastructure.Jobs;
 using Advocacia.Platform.Infrastructure;
+using Advocacia.Platform.Infrastructure.Jobs.Jobs;
 using Advocacia.Platform.Infrastructure.Jobs.RecurringJobs;
 
 // TODO (Fase 2+): registrar jobs recorrentes dos módulos restantes conforme entram no roadmap
@@ -16,13 +25,38 @@ builder.Configuration.AddAdvocaciaKeyVault();
 // AddPlatformInfrastructure já registra Serilog e OpenTelemetry (ver ADR-036) — o Worker não
 // expõe endpoints HTTP, mas os jobs e consumers continuam logando/instrumentados do mesmo
 // jeito que a Api.
-builder.Services.AddPlatformInfrastructure(builder.Configuration, builder.Environment);
+// Consumers de Realtime do Atendimento no mesmo bus (ver Hosts/Api/Program.cs).
+builder.Services.AddPlatformInfrastructure(
+    builder.Configuration, builder.Environment, bus => bus.AddAtendimentoConsumers());
 
 // Módulos de negócio (ver comentário equivalente em Hosts/Api/Program.cs).
 builder.Services.AddCnjIntegration(builder.Configuration);
+builder.Services.AddAnthropicIntegration(builder.Configuration);
 builder.Services.AddLegalInfrastructure(builder.Configuration);
+builder.Services.AddCrmInfrastructure(builder.Configuration);
+builder.Services.AddWorkflowInfrastructure(builder.Configuration);
+builder.Services.AddAtendimentoInfrastructure(builder.Configuration);
+// Peças com IA: o worker consome a fila e liga/desliga a GPU (a API só enfileira e consulta).
+builder.Services.AddDraftingInfrastructure(builder.Configuration);
+builder.Services.AddDraftingWorker();
 
 var host = builder.Build();
+
+// Modo utilitário (não sobe o worker): cifra dados legados / re-cifra após rotação de chave.
+// Rodar com a connection string do DONO do schema. Ver docs/runbooks/field-encryption.md.
+if (args.Contains("--backfill-field-encryption"))
+{
+    using var backfillScope = host.Services.CreateScope();
+
+    // O host não foi iniciado (sem hosted services): resolve o cifrador à mão, o que também o
+    // publica no acessor estático usado pelos conversores do EF Core.
+    backfillScope.ServiceProvider.GetRequiredService<Advocacia.BuildingBlocks.Infrastructure.Security.IFieldEncryptor>();
+
+    var clientes = await backfillScope.ServiceProvider.GetRequiredService<ClienteEncryptionBackfillJob>().RunAsync(CancellationToken.None);
+    var usuarios = await backfillScope.ServiceProvider.GetRequiredService<UserEncryptionBackfillJob>().RunAsync(CancellationToken.None);
+    Console.WriteLine($"Backfill concluído: {clientes} clientes, {usuarios} usuários.");
+    return;
+}
 
 // Registra os jobs recorrentes (Hangfire) uma vez, após o host (e o storage do Hangfire)
 // estarem prontos — ver RecurringJobsRegistrar.
@@ -32,6 +66,7 @@ using (var scope = host.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<RecurringJobsRegistrar>().RegisterAll();
     scope.ServiceProvider.GetRequiredService<LegalRecurringJobsRegistrar>().RegisterAll();
+    scope.ServiceProvider.GetRequiredService<WorkflowRecurringJobsRegistrar>().RegisterAll();
 }
 
 host.Run();

@@ -35,6 +35,8 @@ import { notify } from '@/lib/notify'
 import { useAuthStore } from '@/stores/authStore'
 import { brazilianStates } from '@/lib/validation/common'
 import { formatCnpj } from '@/lib/validation/cnpj'
+import { formatCpf } from '@/lib/validation/documento'
+import { accountTypeLabels, type AccountType } from '@/lib/auth/types'
 import { createTenant } from '../api'
 import {
   onboardingOfficeSchema,
@@ -51,7 +53,11 @@ import { OnboardingStepper } from './OnboardingStepper'
 import { PasswordInput } from './PasswordInput'
 import { PasswordRequirements } from './PasswordRequirements'
 
-const steps = ['Escritório', 'Responsável', 'Preferências']
+const stepsFor = (accountType: AccountType) => [
+  accountType === 'Solo' ? 'Dados profissionais' : 'Escritório',
+  'Responsável',
+  'Preferências',
+]
 const STEP_HEADING_ID = 'onboarding-step-heading'
 const teamSizeLabels: Record<(typeof teamSizes)[number], string> = {
   '1': 'Só eu',
@@ -66,11 +72,21 @@ export function OnboardingWizard() {
   const [office, setOffice] = useState<OnboardingOfficeValues | null>(null)
   const [owner, setOwner] = useState<OnboardingOwnerValues | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [pendingConfirmation, setPendingConfirmation] = useState<string | null>(null)
+  const [completion, setCompletion] = useState<{
+    email: string
+    reason: 'confirm' | 'login'
+  } | null>(null)
 
   const officeForm = useForm<OnboardingOfficeValues>({
     resolver: zodResolver(onboardingOfficeSchema),
-    defaultValues: { officeName: '', cnpj: '', oabState: undefined, phone: '' },
+    defaultValues: {
+      accountType: 'Firm',
+      officeName: '',
+      cnpj: '',
+      cpf: '',
+      oabState: undefined,
+      phone: '',
+    },
   })
   const ownerForm = useForm<OnboardingOwnerValues>({
     resolver: zodResolver(onboardingOwnerSchema),
@@ -86,6 +102,9 @@ export function OnboardingWizard() {
     },
   })
   const password = useWatch({ control: ownerForm.control, name: 'password' })
+  const accountType = useWatch({ control: officeForm.control, name: 'accountType' })
+  const isSolo = accountType === 'Solo'
+  const steps = stepsFor(accountType)
 
   function goTo(next: number) {
     setStep(next)
@@ -96,44 +115,71 @@ export function OnboardingWizard() {
   async function finish(preferences: OnboardingPreferencesValues) {
     if (!office || !owner) return
     setError(null)
+
+    // 1) Cadastro: o backend cria a conta E o titular (no Supabase Auth e no banco) de uma vez.
+    //    Falha aqui é erro de cadastro de verdade — nada foi criado, e tentar de novo é seguro.
+    let created
     try {
-      const session = await authService.signUp({
-        email: owner.email,
-        password: owner.password,
-        name: owner.ownerName,
-      })
-      if (!session) {
-        // Supabase com confirmação de e-mail habilitada: o escritório é criado após a confirmação.
-        setPendingConfirmation(owner.email)
-        return
-      }
-      useAuthStore.getState().setSession(session)
-      await createTenant({
-        office,
-        owner: { ownerName: owner.ownerName, email: owner.email, oabNumber: owner.oabNumber },
-        preferences,
-      })
-      notify.success(`Bem-vindo(a) ao ${env.appName}!`, {
-        description: `${office.officeName} foi cadastrado com sucesso.`,
-      })
-      router.replace(routes.dashboard)
-      router.refresh()
+      created = await createTenant({ office, owner, preferences })
     } catch (err) {
       setError(getErrorMessage(err))
+      return
     }
+
+    // Cadastro feito: a senha não precisa mais ficar em memória além do login logo abaixo.
+    const { email, password } = owner
+    setOwner(null)
+
+    if (created.requiresEmailConfirmation) {
+      setCompletion({ email, reason: 'confirm' })
+      return
+    }
+
+    // 2) Entrada automática, com as credenciais que a pessoa acabou de definir. Se falhar, a
+    //    conta JÁ EXISTE: mandar repetir o cadastro daria "já existe uma conta", então o caminho
+    //    é entrar manualmente.
+    try {
+      const session = await authService.signIn({ email, password })
+      useAuthStore.getState().setSession(session)
+    } catch {
+      setCompletion({ email, reason: 'login' })
+      return
+    }
+
+    notify.success(`Bem-vindo(a) ao ${env.appName}!`, {
+      description:
+        office.accountType === 'Solo'
+          ? 'Sua conta de advogado(a) autônomo(a) foi criada.'
+          : `${office.officeName} foi cadastrado com sucesso.`,
+    })
+    router.replace(routes.dashboard)
+    router.refresh()
   }
 
-  if (pendingConfirmation) {
+  if (completion) {
     return (
-      <AuthCard title="Confirme seu e-mail">
+      <AuthCard title={completion.reason === 'confirm' ? 'Confirme seu e-mail' : 'Conta criada'}>
         <div role="status" className="flex gap-3 rounded-xl border bg-card p-4">
           <MailCheck className="mt-0.5 size-5 shrink-0 text-success" aria-hidden />
           <p className="text-sm">
-            Enviamos um link de confirmação para{' '}
-            <strong className="break-all">{pendingConfirmation}</strong>. Após confirmar, entre para
-            concluir a configuração do escritório.
+            {completion.reason === 'confirm' ? (
+              <>
+                Enviamos um link de confirmação para{' '}
+                <strong className="break-all">{completion.email}</strong>. Depois de confirmar,
+                entre com o e-mail e a senha que você acabou de definir.
+              </>
+            ) : (
+              <>
+                Sua conta foi criada, mas não conseguimos entrar automaticamente. Entre com o e-mail{' '}
+                <strong className="break-all">{completion.email}</strong> e a senha que você acabou
+                de definir.
+              </>
+            )}
           </p>
         </div>
+        <Button asChild>
+          <Link href={routes.login}>Ir para o login</Link>
+        </Button>
       </AuthCard>
     )
   }
@@ -141,7 +187,7 @@ export function OnboardingWizard() {
   return (
     <AuthCard
       className="max-w-xl"
-      title="Cadastre seu escritório"
+      title={isSolo ? 'Crie sua conta' : 'Cadastre seu escritório'}
       description="Leva menos de 2 minutos. Você poderá ajustar tudo depois em Configurações."
       footer={
         <>
@@ -176,42 +222,112 @@ export function OnboardingWizard() {
             noValidate
             className="space-y-4"
             onSubmit={officeForm.handleSubmit((values) => {
+              // Solo trabalha sozinho(a): a pergunta de equipe não se aplica e vale 1. Voltando
+              // para Firm depois, a resposta fixada sai para a pessoa escolher de fato.
+              if (values.accountType === 'Solo') preferencesForm.setValue('teamSize', '1')
+              else if (office?.accountType === 'Solo') preferencesForm.resetField('teamSize')
               setOffice(values)
               goTo(1)
             })}
           >
-            <FormField
-              control={officeForm.control}
-              name="officeName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do escritório</FormLabel>
-                  <FormControl>
-                    <Input autoComplete="organization" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
+            {env.soloSignupEnabled ? (
               <FormField
                 control={officeForm.control}
-                name="cnpj"
+                name="accountType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CNPJ (opcional)</FormLabel>
+                    <FormLabel id="tipo-conta-label">Como você atua?</FormLabel>
+                    <div
+                      role="radiogroup"
+                      aria-labelledby="tipo-conta-label"
+                      className="grid gap-3 sm:grid-cols-2"
+                    >
+                      {(['Firm', 'Solo'] as const).map((tipo) => (
+                        <label
+                          key={tipo}
+                          className="flex cursor-pointer flex-col gap-1 rounded-xl border p-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring"
+                        >
+                          <span className="flex items-center gap-2 text-sm font-medium">
+                            <input
+                              type="radio"
+                              name={field.name}
+                              value={tipo}
+                              checked={field.value === tipo}
+                              onChange={() => field.onChange(tipo)}
+                              className="accent-primary"
+                            />
+                            {accountTypeLabels[tipo]}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {tipo === 'Firm'
+                              ? 'Tenho um escritório, com ou sem equipe. Identificado por CNPJ.'
+                              : 'Atuo sozinho(a), sem equipe. Identificado(a) pelo meu CPF.'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+
+            {isSolo ? null : (
+              <FormField
+                control={officeForm.control}
+                name="officeName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do escritório</FormLabel>
                     <FormControl>
-                      <Input
-                        inputMode="numeric"
-                        placeholder="00.000.000/0000-00"
-                        {...field}
-                        onChange={(e) => field.onChange(formatCnpj(e.target.value))}
-                      />
+                      <Input autoComplete="organization" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {isSolo ? (
+                <FormField
+                  control={officeForm.control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="numeric"
+                          autoComplete="off"
+                          placeholder="000.000.000-00"
+                          {...field}
+                          onChange={(e) => field.onChange(formatCpf(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={officeForm.control}
+                  name="cnpj"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CNPJ (opcional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="numeric"
+                          placeholder="00.000.000/0000-00"
+                          {...field}
+                          onChange={(e) => field.onChange(formatCnpj(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={officeForm.control}
                 name="oabState"
@@ -349,30 +465,32 @@ export function OnboardingWizard() {
       {step === 2 ? (
         <Form {...preferencesForm}>
           <form noValidate className="space-y-5" onSubmit={preferencesForm.handleSubmit(finish)}>
-            <FormField
-              control={preferencesForm.control}
-              name="teamSize"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tamanho da equipe</FormLabel>
-                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {teamSizes.map((size) => (
-                        <SelectItem key={size} value={size}>
-                          {teamSizeLabels[size]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isSolo ? null : (
+              <FormField
+                control={preferencesForm.control}
+                name="teamSize"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tamanho da equipe</FormLabel>
+                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {teamSizes.map((size) => (
+                          <SelectItem key={size} value={size}>
+                            {teamSizeLabels[size]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={preferencesForm.control}
               name="practiceAreas"
@@ -476,7 +594,7 @@ export function OnboardingWizard() {
                 {preferencesForm.formState.isSubmitting ? (
                   <LoadingSpinner size="sm" decorative />
                 ) : null}
-                Criar escritório
+                {isSolo ? 'Criar conta' : 'Criar escritório'}
               </Button>
             </div>
           </form>

@@ -5,6 +5,7 @@ import { BriefcaseBusiness, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Pagination } from '@/components/shared/Pagination'
@@ -27,11 +28,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { routes } from '@/config/routes'
+import { useAccess } from '@/hooks/useAccess'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { listUsers } from '../../settings/api'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ProcessosKanban } from './ProcessosKanban'
 import { processosQuery } from '../queries'
 import {
   areaDireitoLabels,
@@ -45,8 +48,11 @@ import {
 
 const TODOS = '__todos__'
 
+type Visao = 'lista' | 'quadro'
+
 export function ProcessosView() {
   const searchParams = useSearchParams()
+  const { hasTeam } = useAccess()
 
   // Filtro inicial vindo da URL, para os cartões do painel levarem à lista já filtrada.
   // Só o estado INICIAL: daqui em diante quem manda são os controles da tela, e reagir à
@@ -62,10 +68,19 @@ export function ProcessosView() {
     }
   })
 
-  const { data: usuarios } = useQuery({ queryKey: ['users', 'list'], queryFn: listUsers })
+  const [visao, setVisao] = useState<Visao>(() =>
+    searchParams.get('visao') === 'quadro' ? 'quadro' : 'lista'
+  )
+
+  const { data: usuarios } = useQuery({
+    queryKey: ['users', 'list'],
+    queryFn: listUsers,
+    enabled: hasTeam,
+  })
 
   const { data, isPending, isFetching } = useQuery({
     ...processosQuery(filters),
+    enabled: visao === 'lista',
     placeholderData: (previous) => previous,
   })
 
@@ -84,24 +99,15 @@ export function ProcessosView() {
         />
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={filters.status ?? TODOS}
-            onValueChange={(value) =>
-              updateFilters({ status: value === TODOS ? null : (value as StatusProcesso) })
-            }
-          >
-            <SelectTrigger className="w-40" aria-label="Filtrar por situação">
-              <SelectValue placeholder="Situação" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={TODOS}>Todas as situações</SelectItem>
-              {statusProcesso.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {statusProcessoMeta[value].label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SegmentedControl
+            label="Modo de exibição"
+            value={visao}
+            onChange={setVisao}
+            options={[
+              { value: 'lista', label: 'Lista' },
+              { value: 'quadro', label: 'Quadro' },
+            ]}
+          />
 
           <Select
             value={filters.area ?? TODOS}
@@ -136,24 +142,43 @@ export function ProcessosView() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <Select
-          value={filters.responsavelUserId ?? TODOS}
-          onValueChange={(value) =>
-            updateFilters({ responsavelUserId: value === TODOS ? null : value })
-          }
-        >
-          <SelectTrigger className="w-48" aria-label="Filtrar por responsável">
-            <SelectValue placeholder="Responsável" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODOS}>Todos os responsáveis</SelectItem>
-            {(usuarios ?? []).map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {visao === 'quadro' ? null : (
+          <SegmentedControl
+            label="Filtrar por situação"
+            value={filters.status ?? TODOS}
+            onChange={(value) =>
+              updateFilters({ status: value === TODOS ? null : (value as StatusProcesso) })
+            }
+            options={[
+              { value: TODOS, label: 'Todos' },
+              ...statusProcesso.map((value) => ({
+                value,
+                label: statusProcessoMeta[value].label + 's',
+              })),
+            ]}
+          />
+        )}
+
+        {hasTeam ? (
+          <Select
+            value={filters.responsavelUserId ?? TODOS}
+            onValueChange={(value) =>
+              updateFilters({ responsavelUserId: value === TODOS ? null : value })
+            }
+          >
+            <SelectTrigger className="w-48" aria-label="Filtrar por responsável">
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todos os responsáveis</SelectItem>
+              {(usuarios ?? []).map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
 
         <div className="space-y-1">
           <Label htmlFor="filtro-tribunal" className="text-xs">
@@ -194,7 +219,19 @@ export function ProcessosView() {
         </div>
       </div>
 
-      {isPending ? (
+      {visao === 'quadro' ? (
+        <ProcessosKanban
+          filters={{
+            clienteId: filters.clienteId,
+            area: filters.area,
+            busca: filters.busca,
+            responsavelUserId: filters.responsavelUserId,
+            tribunal: filters.tribunal,
+            distribuicaoDe: filters.distribuicaoDe,
+            distribuicaoAte: filters.distribuicaoAte,
+          }}
+        />
+      ) : isPending ? (
         <div className="flex justify-center py-12">
           <LoadingSpinner label="Carregando processos…" />
         </div>
@@ -202,7 +239,7 @@ export function ProcessosView() {
         <>
           <div
             className={cn(
-              'rounded-xl border transition-opacity',
+              'animate-iu-in rounded-xl border transition-opacity',
               isFetching ? 'opacity-60' : 'opacity-100'
             )}
             aria-busy={isFetching}
@@ -219,7 +256,7 @@ export function ProcessosView() {
               </TableHeader>
               <TableBody>
                 {data.items.map((processo) => (
-                  <TableRow key={processo.id}>
+                  <TableRow key={processo.id} className="hover:bg-accent">
                     <TableCell>
                       <Link
                         href={`${routes.processes}/${processo.id}` as never}

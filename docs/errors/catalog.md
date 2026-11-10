@@ -68,6 +68,9 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `TENANT_SUSPENDED` | O escritório está suspenso. | 409 | Conflict | Tentativa de suspender um tenant já suspenso. | Reativar o tenant antes, se a intenção era outra ação. |
 | `TENANT_CANCELLED` | O escritório está cancelado. | 409 | Conflict | Tentativa de suspender/cancelar um tenant já cancelado. | Um tenant cancelado não pode ser reaberto por esta API. |
 | `TENANT_NAME_REQUIRED` | O nome do escritório é obrigatório. | 400 | Validation | `Tenant.Create`/`Tenant.Update` recebeu nome vazio. | Informar um nome. |
+| `TENANT_CPF_INVALID` | CPF inválido. | 400 | Validation | `CPF.Create` rejeitou o valor (vazio, tamanho, dígitos repetidos ou dígito verificador). Só em conta Solo. | Corrigir o CPF. |
+| `TENANT_CPF_DUPLICATED` | Já existe uma conta cadastrada com este CPF. | 409 | Conflict | Índice único `ux_tenants_cpf`. | Entrar na conta existente. |
+| `TENANT_ACCOUNT_TYPE_INVALID` | Tipo de conta inválido. Valores aceitos: Firm, Solo. | 400 | Validation | `AccountType` fora dos valores conhecidos. | Enviar Firm ou Solo. |
 
 ## User (500–599)
 
@@ -152,6 +155,48 @@ Alertas in-app (Platform) — ver `docs/modules/alerts.md`.
 | `ALERT_ALREADY_READ` | Este alerta já foi marcado como lido. | 409 | Conflict | `MarkAsRead` em alerta lido. | Nenhuma ação necessária. |
 | `ALERT_ALREADY_DISMISSED` | Este alerta já foi descartado. | 409 | Conflict | Ação sobre alerta descartado. | Nenhuma ação necessária. |
 
+## Contact (2100–2199)
+
+Contatos do CRM — ver ADR-067.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CONTACT_NOT_FOUND` | Contato não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório (RLS torna invisível). | Confirmar o identificador. |
+| `CONTACT_NAME_REQUIRED` | O nome do contato é obrigatório. | 400 | Validation | Nome vazio ou acima de 200 caracteres. | Informar o nome. |
+| `CONTACT_EMAIL_INVALID` | E-mail do contato inválido. | 400 | Validation | Formato de e-mail inválido. | Corrigir o e-mail. |
+| `CONTACT_PHONE_INVALID` | Telefone do contato inválido. Informe DDD e número (10 ou 11 dígitos). | 400 | Validation | Telefone sem 10 ou 11 dígitos. | Informar DDD e número. |
+| `CONTACT_DOCUMENT_INVALID` | Documento do contato inválido. Informe um CPF (11 dígitos) ou CNPJ (14 dígitos). | 400 | Validation | Documento sem 11 ou 14 dígitos. | Corrigir ou deixar em branco. |
+| `CONTACT_ALREADY_INACTIVE` | Este contato já está inativo. | 409 | Conflict | `Deactivate` em contato inativo. | Nenhuma. |
+| `CONTACT_ALREADY_ACTIVE` | Este contato já está ativo. | 409 | Conflict | `Reactivate` em contato ativo. | Nenhuma. |
+
+## Calendar (2000–2099)
+
+Agenda do escritório — ver ADR-067.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CALENDAR_EVENT_NOT_FOUND` | Evento da agenda não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `CALENDAR_EVENT_TITLE_REQUIRED` | O título do evento é obrigatório. | 400 | Validation | Título vazio ou acima de 200 caracteres. | Informar o título. |
+| `CALENDAR_EVENT_INVALID_PERIOD` | Período inválido: o término do evento não pode ser anterior ao início. | 400 | Validation | `EndAt` anterior a `StartAt`. | Corrigir as datas. |
+| `CALENDAR_EVENT_PROCESS_NOT_FOUND` | O processo informado para o evento não existe neste escritório. | 404 | NotFound | `ProcessId` de processo inexistente ou de outro escritório. | Escolher um processo do escritório. |
+## Atendimento (2500–2599)
+
+Módulo Atendimento (inbox e handoff do bot de WhatsApp) — ver `docs/modules/atendimento.md`.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `ATENDIMENTO_NOT_FOUND` | Atendimento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório (filtro global + RLS tornam invisível; 404 em vez de 403). | Confirmar o identificador. |
+| `ATENDIMENTO_PHONE_INVALID` | Telefone inválido. Informe o número com DDI e DDD (10 a 15 dígitos). | 400 | Validation | `TelefoneWhatsApp.Normalize` recebeu valor vazio ou com menos de 10 / mais de 15 dígitos. | Enviar o número no formato `wa_id` da Meta (ex.: `5585999998888`). |
+| `ATENDIMENTO_CLOSED` | Este atendimento está encerrado. | 409 | Conflict | Qualquer ação sobre um atendimento `Closed` (terminal). | Uma nova mensagem do telefone abre outro atendimento. |
+| `ATENDIMENTO_INVALID_STATUS_TRANSITION` | Não é possível mudar o atendimento de '{0}' para '{1}'. | 409 | Conflict | `ReturnToBot` num atendimento que já está com o bot. | Consultar o status atual. |
+| `ATENDIMENTO_ALREADY_ASSIGNED` | Este atendimento já está sendo conduzido por outro advogado. | 409 | Conflict | Outro advogado tentou assumir ou enviar mensagem numa conversa em `Human` que não é dele. | Pedir ao advogado responsável que devolva ao bot. |
+| `ATENDIMENTO_MESSAGE_EMPTY` | A mensagem não pode ser vazia. | 400 | Validation | Corpo vazio ou só espaços. | Informar o texto. |
+| `ATENDIMENTO_MESSAGE_TOO_LONG` | A mensagem excede o limite de {0} caracteres do WhatsApp. | 400 | Validation | Corpo com mais de 4096 caracteres. | Dividir em mensagens menores. |
+| `ATENDIMENTO_MESSAGE_INVALID_SENDER` | Combinação inválida de direção e remetente da mensagem. | 400 | Validation | Entrada que não seja do cliente, saída do cliente, ou fala de humano sem ter assumido a conversa. | Corrigir direção/remetente; o advogado precisa assumir antes de falar. |
+| `ATENDIMENTO_BOT_BLOCKED` | O bot não pode responder: o atendimento está com um humano. | 409 | Conflict | O Bot tentou registrar uma resposta automática com o atendimento em `Human`. **Regra inegociável do handoff.** | O Bot deve consultar `GET .../status` antes de responder e ficar em silêncio. |
+| `ATENDIMENTO_DELIVERY_FAILED` | A mensagem foi registrada, mas não foi possível enviá-la ao WhatsApp. Tente novamente. | 500 | Failure | O Bot estava fora do ar ou recusou o envio. A mensagem fica no histórico com `delivery = Failed`. | Reenviar; verificar a saúde do Bot. |
+| `ATENDIMENTO_BOT_API_KEY_NOT_FOUND` | Chave de API do bot não encontrada. | 404 | NotFound | Revogação de uma chave inexistente ou de outro escritório. | Listar as chaves com `GET /api/v1/bot/api-keys`. |
+
 ## CNJ (1700–1799)
 
 Integração com o DJEN — ver `docs/modules/legal/cnj-capture.md`. Todos são
@@ -166,6 +211,40 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `CNJ_INVALID_RESPONSE` | O CNJ devolveu uma resposta em formato inesperado. | 500 | Failure | Corpo não desserializável como o contrato do DJEN — geralmente indica mudança na API. | Investigar: provável mudança de contrato. Itens individuais malformados são descartados com aviso, sem gerar este código. |
 | `CNJ_AUTH_FAILED` | Falha de autenticação ao consultar o CNJ. | 401 | Unauthorized | `401`/`403` do CNJ. A API de comunicações é pública hoje, então isso indica bloqueio por origem ou mudança de política. | Investigar com o CNJ / verificar bloqueio de IP. |
 | `CNJ_INVALID_REQUEST` | A consulta enviada ao CNJ foi rejeitada por parâmetros inválidos. | 400 | Validation | `400`/`422` do CNJ — sigla de tribunal inexistente, intervalo de datas inválido. **Não é retentado** (4xx é erro nosso; repetir só gasta quota). | Conferir `Jobs:CnjCapture:Tribunais` e o intervalo de datas. |
+| `AI_INVALID_REQUEST` | A requisição enviada ao serviço de IA foi rejeitada. | 500 | Failure | `400`/`404`/`413`/`422` da Anthropic: parâmetro inválido, modelo inexistente (ex.: aposentado) ou requisição grande demais. **Não é retentado.** | Erro de configuração/código — conferir `Anthropic:Models` e o corpo da chamada (o log traz o `type` do erro, nunca o conteúdo). |
+| `AI_UNAUTHORIZED` | Falha de autenticação com o serviço de IA. | 500 | Failure | `401`/`403` da Anthropic, ou `Anthropic:ApiKey` não configurada. | Verificar a chave (user-secrets em dev, Key Vault `Anthropic--ApiKey` em produção). |
+| `AI_RATE_LIMITED` | Limite de requisições ao serviço de IA excedido. Tente novamente mais tarde. | 500 | Failure | `429` que sobreviveu ao retry. | Nenhuma ação: o job retenta. Se recorrente, reduzir `BatchSizePerTenant` ou pedir aumento de limite. |
+| `AI_OVERLOADED` | O serviço de IA está sobrecarregado no momento. | 500 | Failure | `529` (overloaded) da Anthropic que sobreviveu ao retry. | Nenhuma ação: o job retenta. |
+| `AI_TIMEOUT` | O serviço de IA demorou mais que o esperado para responder. | 500 | Failure | Timeout do pipeline (`Anthropic:TimeoutSeconds`) ou `408`/`504`. | Nenhuma ação (retry). Se recorrente, aumentar `TimeoutSeconds` ou reduzir `MaxOutputTokens`. |
+| `AI_PARSE_ERROR` | A resposta do serviço de IA não pôde ser lida. | 500 | Failure | O corpo HTTP da Anthropic não é o JSON esperado (não confundir com `AI_INVALID_RESPONSE`, que é o *conteúdo* do modelo fora do contrato). | Investigar: provável mudança de contrato da API. |
+| `AI_UNAVAILABLE` | O serviço de IA está indisponível no momento. | 500 | Failure | Falha de rede, `5xx` que sobreviveu ao retry, ou circuit breaker aberto. | Nenhuma ação (retry). |
+| `AI_INVALID_RESPONSE` | A resposta da IA não pôde ser validada e foi descartada. | 500 | Failure | O Claude devolveu texto que não é JSON, não segue o contrato do prompt (campo ausente, tipo errado, `act_type` fora da lista, `confidence` fora de 0–100). Os tokens consumidos continuam registrados em `ai_usage_logs`. | Nenhuma ação do usuário: a publicação segue sem sugestão; após 3 tentativas deixa de ser reprocessada. Se recorrente, revisar o prompt/versão. |
+| `AI_PROMPT_NOT_FOUND` | O prompt '{0}' não foi encontrado. | 500 | Failure | O arquivo `.md` versionado não está embarcado no assembly ou não tem as seções `SYSTEM`/`USER`. | Erro de empacotamento — reportar ao suporte. |
+
+## Drafting (2600–2699)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `DRAFTING_DISABLED` | A geração assistida de peças não está habilitada neste ambiente. | 500 | Failure | `Drafting:Enabled` é `false` (padrão). | Habilitar `Drafting:Enabled` depois de cumprir o checklist de privacidade da ADR-072. |
+| `DRAFTING_INVALID_PIECE_TYPE` | Tipo de peça inválido. | 400 | Validation | `tipoPeca` fora da lista aceita. | Usar um dos tipos documentados (ex.: `peticao_inicial`). |
+| `DRAFTING_INVALID_AREA` | Área do direito inválida. | 400 | Validation | `area` fora da lista aceita. | Usar uma das áreas documentadas (ex.: `civel`). |
+| `DRAFTING_FIELD_REQUIRED` | O campo '{0}' é obrigatório. | 400 | Validation | `fatos` ou `pedidos` vazios. | Preencher o campo. |
+| `DRAFTING_FIELD_TOO_LONG` | O campo '{0}' excede o limite de {1} caracteres. | 400 | Validation | Campo acima do limite. | Resumir o texto. |
+| `DRAFTING_PROMPT_INJECTION` | O campo '{0}' contém instruções dirigidas ao assistente, que não são aceitas. | 400 | Validation | O texto tenta mudar as regras do assistente (ex.: "ignore as regras anteriores"). | Descrever só fatos e pedidos. |
+| `DRAFTING_REQUEST_NOT_FOUND` | Solicitação de peça não encontrada. | 404 | NotFound | `pecaOrigemId` inexistente neste escritório. | Conferir o identificador. |
+| `DRAFTING_GENERATION_FAILED` | Não foi possível gerar a peça. Tente novamente. | 500 | Failure | Falha do Ollama/Qdrant, timeout ou cancelamento. O detalhe técnico fica no log e na solicitação, nunca na resposta. | Tentar de novo; se persistir, conferir a saúde da instância de IA. |
+| `DRAFTING_TOO_MANY_DOCUMENTS` | Informe no máximo {0} documentos. | 400 | Validation | `documentosIds` acima do limite. | Reduzir a lista. |
+| `DRAFTING_CANNOT_CANCEL` | Esta solicitação já foi concluída, falhou ou foi cancelada e não pode mais ser cancelada. | 409 | Conflict | `POST /pecas/{id}/cancelar` em solicitação terminal. | Nada a fazer; use regenerar para uma nova versão. |
+| `DRAFTING_CONFIRMATION_REQUIRED` | Confirme a regeração enviando "confirmar": true. | 400 | Validation | `POST /pecas/{id}/regenerar` sem confirmação. | Reenviar com `confirmar: true`. |
+| `DRAFTING_UNSUPPORTED_FILE` | Arquivo não suportado ou ilegível. Envie PDF com texto, DOCX ou TXT. | 400 | Validation | Extensão fora da lista, arquivo corrompido ou PDF escaneado (sem camada de texto; OCR não implementado). | Converter para PDF com texto/DOCX/TXT. |
+| `DRAFTING_FILE_TOO_LARGE` | O arquivo excede o limite de {0} MB. | 400 | Validation | Upload acima de `Drafting:Ingestao:MaxMegabytes`. | Dividir o arquivo. |
+| `DRAFTING_DOCUMENT_NOT_FOUND` | Documento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório/usuário (privado). | Conferir o identificador. |
+| `DRAFTING_DOCUMENT_DUPLICATE` | Este documento já foi enviado (mesmo conteúdo). | 409 | Conflict | Mesmo hash de conteúdo no escritório. | Usar o documento existente. |
+| `DRAFTING_NOT_STREAMING` | A solicitação não está em processamento; consulte o resultado em GET /pecas/{id}. | 409 | Conflict | `GET /pecas/{id}/stream` em solicitação já terminal. | Consultar `GET /pecas/{id}`. |
+| `DRAFTING_NOT_READY` | A minuta ainda não está pronta. Acompanhe o status da solicitação. | 409 | Conflict | Reservado para consumidores que exijam a minuta concluída. | Acompanhar `GET /pecas/{id}/status`. |
+| `DRAFTING_GPU_UNAVAILABLE` | A infraestrutura de IA não está disponível no momento. | 500 | Failure | A instância de GPU não subiu no prazo, o circuito está aberto ou a API da Vast.ai falhou. O detalhe fica em `gpu_instance_logs`; a solicitação continua na fila. | Verificar saldo/estado da instância na Vast.ai; o worker tenta de novo sozinho. |
+| `DRAFTING_NORMA_NOT_FOUND` | Norma não encontrada no acervo. | 404 | NotFound | Id inexistente ou norma removida do acervo normativo público. | Conferir o identificador (o `normaId` vem das fontes da peça). |
+| `DRAFTING_VECTOR_STORE_UNAVAILABLE` | O acervo de documentos está indisponível no momento. Tente novamente. | 500 | Failure | O Qdrant não respondeu ao remover um documento. | Tentar de novo; conferir o Qdrant. |
 
 ## Internal (9000–9999)
 

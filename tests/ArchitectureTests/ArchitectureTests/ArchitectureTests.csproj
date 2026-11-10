@@ -30,8 +30,18 @@
     <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Application\Legal.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Api\Legal.Api.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Atendimento\Atendimento.Domain\Atendimento.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Atendimento\Atendimento.Application\Atendimento.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Atendimento\Atendimento.Infrastructure\Atendimento.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Atendimento\Atendimento.Api\Atendimento.Api.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Application\Integrations.CNJ.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Application\Integrations.Anthropic.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Infrastructure\Integrations.Anthropic.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Workflow\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Domain\Drafting.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Application\Drafting.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Infrastructure\Drafting.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

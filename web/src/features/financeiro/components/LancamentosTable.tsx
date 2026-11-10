@@ -48,7 +48,23 @@ const descricao: Coluna = { accessorKey: 'descricao', header: 'Descrição' }
  * Colunas por aba. Em nível de módulo (identidade estável): o DataTable recria a tabela
  * inteira se `columns` mudar de referência a cada render, e perderia ordenação e foco.
  */
-const colunasPorTipo: Record<TipoLancamento, Coluna[]> = {
+const colunasPorTipo: Record<TipoLancamento | 'Atrasado', Coluna[]> = {
+  Atrasado: [
+    {
+      accessorKey: 'tipo',
+      header: 'Tipo',
+      cell: ({ row }) => tipoLancamentoLabels[row.original.tipo],
+    },
+    descricao,
+    {
+      id: 'parte',
+      header: 'Cliente / Fornecedor',
+      cell: ({ row }) => traco(row.original.cliente ?? row.original.fornecedor),
+    },
+    valor,
+    vencimento,
+    status,
+  ],
   Honorario: [
     { accessorKey: 'cliente', header: 'Cliente', cell: ({ row }) => traco(row.original.cliente) },
     {
@@ -81,19 +97,20 @@ const colunasPorTipo: Record<TipoLancamento, Coluna[]> = {
 }
 
 interface LancamentosTableProps {
-  tipo: TipoLancamento
+  /** `'Atrasado'`: todos os tipos (a aba "Em atraso"). */
+  tipo: TipoLancamento | 'Atrasado'
   lancamentos: Lancamento[]
   isLoading?: boolean
 }
 
 export function LancamentosTable({ tipo, lancamentos, isLoading }: LancamentosTableProps) {
-  const rotulo = tipoLancamentoLabels[tipo]
+  const rotulo = tipo === 'Atrasado' ? 'Lançamentos em atraso' : `${tipoLancamentoLabels[tipo]}s`
 
   return (
     <DataTable
-      caption={`${rotulo}s`}
+      caption={rotulo}
       columns={colunasPorTipo[tipo]}
-      data={lancamentos.filter((l) => l.tipo === tipo)}
+      data={tipo === 'Atrasado' ? lancamentos : lancamentos.filter((l) => l.tipo === tipo)}
       isLoading={isLoading}
       getRowId={(l) => l.id}
       searchPlaceholder="Buscar por descrição, cliente ou fornecedor"

@@ -20,8 +20,13 @@ e a uma faixa numérica fixa (`BuildingBlocks.Domain/Errors/ErrorCode.cs`). Ver
 | `Backup` | 900–999 | Falhas no processo de backup (execução, criptografia, upload). |
 | `Integration` | 1000–1099 | Falhas de integrações externas genéricas (indisponibilidade, timeout, autenticação, rate limit, resposta inválida). Integrações com contrato próprio têm grupo dedicado — ver `CNJ`. |
 | `Alert` | 1400–1499 | Alertas in-app dos usuários: não encontrado, já lido, já descartado. |
+| `Contact` | 2100–2199 | Contatos do CRM (parte contrária, testemunha, fornecedor): não encontrado, dados inválidos, ativação. |
+| `Calendar` | 2000–2099 | Agenda do escritório: evento não encontrado, título obrigatório, período inválido, processo inexistente. |
+| `Atendimento` | 2500–2599 | Inbox e handoff do bot de WhatsApp: transições de estado, mensagens, chaves de API do bot. |
+| `Drafting` | 2600–2699 | Geração assistida de peças com RAG local: recurso desabilitado, campos inválidos, tentativa de injeção de prompt, solicitação não encontrada, falha de geração. |
 | `Publication` | 1300–1399 | Publicações capturadas de diários oficiais: número CNJ inválido, data inválida, conteúdo vazio, transição de status de revisão proibida, deduplicação. |
 | `CNJ` | 1700–1799 | Integração com o DJEN/CNJ: indisponibilidade, timeout, rate limit, resposta em formato inesperado, consulta rejeitada. |
+| `Ai` | 1600–1699 | Integração com a Anthropic (autenticação, limite, sobrecarga, timeout, resposta ilegível) e validação do conteúdo devolvido pelo modelo. |
 | `Internal` | 9000–9999 | Erros internos genuinamente inesperados (bug, banco de dados, serialização) — normalmente originados de uma exceção não tratada, não de um `Result.Failure` deliberado. |
 
 ## Grupos reservados (fases futuras — nenhum `ErrorCode` implementado ainda)
@@ -35,11 +40,9 @@ Nenhuma dessas faixas tem código algum hoje — só a reserva numérica.
 | `Process` | 1200–1299 | Fase 2 |
 | `Task` | 1400–1499 | Fase 3 |
 | `Review` | 1500–1599 | Fase 3 |
-| `AI` | 1600–1699 | Fase 3 |
+| `AI` | 1800–1899 | Fase 3 |
 | `Document` | 1800–1899 | Fase 4 |
 | `Signature` | 1900–1999 | Fase 4 |
-| `Calendar` | 2000–2099 | Fase 4 |
-| `CRM` | 2100–2199 | Fase 4 |
 | `Financial` | 2200–2299 | Fase 8 |
 | `Athena` | 2300–2399 | Fase 5 |
 | `Api` | 2400–2499 | Fase 5 |

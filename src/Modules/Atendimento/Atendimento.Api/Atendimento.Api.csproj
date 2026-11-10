@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Advocacia.Modules.Atendimentos.Api</RootNamespace>
+    <AssemblyName>Advocacia.Modules.Atendimentos.Api</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Asp.Versioning.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Atendimento.Application\Atendimento.Application.csproj" />
+    <!--
+      Platform.Api e Platform.Infrastructure entram pelo ENCANAMENTO web compartilhado
+      (MapVersionedGroup, ResultExtensions, Policies), não pelo modelo de negócio do Platform —
+      mesma regra de Legal.Api (ver AtendimentoModuleConventionTests).
+    -->
+    <ProjectReference Include="..\..\..\Platform\Platform.Api\Platform.Api.csproj" />
+    <ProjectReference Include="..\..\..\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

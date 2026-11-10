@@ -22,6 +22,11 @@ public enum ErrorGroup
     Process,
     Publication,
     Alert,
+    Contact,
+    Calendar,
     Cnj,
+    Atendimento,
+    Drafting,
+    Ai,
     Internal,
 }

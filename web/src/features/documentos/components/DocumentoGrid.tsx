@@ -17,7 +17,7 @@ export function DocumentoGrid({
   label = 'Documentos do escritório',
 }: DocumentoGridProps) {
   return (
-    <ul aria-label={label} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <ul aria-label={label} className="grid animate-iu-in gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {documentos.map((documento) => (
         <li key={documento.id}>
           <DocumentoCard documento={documento} onDownload={onDownload} onDelete={onDelete} />

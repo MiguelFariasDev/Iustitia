@@ -13,26 +13,26 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside
         aria-label={`Sobre o ${env.appName}`}
-        className="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-white lg:flex dark:bg-sidebar"
+        className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex"
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-32 -right-32 size-96 rounded-full bg-secondary/25 blur-3xl"
+          className="pointer-events-none absolute -top-32 -right-32 size-96 rounded-full bg-brand/25 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-40 -left-20 size-96 rounded-full bg-gold/15 blur-3xl"
+          className="pointer-events-none absolute -bottom-40 -left-20 size-96 rounded-full bg-ia/20 blur-3xl"
         />
-        <Logo variant="inverted" size={36} className="relative" />
+        <Logo variant="inverted" size={30} className="relative" />
         <div className="relative space-y-8">
-          <p className="max-w-md font-serif text-3xl leading-tight font-semibold text-balance">
+          <p className="max-w-md text-3xl leading-tight font-semibold text-balance">
             A gestão do seu escritório, com a seriedade que a advocacia exige.
           </p>
           <ul className="space-y-4">
             {highlights.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 text-sm text-slate-200">
+              <li key={text} className="flex items-center gap-3 text-sm text-sidebar-foreground">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-                  <Icon className="size-4 text-gold" aria-hidden />
+                  <Icon className="size-4 text-sidebar-ia" aria-hidden />
                 </span>
                 {text}
               </li>

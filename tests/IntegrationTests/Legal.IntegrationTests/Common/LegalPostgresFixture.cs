@@ -1,4 +1,6 @@
+using Advocacia.BuildingBlocks.Infrastructure.Security;
 using Advocacia.BuildingBlocks.Infrastructure.Tenancy;
+using Advocacia.Modules.Integrations.Anthropic.Infrastructure.Persistence;
 using Advocacia.Modules.Legal.Infrastructure.Persistence;
 using Advocacia.Platform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +14,8 @@ namespace Advocacia.Modules.Legal.IntegrationTests.Common;
 /// ambiente real é montado:
 ///   1. migrations do EF Core do Platform (tabelas do núcleo, incluindo outbox_messages);
 ///   2. migrations do EF Core do Legal (tabela publications);
-///   3. migrations SQL do Supabase (/infra/supabase/migrations), que dependem das tabelas já
+///   3. migrations do EF Core do Anthropic (tabela ai_usage_logs);
+///   4. migrations SQL do Supabase (/infra/supabase/migrations), que dependem das tabelas já
 ///      existirem — 010 adiciona índices GIN/BRIN em publications e 011 habilita o RLS dela.
 ///
 /// Expõe duas connection strings: uma como dono das tabelas (postgres, que BYPASSA RLS por
@@ -23,26 +26,53 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
 {
     private const string AppUserPassword = "legal_integration_tests_app_user";
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .WithDatabase("advocacia_db")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
+    // Criado sob demanda: PostgreSqlBuilder.Build() exige Docker já no Build(), o que impediria
+    // usar o banco externo (ADVOCACIA_TEST_PG) em ambientes sem Docker.
+    private PostgreSqlContainer? _container;
 
-    public string SuperuserConnectionString => _container.GetConnectionString();
+    private string? _externalDatabaseName;
+
+    public string SuperuserConnectionString { get; private set; } = null!;
 
     public string AppUserConnectionString { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
-        await _container.StartAsync();
+        // Estes testes montam o DbContext sem host, então ninguém chamou AddAdvocaciaFieldEncryption:
+        // sem isto os conversores recusam gravar (fail closed, ADR-068). Chaves só de teste.
+        FieldEncryption.Configure(new AesGcmFieldEncryptor(Microsoft.Extensions.Options.Options.Create(new FieldEncryptionOptions
+        {
+            ActiveKeyId = "test",
+            Keys = new() { ["test"] = Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i + 1)).ToArray()) },
+            BlindIndexKey = Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i + 50)).ToArray()),
+        })));
+
+        var external = await ExternalPostgres.TryCreateDatabaseAsync();
+        if (external is { } externalDatabase)
+        {
+            SuperuserConnectionString = externalDatabase.ConnectionString;
+            _externalDatabaseName = externalDatabase.DatabaseName;
+        }
+        else
+        {
+            _container = new PostgreSqlBuilder()
+                .WithImage("postgres:16-alpine")
+                .WithDatabase("advocacia_db")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+            await _container.StartAsync();
+            SuperuserConnectionString = _container.GetConnectionString();
+        }
 
         await MigrateAsync<PlatformDbContext>(
             options => new PlatformDbContext(options, new AsyncLocalTenantContext()));
 
         await MigrateAsync<LegalDbContext>(
             options => new LegalDbContext(options, new AsyncLocalTenantContext()));
+
+        await MigrateAsync<AnthropicDbContext>(
+            options => new AnthropicDbContext(options, new AsyncLocalTenantContext()));
 
         await ApplySupabaseSqlMigrationsAsync();
 
@@ -54,7 +84,19 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
         AppUserConnectionString = connectionStringBuilder.ConnectionString;
     }
 
-    public async Task DisposeAsync() => await _container.DisposeAsync();
+    public async Task DisposeAsync()
+    {
+        if (_externalDatabaseName is not null)
+        {
+            await ExternalPostgres.DropDatabaseAsync(_externalDatabaseName);
+            return;
+        }
+
+        if (_container is not null)
+        {
+            await _container.DisposeAsync();
+        }
+    }
 
     /// <summary>
     /// Constrói o DbContext com um AsyncLocalTenantContext "vazio" — o mesmo tipo que os

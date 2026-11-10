@@ -22,8 +22,8 @@ interface AlertaListProps {
 const emptyMessages: Record<AlertaTab, string> = {
   important: 'Nenhum alerta importante no momento',
   all: 'Você ainda não recebeu alertas',
-  publications: 'Nenhuma publicação não tratada gerou alerta',
-  others: 'Nenhum outro alerta por aqui',
+  publications: 'Nenhuma publicação gerou alerta',
+  deadlines: 'Nenhum alerta de prazo por aqui',
 }
 
 export function AlertaList({

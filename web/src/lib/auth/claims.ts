@@ -1,4 +1,4 @@
-import { userRoles, type UserRole } from './types'
+import { accountTypes, userRoles, type AccountType, type UserRole } from './types'
 
 export interface AccessTokenClaims {
   sub?: string
@@ -6,6 +6,7 @@ export interface AccessTokenClaims {
   exp?: number
   tenant_id?: string
   user_role?: string
+  account_type?: string
 }
 
 function decodeBase64Url(value: string) {
@@ -34,5 +35,11 @@ export function decodeAccessTokenClaims(token: string): AccessTokenClaims {
 export function parseUserRole(value: unknown): UserRole | null {
   return typeof value === 'string' && (userRoles as readonly string[]).includes(value)
     ? (value as UserRole)
+    : null
+}
+
+export function parseAccountType(value: unknown): AccountType | null {
+  return typeof value === 'string' && (accountTypes as readonly string[]).includes(value)
+    ? (value as AccountType)
     : null
 }

@@ -1,22 +1,23 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google'
+import { headers } from 'next/headers'
+import { Geist, JetBrains_Mono } from 'next/font/google'
 import { env } from '@/config/env'
 import { themeColor } from '@/config/theme'
 import { AppProviders } from '@/providers/AppProviders'
 import { themeInitScript } from '@/providers/themeScript'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
-const playfair = Playfair_Display({
+const geist = Geist({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  variable: '--font-geist',
   display: 'swap',
-  weight: ['600', '700'],
+  weight: ['300', '400', '500', '600'],
 })
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains-mono',
   display: 'swap',
+  weight: ['400', '500'],
 })
 
 export const metadata: Metadata = {
@@ -33,16 +34,19 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Nonce da CSP desta requisição (gerado em src/proxy.ts). Sem ele o script de tema seria bloqueado.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable}`}
+      className={`${geist.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>
         {/* Aplica o tema antes da primeira pintura (sem flash). */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
         <a

@@ -10,8 +10,16 @@ interface NotifyOptions {
   action?: { label: string; onClick: () => void }
 }
 
+/** 2,4 s, como no protótipo. Erro e toast com ação ficam mais: dá tempo de ler e de clicar. */
+const DEFAULT_DURATION_MS = 2400
+const LONG_DURATION_MS = 6000
+
 function show(kind: NewNotification['kind'], title: string, options: NotifyOptions = {}) {
-  toast[kind](title, { description: options.description, action: options.action })
+  toast[kind](title, {
+    description: options.description,
+    action: options.action,
+    duration: kind === 'error' || options.action ? LONG_DURATION_MS : DEFAULT_DURATION_MS,
+  })
   if (options.persist) {
     useNotificationStore.getState().add({
       kind,

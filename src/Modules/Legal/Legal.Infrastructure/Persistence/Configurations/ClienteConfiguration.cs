@@ -1,3 +1,4 @@
+using Advocacia.BuildingBlocks.Infrastructure.Security;
 using Advocacia.Modules.Legal.Domain.Clientes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -10,6 +11,20 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Configurations;
 /// </summary>
 public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
 {
+    // "enc:v1:{keyId}:" + Base64(12 + 16 + n). Folgado para o maior valor (telefone/documento).
+    private const int EncryptedColumnLength = 255;
+
+    // E-mail chega a 320 caracteres: 4/3 * (28 + 320) + prefixo ≈ 480.
+    private const int EncryptedEmailColumnLength = 600;
+
+    private const int BlindIndexLength = 64;
+
+    private static Documento FromStoredDocumento(string stored)
+    {
+        var digits = FieldEncryption.Decrypt(stored, EncryptionContexts.ClienteDocumento);
+        return Documento.FromPersistence(digits, digits.Length == 14 ? TipoCliente.PessoaJuridica : TipoCliente.PessoaFisica);
+    }
+
     public void Configure(EntityTypeBuilder<Cliente> builder)
     {
         builder.ToTable("clientes");
@@ -32,20 +47,22 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .HasMaxLength(NomeCliente.MaxLength)
             .IsRequired();
 
-        // Só os dígitos. A máscara é decisão de apresentação e guardá-la aqui tornaria a
-        // busca por documento dependente de como o usuário digitou.
+        // CIFRADO em repouso (AES-256-GCM, ver ADR-068). Só os dígitos são cifrados: a máscara é
+        // decisão de apresentação.
         //
         // O tipo é DERIVADO do tamanho (11 = CPF, 14 = CNPJ) e não lido da coluna `tipo`:
         // um value converter do EF Core recebe apenas o valor da própria coluna, sem acesso
         // às outras da linha. Derivar é seguro porque a invariante já foi imposta na criação
         // (Cliente.Create recusa documento cujo tipo divirja do tipo do cliente).
+        //
+        // A cifra é não-determinística (nonce aleatório): esta coluna NÃO serve para igualdade,
+        // unicidade nem busca — para isso existe `documento_busca` (índice cego, abaixo).
         builder.Property(cliente => cliente.Documento)
             .HasConversion(
-                documento => documento.Value,
-                value => Documento.FromPersistence(
-                    value, value.Length == 14 ? TipoCliente.PessoaJuridica : TipoCliente.PessoaFisica))
+                documento => FieldEncryption.Encrypt(documento.Value, EncryptionContexts.ClienteDocumento),
+                stored => FromStoredDocumento(stored))
             .HasColumnName("documento")
-            .HasMaxLength(14)
+            .HasMaxLength(EncryptedColumnLength)
             .IsRequired();
 
         builder.Property(cliente => cliente.NomeBusca)
@@ -53,15 +70,26 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .HasMaxLength(NomeCliente.MaxLength)
             .IsRequired();
 
+        // ÍNDICE CEGO do documento: HMAC-SHA256 (64 hex) dos dígitos. É o que permite achar um
+        // cliente pelo CPF/CNPJ e impor "um documento por escritório" sem guardar o documento
+        // em claro. Não é reversível; a busca é por igualdade com o documento COMPLETO — busca
+        // por prefixo deixou de existir de propósito (ver ADR-068).
         builder.Property(cliente => cliente.DocumentoBusca)
+            .HasConversion(new BlindIndexConverter(EncryptionContexts.ClienteDocumentoBlindIndex))
             .HasColumnName("documento_busca")
-            .HasMaxLength(14)
+            .HasMaxLength(BlindIndexLength)
             .IsRequired();
 
         builder.OwnsOne(cliente => cliente.Contato, contato =>
         {
-            contato.Property(c => c.Email).HasColumnName("email").HasMaxLength(320);
-            contato.Property(c => c.Telefone).HasColumnName("telefone").HasMaxLength(11);
+            contato.Property(c => c.Email)
+                .HasConversion(new EncryptedStringConverter(EncryptionContexts.ClienteEmail))
+                .HasColumnName("email")
+                .HasMaxLength(EncryptedEmailColumnLength);
+            contato.Property(c => c.Telefone)
+                .HasConversion(new EncryptedStringConverter(EncryptionContexts.ClienteTelefone))
+                .HasColumnName("telefone")
+                .HasMaxLength(EncryptedColumnLength);
         });
 
         builder.OwnsOne(cliente => cliente.Endereco, endereco =>
@@ -86,7 +114,9 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
 
         // Um documento por escritório. Filtro de soft delete no índice para que um cliente
         // excluído não impeça o recadastro da mesma pessoa.
-        builder.HasIndex(cliente => new { cliente.TenantId, cliente.Documento })
+        // Sobre o índice cego, não sobre `documento` (cifrado com nonce aleatório: dois valores
+        // iguais teriam textos cifrados diferentes e a unicidade jamais dispararia).
+        builder.HasIndex(cliente => new { cliente.TenantId, cliente.DocumentoBusca })
             .IsUnique()
             .HasFilter("is_deleted = false")
             .HasDatabaseName("ux_clientes_tenant_documento");

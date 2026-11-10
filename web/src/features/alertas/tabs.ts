@@ -2,26 +2,28 @@ import type { AlertaTab, AlertasFilters, AlertasSummary } from './types'
 
 export const tabLabels: Record<AlertaTab, string> = {
   important: 'Importantes',
+  publications: 'Publicações',
+  deadlines: 'Prazos',
   all: 'Todos',
-  publications: 'Publicações não tratadas',
-  others: 'Outros',
 }
 
 /**
  * Cada aba é um preset de filtro sobre a MESMA lista:
  *  - Importantes: tudo que ainda não foi lido (o que pede atenção agora);
- *  - Todos: sem restrição;
- *  - Publicações não tratadas: alertas de publicação ainda não lidos;
- *  - Outros: tudo que não é publicação (tarefas, aniversários…).
+ *  - Publicações: todos os alertas de publicação, lidos ou não (os não lidos já estão em
+ *    Importantes);
+ *  - Prazos: alertas de tarefa/prazo. A API não tem um tipo "prazo" próprio — `Task` é o que
+ *    leva avisos como "Tarefa vence amanhã" (decisão do v4 em docs/frontend/v4-alinhamento.md);
+ *  - Todos: sem restrição (aniversários e "outros" só aparecem aqui).
  */
 export function tabFilters(tab: AlertaTab): Pick<AlertasFilters, 'types' | 'isRead'> {
   switch (tab) {
     case 'important':
       return { isRead: false }
     case 'publications':
-      return { types: ['Publication'], isRead: false }
-    case 'others':
-      return { types: ['Task', 'Birthday', 'Other'] }
+      return { types: ['Publication'] }
+    case 'deadlines':
+      return { types: ['Task'] }
     default:
       return {}
   }
@@ -34,11 +36,11 @@ export function tabCount(tab: AlertaTab, summary: AlertasSummary | undefined): n
   switch (tab) {
     case 'important':
       return summary.unread
-    case 'all':
-      return summary.total
     case 'publications':
-      return summary.unreadByType.Publication ?? 0
+      return summary.totalByType.Publication ?? 0
+    case 'deadlines':
+      return summary.totalByType.Task ?? 0
     default:
-      return summary.total - (summary.totalByType.Publication ?? 0)
+      return summary.total
   }
 }

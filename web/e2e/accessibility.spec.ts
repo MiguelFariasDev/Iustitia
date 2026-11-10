@@ -20,6 +20,8 @@ const authenticatedPages = [
   ['/alertas', 'Alertas'],
   ['/publicacoes/pub-002', 'Publicação'],
   ['/alertas/alert-001', 'Alerta'],
+  ['/atendimentos', 'Atendimentos'],
+  ['/atendimentos?c=atd-001', 'Atendimentos'],
   ['/agenda', 'Agenda'],
   ['/processos', 'Processos'],
   ['/contatos', 'Contatos'],

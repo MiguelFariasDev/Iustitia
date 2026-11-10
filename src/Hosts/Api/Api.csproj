@@ -22,7 +22,17 @@
     <ProjectReference Include="..\..\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Legal\Legal.Api\Legal.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\CRM\CRM.Api\CRM.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\CRM\CRM.Infrastructure\CRM.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflow\Workflow.Api\Workflow.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflow\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Atendimento\Atendimento.Api\Atendimento.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Atendimento\Atendimento.Infrastructure\Atendimento.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Drafting\Drafting.Api\Drafting.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Drafting\Drafting.Infrastructure\Drafting.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Infrastructure\Integrations.Anthropic.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflow\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

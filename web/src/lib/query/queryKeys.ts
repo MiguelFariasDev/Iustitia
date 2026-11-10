@@ -31,6 +31,12 @@ export const queryKeys = {
     summary: () => [...queryKeys.publications.all, 'summary'] as const,
     byId: (id: string) => [...queryKeys.publications.all, 'detail', id] as const,
   },
+  atendimentos: {
+    all: ['atendimentos'] as const,
+    list: (filters: unknown) => [...queryKeys.atendimentos.all, 'list', filters] as const,
+    byId: (id: string) => [...queryKeys.atendimentos.all, 'detail', id] as const,
+    mensagens: (id: string) => [...queryKeys.atendimentos.all, 'mensagens', id] as const,
+  },
   alerts: {
     all: ['alerts'] as const,
     list: (filters: unknown) => [...queryKeys.alerts.all, 'list', filters] as const,
@@ -39,8 +45,9 @@ export const queryKeys = {
   },
   agenda: {
     all: ['agenda'] as const,
-    /** `weekStart` em ISO (segunda-feira) mantém uma entrada de cache por semana. */
-    week: (weekStart: string) => [...queryKeys.agenda.all, 'week', weekStart] as const,
+    /** Uma entrada de cache por janela consultada (início e fim em ISO). */
+    range: (from: string, to: string, responsavelId: string | null = null) =>
+      [...queryKeys.agenda.all, 'range', from, to, responsavelId] as const,
   },
   contatos: {
     all: ['contatos'] as const,

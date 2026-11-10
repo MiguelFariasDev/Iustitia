@@ -8,6 +8,7 @@ public sealed record ForoRequest(string? Tribunal, string? Comarca, string? Vara
 /// Cadastro de processo. <c>CnjNumber</c> aceita o número com ou sem máscara;
 /// <c>ResponsavelUserId</c> nulo assume o usuário que está cadastrando.
 /// </summary>
+[Audited("Created", "Processo")]
 public sealed record CreateProcessoCommand(
     string CnjNumber,
     Guid ClienteId,
@@ -21,6 +22,7 @@ public sealed record CreateProcessoCommand(
     string? Observacoes = null) : ICommand<ProcessoResponse>;
 
 /// <summary>O número CNJ NÃO entra: é a identidade do processo e a chave das publicações já vinculadas.</summary>
+[Audited("Updated", "Processo", EntityIdProperty = nameof(ProcessoId))]
 public sealed record UpdateProcessoCommand(
     Guid ProcessoId,
     Guid ClienteId,
@@ -33,10 +35,13 @@ public sealed record UpdateProcessoCommand(
     DateOnly? DataDistribuicao = null,
     string? Observacoes = null) : ICommand;
 
+[Audited("Updated", "Processo", EntityIdProperty = nameof(ProcessoId), DetailProperties = [nameof(Status)])]
 public sealed record ChangeProcessoStatusCommand(Guid ProcessoId, string Status) : ICommand;
 
+[Audited("Deactivated", "Processo", EntityIdProperty = nameof(ProcessoId))]
 public sealed record ArchiveProcessoCommand(Guid ProcessoId) : ICommand;
 
+[Audited("Viewed", "Processo", EntityIdProperty = nameof(ProcessoId))]
 public sealed record GetProcessoByIdQuery(Guid ProcessoId) : IQuery<ProcessoResponse>;
 
 public sealed record ListProcessosQuery(

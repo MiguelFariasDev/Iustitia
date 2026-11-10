@@ -20,7 +20,7 @@ já disponível, para quando a tela for construída.
 
 | Rota (React, planejada) | Endpoint (Platform.Api, implementado) | Observação |
 |---|---|---|
-| `/cadastro` *(não estava no sitemap original — adicionar)* | `POST /api/v1/tenants` | Cadastro self-service de escritório; cria Tenant + usuário Owner |
+| `/cadastro` *(não estava no sitemap original — adicionar)* | `POST /api/v1/tenants` | Cadastro self-service; cria Tenant + usuário Owner. No frontend é o assistente `/onboarding`, que pergunta se a conta é de **escritório** (CNPJ) ou de **advogado autônomo** (CPF) — ADR-068 |
 | `/login` | `POST /api/v1/auth/login` | — |
 | `/login` (token expirado) | `POST /api/v1/auth/refresh` | Renovação silenciosa de sessão |
 | *(logout, sem tela própria)* | `POST /api/v1/auth/logout` | Disparado pela ação "Sair" no app shell |
@@ -49,3 +49,10 @@ memória e exibem aviso permanente de demonstração. Decisão e checklist de mi
 
 O painel (`/painel`) aponta para as quatro telas pelos atalhos de `DashboardAtalhos`, e o menu
 lateral as marca com o selo **Demo**.
+
+## Visibilidade das telas por papel e tipo de conta
+
+O menu, a paleta de comandos e as configurações só mostram o que o usuário alcança, e abrir o
+endereço de uma tela fora do alcance mostra "Você não tem acesso a esta tela". A matriz completa
+está em [ADR-068](../adr/068-tipo-de-conta-solo-e-firm.md) e no código em
+`web/src/lib/auth/access.ts`. É conveniência de interface: quem autoriza é a API.

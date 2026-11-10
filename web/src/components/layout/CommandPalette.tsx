@@ -5,7 +5,6 @@ import {
   Briefcase,
   CheckSquare,
   FileText,
-  LayoutDashboard,
   LogOut,
   type LucideIcon,
   Newspaper,
@@ -25,8 +24,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command'
-import { settingsNavigation } from '@/config/navigation'
-import { routes } from '@/config/routes'
+import { filterNavigation, mainNavigation, settingsNavigation } from '@/config/navigation'
 import { searchGlobal } from '@/features/search/api'
 import { matchesSearch } from '@/features/search/normalize'
 import {
@@ -34,6 +32,7 @@ import {
   type SearchResult,
   type SearchResultKind,
 } from '@/features/search/types'
+import { useAccess } from '@/hooks/useAccess'
 import { useAuth } from '@/hooks/useAuth'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useTheme } from '@/hooks/useTheme'
@@ -75,6 +74,7 @@ export default function CommandPalette() {
   const router = useRouter()
   const { toggleTheme } = useTheme()
   const { signOut } = useAuth()
+  const access = useAccess()
   const runCreateAction = useRunCreateAction()
   const [term, setTerm] = useState('')
   const debouncedTerm = useDebounce(term.trim(), 250)
@@ -121,13 +121,23 @@ export default function CommandPalette() {
     },
   ].filter((a) => matchesSearch(a.label, term))
 
+  // Todas as telas do menu que a pessoa pode abrir (mesma matriz de acesso do menu) e que já
+  // existem: item "em breve" é placeholder e não vale um atalho.
+  const telas = access.isReady
+    ? filterNavigation(mainNavigation, access.can, access.label).flatMap((g) => g.items)
+    : []
+
   const pages = [
-    { label: 'Painel de gestão', href: routes.dashboard, icon: LayoutDashboard },
-    ...settingsNavigation.map((s) => ({
-      label: `Configurações › ${s.label}`,
-      href: s.href,
-      icon: Settings,
-    })),
+    ...telas
+      .filter((t) => !t.soon)
+      .map((t) => ({ label: `Ir para ${t.label}`, href: t.href as string, icon: t.icon })),
+    ...settingsNavigation
+      .filter((s) => !access.isReady || access.can(s.screen))
+      .map((s) => ({
+        label: `Configurações › ${access.label(s.screen, s.label)}`,
+        href: s.href,
+        icon: Settings,
+      })),
   ].filter((p) => matchesSearch(p.label, term))
 
   const grouped = searchEnabled ? groupResults(results) : []
@@ -140,7 +150,8 @@ export default function CommandPalette() {
       title="Busca global"
       description="Busque processos, clientes, tarefas, publicações, documentos, páginas e ações."
       shouldFilter={false}
-      className="sm:max-w-xl"
+      // v4: 560px de largura, a 14% do topo (não centrado na vertical), centrado na horizontal.
+      className="top-[14vh] translate-y-0 sm:max-w-[560px]"
     >
       <CommandInput
         value={term}
@@ -195,7 +206,7 @@ export default function CommandPalette() {
               <CommandItem
                 key={page.href}
                 value={`page-${page.href}`}
-                onSelect={() => run(() => router.push(page.href))}
+                onSelect={() => run(() => router.push(page.href as never))}
               >
                 <page.icon aria-hidden />
                 {page.label}
