@@ -136,3 +136,18 @@ está **ligada**, para a demonstração mostrar a revisão da IA.
 - Defeito achado pelo teste e corrigido: campo de prazo **vazio** valia 0 dia e liberava "Confirmar".
 - O fundamento legal de um prazo lido do texto cita só a origem ("fixado no próprio texto"): colar o artigo
   da tabela por tipo podia contradizer o prazo (ex.: art. de 5 dias ao lado de um prazo de 15).
+
+## Criação de peças (item 5.9) — `/criacao-de-pecas`
+
+- Tipo de peça (Contestação, Réplica, Apelação, Contrarrazões) + processo → **Gerar minuta com IA** →
+  estado de carregamento → minuta com as **citações legais destacadas** (`art. 335 do CPC`) →
+  **Salvar como rascunho**, que cria o arquivo em Documentos vinculado ao processo. Trocar o tipo ou o
+  processo descarta a minuta (ela era de outra peça).
+- **Não existe API de geração.** Em demonstração a "minuta" é um **esqueleto**: estrutura e artigos
+  conferidos, com lacunas `[...]` (fatos, direito, nome do cliente, data, advogado e a data de início da
+  contagem do prazo) para o advogado preencher. Não é texto jurídico pronto, a tela diz isso, e o que o
+  processo não informa vira lacuna, nunca um valor inventado. **Sem mocks a tela diz que a geração não está
+  disponível** em vez de entregar uma peça de aparência pronta a um escritório real.
+- O rascunho é salvo como **`.txt`**: exportar para **PDF/DOCX** não existe (o botão aparece desabilitado e
+  rotulado "em breve", sem fingir). Documentos também é demonstração (memória do navegador).
+- O item do menu só deixa de ser "Em breve" quando há mocks (`soon: !env.useMocks`).

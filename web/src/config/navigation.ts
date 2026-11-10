@@ -89,7 +89,7 @@ export const mainNavigation: NavGroup[] = [
         label: 'Criação de peças',
         icon: PenLine,
         href: routes.drafting,
-        soon: true,
+        soon: !env.useMocks,
         ai: true,
       },
       {
