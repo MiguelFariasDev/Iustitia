@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Advocacia.Modules.Drafting.Api.UnitTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <!-- Traz o Microsoft.AspNetCore.TestHost (servidor em memória) para testar os endpoints sem rede. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Asp.Versioning.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Domain\Drafting.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Application\Drafting.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Infrastructure\Drafting.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Api\Drafting.Api.csproj" />
+  </ItemGroup>
+
+</Project>

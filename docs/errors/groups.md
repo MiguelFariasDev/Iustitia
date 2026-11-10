@@ -23,6 +23,7 @@ e a uma faixa numérica fixa (`BuildingBlocks.Domain/Errors/ErrorCode.cs`). Ver
 | `Contact` | 2100–2199 | Contatos do CRM (parte contrária, testemunha, fornecedor): não encontrado, dados inválidos, ativação. |
 | `Calendar` | 2000–2099 | Agenda do escritório: evento não encontrado, título obrigatório, período inválido, processo inexistente. |
 | `Atendimento` | 2500–2599 | Inbox e handoff do bot de WhatsApp: transições de estado, mensagens, chaves de API do bot. |
+| `Drafting` | 2600–2699 | Geração assistida de peças com RAG local: recurso desabilitado, campos inválidos, tentativa de injeção de prompt, solicitação não encontrada, falha de geração. |
 | `Publication` | 1300–1399 | Publicações capturadas de diários oficiais: número CNJ inválido, data inválida, conteúdo vazio, transição de status de revisão proibida, deduplicação. |
 | `CNJ` | 1700–1799 | Integração com o DJEN/CNJ: indisponibilidade, timeout, rate limit, resposta em formato inesperado, consulta rejeitada. |
 | `Ai` | 1600–1699 | Integração com a Anthropic (autenticação, limite, sobrecarga, timeout, resposta ilegível) e validação do conteúdo devolvido pelo modelo. |

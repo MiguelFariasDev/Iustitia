@@ -39,6 +39,9 @@
     <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Application\Integrations.Anthropic.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Infrastructure\Integrations.Anthropic.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Workflow\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Domain\Drafting.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Application\Drafting.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Infrastructure\Drafting.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
