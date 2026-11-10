@@ -72,10 +72,10 @@ export function ConversaList({
               onClick={() => onSelect(item.id)}
               aria-current={selected ? 'true' : undefined}
               className={cn(
-                'flex w-full items-start gap-3 rounded-lg border border-transparent p-3 text-left transition-colors hover:bg-card/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                'flex w-full items-start gap-3 rounded-lg border border-transparent p-3 text-left transition-colors hover:bg-card/70 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none motion-safe:hover:-translate-y-px',
                 // Fundo CLARO (card) e não o bege de "accent": o badge "Aguardando" (âmbar sobre
                 // translucidez) só atinge o contraste AA de 4,5:1 sobre fundo claro.
-                selected && 'border-primary/40 bg-card shadow-xs'
+                selected && 'border-brand/50 bg-card shadow-xs'
               )}
             >
               <Avatar>

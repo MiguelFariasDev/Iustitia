@@ -177,3 +177,7 @@ está **ligada**, para a demonstração mostrar a revisão da IA.
 ## Agenda (5.4)
 
 Visão Mês/Semana/Dia virou `SegmentedControl`; a grade entra com `animate-iu-in` a cada troca de visão ou período; o dia de hoje ganha fundo `brand-soft`. **Semana segue começando na segunda** (decisão do produto; o protótipo usa domingo). Ao filtrar por tipo, só o ponto colorido dos tipos fora do filtro esmaece a 50% — o texto do chip fica pleno para manter contraste AA. Tudo já funcionava com a API real; nada aqui é só demonstração.
+
+## Atendimentos (5.5)
+
+A inbox de três colunas e o fluxo (assumir, devolver ao bot, encerrar, vincular cliente) já existiam e seguem iguais. Ajustes v4: conversa e contexto entram com `animate-iu-in`, mensagens novas também, linha selecionada com borda `brand`, leve elevação no hover (só com movimento permitido). **Não feito, por falta de dado:** contador de "Aguardando" na aba (a lista já vem filtrada pela aba; a API não devolve totais por status) e indicador de não lidas (sem campo na API). Ambos dependem de backend.

@@ -24,7 +24,7 @@ export function MessageBubble({ mensagem }: { mensagem: Mensagem }) {
   const Icon = senderIcon[mensagem.sender]
 
   return (
-    <li className={cn('flex', outgoing ? 'justify-end' : 'justify-start')}>
+    <li className={cn('flex animate-iu-in', outgoing ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
           'max-w-[80%] space-y-1 rounded-2xl px-3 py-2 text-sm shadow-xs',
