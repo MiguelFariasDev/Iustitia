@@ -151,3 +151,19 @@ está **ligada**, para a demonstração mostrar a revisão da IA.
 - O rascunho é salvo como **`.txt`**: exportar para **PDF/DOCX** não existe (o botão aparece desabilitado e
   rotulado "em breve", sem fingir). Documentos também é demonstração (memória do navegador).
 - O item do menu só deixa de ser "Em breve" quando há mocks (`soon: !env.useMocks`).
+
+## Tarefas / Kanban de equipe (item 5.11) — `/tarefas`
+
+- Quatro colunas (A fazer, Em andamento, Em revisão, Concluído), cartão com título, **anel de progresso do
+  prazo** (38px, r = 15, `stroke-dasharray` 94,2 e `dashoffset = 94,2 × (1 − pct/100)`; ≥ 90 % vermelho,
+  ≥ 70 % violeta, senão verde; rótulo "2d", "0d", "1s" ou "ok"; dica "N % do prazo decorrido"), processo em
+  mono, responsável e botões ‹ › desabilitados nas pontas.
+- **Arrastar e soltar** além dos botões (melhoria permitida): os botões seguem sendo o caminho por teclado
+  e leitor de tela, e cada movimento é anunciado numa região `aria-live`.
+- **Não existe módulo de tarefas no backend.** Tudo é demonstração em memória (zerada ao recarregar), com
+  selo no menu e aviso na tela. Quando existir, o painel passa a mostrar "Tarefas atrasadas" e "Prazos
+  cumpridos" de verdade (hoje aparecem como "—").
+- Acesso: todos, menos o financeiro (não há policy de API a espelhar). O cabeçalho "Equipe e gestão" só
+  aparece enquanto houver Tarefas ou Indicadores a mostrar.
+- O prazo `yyyy-MM-dd` é lido como dia **local** (`new Date('2026-11-05')` seria meia-noite UTC, o dia
+  anterior no Brasil e um prazo "vencido" um dia antes).

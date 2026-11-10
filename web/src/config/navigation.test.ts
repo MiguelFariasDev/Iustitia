@@ -35,6 +35,7 @@ describe('navegação filtrada pela matriz de acesso', () => {
       'Área de trabalho',
       'Agenda',
       'Documentos',
+      'Tarefas',
     ])
   })
 

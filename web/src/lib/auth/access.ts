@@ -31,6 +31,7 @@ export type Screen =
   | 'drafting'
   | 'documents'
   | 'indicators'
+  | 'tasks'
   | 'settings.profile'
   | 'settings.tenant'
   | 'settings.users'
@@ -62,6 +63,8 @@ export const screenRules: Record<Screen, Rule> = {
   drafting: { roles: lawyerOrAbove },
   finance: { roles: ['Owner', 'Partner', 'Financial'] },
   indicators: { roles: partnerOrAbove },
+  // Tarefas da equipe: todos, menos o financeiro. Não há API de tarefas: sem policy a espelhar.
+  tasks: { roles: ['Owner', 'Partner', 'Lawyer', 'Intern', 'Admin'] },
   'settings.profile': { roles: allRoles },
   'settings.notifications': { roles: allRoles },
   'settings.integrations': { roles: allRoles },
@@ -124,6 +127,7 @@ const pathScreens: readonly (readonly [string, Screen])[] = [
   [routes.finance, 'finance'],
   [routes.drafting, 'drafting'],
   [routes.documents, 'documents'],
+  [routes.tasks, 'tasks'],
   [routes.indicators, 'indicators'],
 ]
 

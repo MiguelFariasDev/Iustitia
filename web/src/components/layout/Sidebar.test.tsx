@@ -49,8 +49,19 @@ describe('Sidebar (v4)', () => {
     expect(screen.getByText('Equipe e gestão')).toBeInTheDocument()
   })
 
-  it('sem acesso a Indicadores, o cabeçalho "Equipe e gestão" some junto', () => {
+  it('o grupo "Equipe e gestão" aparece enquanto houver Tarefas ou Indicadores a mostrar', () => {
     useAuthStore.setState({ user: { ...mockUser, role: 'Lawyer' } })
+
+    renderWithProviders(<Sidebar />)
+
+    // O advogado não vê Indicadores, mas vê Tarefas: o grupo fica.
+    expect(screen.getByText('Equipe e gestão')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Tarefas/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Indicadores/ })).toBeNull()
+  })
+
+  it('sem Tarefas nem Indicadores (financeiro), o cabeçalho do grupo some junto', () => {
+    useAuthStore.setState({ user: { ...mockUser, role: 'Financial' } })
 
     renderWithProviders(<Sidebar />)
 

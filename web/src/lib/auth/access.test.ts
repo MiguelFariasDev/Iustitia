@@ -114,6 +114,7 @@ describe('screenForPath', () => {
         '/financeiro',
         '/criacao-de-pecas',
         '/documentos',
+        '/tarefas',
         '/indicadores',
         '/configuracoes/perfil',
         '/configuracoes/escritorio',

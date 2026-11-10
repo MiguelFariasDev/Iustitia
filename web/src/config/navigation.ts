@@ -12,6 +12,7 @@ import {
   Newspaper,
   PenLine,
   Settings,
+  SquareKanban,
   Users,
 } from 'lucide-react'
 import type { Screen } from '@/lib/auth/access'
@@ -105,6 +106,7 @@ export const mainNavigation: NavGroup[] = [
   {
     label: 'Equipe e gestão',
     items: [
+      { screen: 'tasks', label: 'Tarefas', icon: SquareKanban, href: routes.tasks, demo: true },
       {
         screen: 'indicators',
         label: 'Indicadores',
@@ -186,6 +188,7 @@ export const segmentLabels: Record<string, string> = {
   financeiro: 'Financeiro',
   'criacao-de-pecas': 'Criação de peças',
   documentos: 'Documentos',
+  tarefas: 'Tarefas',
   indicadores: 'Indicadores',
   configuracoes: 'Configurações',
   perfil: 'Perfil',
