@@ -29,14 +29,18 @@ export const routes = {
   },
 } as const satisfies Record<string, Route | Record<string, Route>>
 
-/** Rotas só para visitantes: um usuário autenticado é mandado para o painel. */
-export const guestOnlyPaths = ['/login', '/esqueci-senha'] as const
+/**
+ * Rotas só para visitantes: um usuário autenticado é mandado para o painel. A landing (`/`) é
+ * pública para visitantes; quem já tem sessão vai direto ao painel.
+ */
+export const guestOnlyPaths = ['/', '/login', '/esqueci-senha'] as const
 
 /** Rotas públicas acessíveis com ou sem sessão (links de e-mail, cadastro). */
 export const publicPaths = ['/redefinir-senha', '/convite', '/onboarding'] as const
 
 export function isGuestOnlyPath(pathname: string) {
-  return guestOnlyPaths.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  // '/' só vale exato: como prefixo casaria o site inteiro.
+  return guestOnlyPaths.some((p) => pathname === p || (p !== '/' && pathname.startsWith(`${p}/`)))
 }
 
 export function isPublicPath(pathname: string) {

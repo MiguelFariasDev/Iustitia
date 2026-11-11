@@ -1,6 +1,8 @@
 import { Gavel, ScanEye, ShieldCheck } from 'lucide-react'
+import Link from 'next/link'
 import { Logo } from '@/components/shared/Logo'
 import { env } from '@/config/env'
+import { routes } from '@/config/routes'
 
 const highlights = [
   { icon: Gavel, text: 'Prazos e publicações sob controle, sem planilhas.' },
@@ -23,7 +25,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           aria-hidden
           className="pointer-events-none absolute -bottom-40 -left-20 size-96 rounded-full bg-gold/15 blur-3xl"
         />
-        <Logo variant="inverted" size={36} className="relative" />
+        <Link href={routes.home} aria-label="Voltar à página inicial" className="relative w-fit rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-white/50">
+          <Logo variant="inverted" size={36} />
+        </Link>
         <div className="relative space-y-8">
           <p className="max-w-md font-serif text-3xl leading-tight font-semibold text-balance">
             A gestão do seu escritório, com a seriedade que a advocacia exige.
@@ -48,7 +52,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         tabIndex={-1}
         className="flex flex-col items-center justify-center px-4 py-10 outline-none sm:px-8"
       >
-        <Logo className="mb-10 lg:hidden" />
+        <Link href={routes.home} aria-label="Voltar à página inicial" className="mb-10 rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 lg:hidden">
+          <Logo />
+        </Link>
         {children}
       </main>
     </div>
