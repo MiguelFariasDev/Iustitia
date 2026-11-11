@@ -444,15 +444,27 @@ namespace Advocacia.Platform.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("Firm")
+                        .HasColumnName("account_type");
+
                     b.Property<string>("AddressJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("address");
 
                     b.Property<string>("Cnpj")
-                        .IsRequired()
                         .HasMaxLength(14)
                         .HasColumnType("character varying(14)")
                         .HasColumnName("cnpj");
+
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -508,6 +520,10 @@ namespace Advocacia.Platform.Infrastructure.Persistence.Migrations
                     b.HasIndex("Cnpj")
                         .IsUnique()
                         .HasDatabaseName("ux_tenants_cnpj");
+
+                    b.HasIndex("Cpf")
+                        .IsUnique()
+                        .HasDatabaseName("ux_tenants_cpf");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_tenants_status");

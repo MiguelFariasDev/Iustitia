@@ -118,16 +118,10 @@ public static class RateLimitingConfiguration
                 var category = Classify(httpContext.Request);
                 var ip = ClientIpKey(httpContext.Connection.RemoteIpAddress);
 
-                return category switch
-                {
-                    var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    return RateLimitPartition.GetFixedWindowLimiter($"auth:{ip}", _ => NewWindowOptions(AuthPermitLimit));
-                }
-
                 // O limitador roda ANTES da autenticação (ver Program.cs), então a identidade do
                 // Bot ainda não existe: particiona pelo hash da chave apresentada, nunca por ela
                 // em claro. Chave inválida só gasta a cota da própria partição.
-                if (path.Contains(BotPathMarker, StringComparison.OrdinalIgnoreCase)
+                if ((httpContext.Request.Path.Value ?? string.Empty).Contains(BotPathMarker, StringComparison.OrdinalIgnoreCase)
                     && httpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey)
                     && !string.IsNullOrWhiteSpace(apiKey))
                 {
@@ -136,18 +130,8 @@ public static class RateLimitingConfiguration
                     return RateLimitPartition.GetFixedWindowLimiter($"bot:{keyHash}", _ => NewWindowOptions(BotPermitLimit));
                 }
 
-                var partitionKey = httpContext.User.FindFirst("sub")?.Value
-                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
-                    ?? "anonymous";
-
-                var isWrite = HttpMethods.IsPost(httpContext.Request.Method)
-                    || HttpMethods.IsPut(httpContext.Request.Method)
-                    || HttpMethods.IsDelete(httpContext.Request.Method)
-                    || HttpMethods.IsPatch(httpContext.Request.Method);
-
-                return isWrite
-                    ? RateLimitPartition.GetFixedWindowLimiter($"write:{partitionKey}", _ => NewWindowOptions(WritePermitLimit))
-                    : RateLimitPartition.GetFixedWindowLimiter($"read:{partitionKey}", _ => NewWindowOptions(ReadPermitLimit));
+                return category switch
+                {
                     // Janela deslizante nas rotas de credencial: a janela fixa permite 2x o
                     // limite colado na virada (5 no fim de uma janela + 5 no começo da outra).
                     RateLimitCategory.Login => RateLimitPartition.GetSlidingWindowLimiter(

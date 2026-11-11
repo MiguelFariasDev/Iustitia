@@ -133,6 +133,7 @@ app.MapProcessosEndpoints();
 app.MapPublicationsEndpoints();
 app.MapContactsEndpoints();
 app.MapCalendarEndpoints();
+app.MapTaskAndTagEndpoints();
 app.MapAtendimentosEndpoints();
 app.MapBotEndpoints();
 app.MapPecasEndpoints();

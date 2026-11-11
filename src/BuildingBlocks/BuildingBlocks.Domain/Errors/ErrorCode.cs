@@ -158,6 +158,14 @@ public enum ErrorCode
     CALENDAR_EVENT_INVALID_PERIOD = 2002,
     CALENDAR_EVENT_PROCESS_NOT_FOUND = 2003,
 
+    // Tarefas e tags (mesma faixa Calendar; módulo Workflow)
+    WORK_TASK_NOT_FOUND = 2010,
+    WORK_TASK_TITLE_REQUIRED = 2011,
+    WORK_TASK_PROCESS_NOT_FOUND = 2012,
+    TAG_NOT_FOUND = 2020,
+    TAG_NAME_REQUIRED = 2021,
+    TAG_TARGET_INVALID = 2022,
+
     // CNJ (1700-1799) — integração com o DJEN/CNJ
     CNJ_UNAVAILABLE = 1700,
     CNJ_TIMEOUT = 1701,
