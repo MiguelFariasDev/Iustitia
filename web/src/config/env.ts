@@ -15,11 +15,12 @@ export const env = {
   /** Enquanto os endpoints de negócio não existem, as features consomem mocks locais. */
   useMocks: process.env.NEXT_PUBLIC_API_MOCKS !== 'false',
   /**
-   * Cadastro de advogado autônomo (Solo). Só liga quando o backend aceita `accountType` e CPF
-   * em POST /tenants (ADR-068); com os mocks ligados está sempre disponível.
+   * Cadastro de advogado autônomo (Solo). O backend aceita `accountType` e CPF em POST /tenants
+   * (ADR-068), então a escolha "advogado autônomo × escritório" é a primeira pergunta do
+   * cadastro por padrão. `NEXT_PUBLIC_SOLO_SIGNUP=false` desliga, para apontar o frontend a um
+   * backend antigo que ainda não conhece o tipo de conta.
    */
-  soloSignupEnabled:
-    process.env.NEXT_PUBLIC_SOLO_SIGNUP === 'true' || process.env.NEXT_PUBLIC_API_MOCKS !== 'false',
+  soloSignupEnabled: process.env.NEXT_PUBLIC_SOLO_SIGNUP !== 'false',
 } as const
 
 export const isMockAuth = env.authMode === 'mock'

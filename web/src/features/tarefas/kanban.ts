@@ -10,9 +10,13 @@ export const colunas: readonly { id: Coluna; label: string }[] = [
 export interface Tarefa {
   id: string
   titulo: string
-  /** Número do processo (mono na tela). */
+  /** Número do processo (mono na tela); vazio = tarefa sem processo. */
   processo: string
+  /** Id do processo, quando a tarefa foi criada sobre um. */
+  processoId?: string | null
+  /** Nome de quem responde pela tarefa; vazio = sem responsável. */
   responsavel: string
+  responsavelId?: string | null
   coluna: Coluna
   /** ISO yyyy-MM-dd do prazo; `null` = sem prazo. */
   prazo: string | null

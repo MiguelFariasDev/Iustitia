@@ -36,7 +36,7 @@ describe('CommandPalette (v4)', () => {
     await screen.findByRole('dialog', { name: 'Busca global' })
 
     const lista = screen.getByRole('listbox')
-    expect(within(lista).getByText('Ir para Financeiro')).toBeInTheDocument()
+    expect(within(lista).getByText('Ir para Agenda')).toBeInTheDocument()
     // O financeiro não acessa processos: o atalho não pode existir.
     expect(within(lista).queryByText('Ir para Processos e casos')).toBeNull()
   })

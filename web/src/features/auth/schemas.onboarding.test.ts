@@ -18,8 +18,10 @@ describe('onboardingOfficeSchema — escritório (Firm)', () => {
     )
   })
 
-  it('CNPJ é opcional, mas se informado precisa ser válido', () => {
-    expect(erros({ ...base, accountType: 'Firm', officeName: 'Souza & Associados' })).toEqual([])
+  it('exige o CNPJ e que ele seja válido', () => {
+    expect(erros({ ...base, accountType: 'Firm', officeName: 'Souza & Associados' })).toEqual([
+      'cnpj: Informe o CNPJ do escritório.',
+    ])
     expect(
       erros({
         ...base,
@@ -32,7 +34,13 @@ describe('onboardingOfficeSchema — escritório (Firm)', () => {
 
   it('ignora um CPF que sobrou de quando a pessoa tinha escolhido Solo', () => {
     expect(
-      erros({ ...base, accountType: 'Firm', officeName: 'Souza & Associados', cpf: '123' })
+      erros({
+        ...base,
+        accountType: 'Firm',
+        officeName: 'Souza & Associados',
+        cnpj: '11.222.333/0001-81',
+        cpf: '123',
+      })
     ).toEqual([])
   })
 })

@@ -22,6 +22,7 @@ test.describe('Cadastro de escritório (onboarding)', () => {
 
   test('valida a senha e a confirmação na segunda etapa', async ({ page }) => {
     await page.getByLabel('Nome do escritório').fill('Ferraz & Associados')
+    await page.getByLabel('CNPJ').fill('11222333000181')
     await chooseOption(page, 'Seccional da OAB', 'OAB/RS')
     await page.getByRole('button', { name: 'Continuar' }).click()
 
@@ -38,6 +39,7 @@ test.describe('Cadastro de escritório (onboarding)', () => {
 
   test('permite voltar para a etapa anterior sem perder os dados', async ({ page }) => {
     await page.getByLabel('Nome do escritório').fill('Ferraz & Associados')
+    await page.getByLabel('CNPJ').fill('11222333000181')
     await chooseOption(page, 'Seccional da OAB', 'OAB/RS')
     await page.getByRole('button', { name: 'Continuar' }).click()
     await expect(page.getByText('Etapa 2 de 3: Responsável')).toBeVisible()
@@ -50,6 +52,7 @@ test.describe('Cadastro de escritório (onboarding)', () => {
 
   test('completa o cadastro e chega ao painel', async ({ page }) => {
     await page.getByLabel('Nome do escritório').fill('Ferraz & Associados')
+    await page.getByLabel('CNPJ').fill('11222333000181')
     await chooseOption(page, 'Seccional da OAB', 'OAB/RS')
     await page.getByRole('button', { name: 'Continuar' }).click()
 
@@ -72,6 +75,7 @@ test.describe('Cadastro de escritório (onboarding)', () => {
 
   test('exige aceite dos termos antes de criar', async ({ page }) => {
     await page.getByLabel('Nome do escritório').fill('Ferraz & Associados')
+    await page.getByLabel('CNPJ').fill('11222333000181')
     await chooseOption(page, 'Seccional da OAB', 'OAB/RS')
     await page.getByRole('button', { name: 'Continuar' }).click()
 

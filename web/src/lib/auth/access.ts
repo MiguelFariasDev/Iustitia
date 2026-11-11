@@ -14,8 +14,9 @@ import type { AccountType, UserRole } from './types'
  * Mudou uma policy no backend? Mude a linha correspondente aqui — e o teste de `access.test.ts`
  * que lista cada tela por papel é o que acusa a divergência na revisão.
  *
- * Conta Solo: uma pessoa só, sempre Owner. Some o que só faz sentido com equipe (usuários,
- * filtro por responsável) e o cadastro do "escritório" vira "dados profissionais".
+ * Conta Solo: uma pessoa só, sempre Owner — logo com TODAS as permissões de titular (advogado,
+ * financeiro, indicadores, auditoria…). Some só o que exige equipe (usuários, tarefas/kanban de
+ * gestão, filtro por responsável) e o cadastro do "escritório" vira "dados profissionais".
  */
 export type Screen =
   | 'dashboard'
@@ -63,7 +64,8 @@ export const screenRules: Record<Screen, Rule> = {
   drafting: { roles: lawyerOrAbove },
   finance: { roles: ['Owner', 'Partner', 'Financial'] },
   indicators: { roles: partnerOrAbove },
-  // Tarefas da equipe: todos, menos o financeiro. Não há API de tarefas: sem policy a espelhar.
+  // Tarefas da equipe (kanban de gestão do escritório): todos, menos o financeiro, e só em
+  // conta com equipe. Não há API de tarefas: sem policy a espelhar.
   tasks: { roles: ['Owner', 'Partner', 'Lawyer', 'Intern', 'Admin'] },
   'settings.profile': { roles: allRoles },
   'settings.notifications': { roles: allRoles },

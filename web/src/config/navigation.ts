@@ -84,13 +84,12 @@ export const mainNavigation: NavGroup[] = [
         href: routes.publications,
         badge: 'publications',
       },
-      { screen: 'finance', label: 'Financeiro', icon: Banknote, href: routes.finance, demo: true },
+      { screen: 'finance', label: 'Financeiro', icon: Banknote, href: routes.finance },
       {
         screen: 'drafting',
         label: 'Criação de peças',
         icon: PenLine,
         href: routes.drafting,
-        soon: !env.useMocks,
         ai: true,
       },
       {
@@ -98,7 +97,7 @@ export const mainNavigation: NavGroup[] = [
         label: 'Documentos',
         icon: FolderOpen,
         href: routes.documents,
-        demo: true,
+        soon: true,
       },
       { screen: 'alerts', label: 'Alertas', icon: Bell, href: routes.alerts, badge: 'alerts' },
     ],
@@ -106,13 +105,13 @@ export const mainNavigation: NavGroup[] = [
   {
     label: 'Equipe e gestão',
     items: [
-      { screen: 'tasks', label: 'Tarefas', icon: SquareKanban, href: routes.tasks, demo: true },
+      { screen: 'tasks', label: 'Tarefas', icon: SquareKanban, href: routes.tasks },
       {
         screen: 'indicators',
         label: 'Indicadores',
         icon: ChartNoAxesCombined,
         href: routes.indicators,
-        demo: true,
+        soon: true,
       },
     ],
   },

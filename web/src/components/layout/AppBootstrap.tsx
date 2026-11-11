@@ -6,6 +6,8 @@ import { useAtendimentosRealtime } from '@/features/atendimentos/realtime'
 import { getCurrentTenant } from '@/features/tenant/api'
 import { useGlobalHotkeys } from '@/hooks/useGlobalHotkeys'
 import { queryKeys } from '@/lib/query/queryKeys'
+import { getProfileName } from '@/features/tenant/profile'
+import { useAuthStore } from '@/stores/authStore'
 import { useTenantStore } from '@/stores/tenantStore'
 
 /**
@@ -21,10 +23,24 @@ export function AppBootstrap() {
       const data = await getCurrentTenant()
       const store = useTenantStore.getState()
       store.setTenant(data.tenant, data.settings)
-      store.setFeatureFlags(data.featureFlags)
+      store.setFeatureFlags(data.featureFlags ?? {})
       return data
     },
     staleTime: 5 * 60_000,
+  })
+
+  // O Supabase não guarda o nome: sem isto a saudação sairia "Bom dia, miguelfariasb8".
+  const userId = useAuthStore((s) => s.user?.id)
+  useQuery({
+    queryKey: ['me', 'profile-name', userId],
+    enabled: Boolean(userId),
+    staleTime: 30 * 60_000,
+    queryFn: async () => {
+      const name = await getProfileName(userId!)
+      if (name) useAuthStore.getState().setProfileName(userId!, name)
+
+      return name
+    },
   })
 
   // Notificação in-app em tempo real (canal privado do usuário no Supabase Realtime).

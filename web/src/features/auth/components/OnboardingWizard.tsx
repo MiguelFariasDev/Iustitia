@@ -314,7 +314,7 @@ export function OnboardingWizard() {
                   name="cnpj"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>CNPJ (opcional)</FormLabel>
+                      <FormLabel>CNPJ</FormLabel>
                       <FormControl>
                         <Input
                           inputMode="numeric"

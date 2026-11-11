@@ -41,7 +41,7 @@ export type AcceptInviteValues = z.infer<typeof acceptInviteSchema>
 
 /**
  * Primeira etapa do cadastro. O tipo de conta decide quais campos valem:
- *  - Firm (escritório): nome do escritório obrigatório, CNPJ opcional (como sempre foi);
+ *  - Firm (escritório): nome do escritório e CNPJ obrigatórios (o backend recusa o cadastro sem CNPJ, ADR-068);
  *  - Solo (advogado autônomo): identificado por CPF, que é OBRIGATÓRIO — sem ele a conta não
  *    teria documento nenhum —, e sem nome de escritório (a conta leva o nome do titular).
  *
@@ -62,7 +62,10 @@ const firmOfficeSchema = z.object({
   cnpj: z
     .string()
     .trim()
-    .refine((v) => v === '' || isValidCnpj(v), 'CNPJ inválido.'),
+    .superRefine((value, ctx) => {
+      if (value === '') ctx.addIssue({ code: 'custom', message: 'Informe o CNPJ do escritório.' })
+      else if (!isValidCnpj(value)) ctx.addIssue({ code: 'custom', message: 'CNPJ inválido.' })
+    }),
   cpf: z.string(),
   ...officeCommon,
 })

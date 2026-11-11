@@ -31,6 +31,7 @@ import { routes } from '@/config/routes'
 import { useAccess } from '@/hooks/useAccess'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { TagsLista } from '../../tags/components/TagsLista'
 import { listUsers } from '../../settings/api'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -267,6 +268,7 @@ export function ProcessosView() {
                       {processo.tribunal ? (
                         <p className="text-xs text-muted-foreground">{processo.tribunal}</p>
                       ) : null}
+                      <TagsLista alvo="processo" alvoId={processo.id} />
                     </TableCell>
                     <TableCell className="hidden text-sm md:table-cell">
                       {areaDireitoLabels[processo.area]}

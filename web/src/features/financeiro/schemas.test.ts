@@ -1,6 +1,6 @@
 import { lancamentoFormDefaults, lancamentoFormSchema } from './schemas'
 import { lancamentosToCsv } from './export'
-import { mockListLancamentos, resetFinanceiroMock } from './mocks'
+import { lancamentosDeTeste } from './fixtures'
 
 const valido = {
   ...lancamentoFormDefaults,
@@ -30,10 +30,8 @@ describe('lancamentoFormSchema', () => {
 })
 
 describe('lancamentosToCsv', () => {
-  beforeEach(() => resetFinanceiroMock())
-
   it('uma linha por lançamento, valor com vírgula decimal e cliente ou fornecedor', () => {
-    const csv = lancamentosToCsv(mockListLancamentos())
+    const csv = lancamentosToCsv(lancamentosDeTeste())
     const linhas = csv.replace('﻿', '').split('\r\n')
 
     expect(linhas[0]).toBe('Tipo;Descrição;Cliente / Fornecedor;Processo;Valor;Vencimento;Status')
@@ -44,7 +42,7 @@ describe('lancamentosToCsv', () => {
 
   it('neutraliza fórmula em texto vindo do usuário', () => {
     const csv = lancamentosToCsv([
-      { ...mockListLancamentos()[0]!, descricao: '=HYPERLINK("http://x")' },
+      { ...lancamentosDeTeste()[0]!, descricao: '=HYPERLINK("http://x")' },
     ])
 
     expect(csv).toContain("'=HYPERLINK")

@@ -1,28 +1,26 @@
-import { mockResponse } from '@/lib/api/mock'
-import { calcularResumo, mockCreateLancamento, mockFluxoCaixa, mockListLancamentos } from './mocks'
+import { calcularResumo, criarLancamento, fluxoDeCaixa, listarLancamentos } from './repositorio'
 import type { LancamentoFormValues } from './schemas'
 import type { FinanceiroResumo, FluxoCaixaMes, Lancamento } from './types'
 
 /**
- * Financeiro ainda não tem endpoint: tudo vem do repositório em memória (mocks.ts), sempre —
- * ligar a API real hoje daria 404.
+ * O módulo Financeiro ainda não tem endpoint: os lançamentos vêm do repositório local
+ * (repositorio.ts), que começa vazio e guarda só o que o usuário lança neste navegador.
  *
- * TODO(financeiro-backend, Fase 4/8): trocar cada função por uma chamada ao `apiClient` e
- * remover o aviso de demonstração da tela. O resumo hoje é derivado dos lançamentos; no
- * servidor ele precisa ser agregado lá (a lista será paginada).
+ * TODO(financeiro-backend): trocar cada função por uma chamada ao `apiClient`. O resumo hoje é
+ * derivado dos lançamentos; no servidor ele precisa ser agregado lá (a lista será paginada).
  */
-export function getLancamentos(): Promise<Lancamento[]> {
-  return mockResponse(mockListLancamentos(), 250)
+export async function getLancamentos(): Promise<Lancamento[]> {
+  return listarLancamentos()
 }
 
-export function getFinanceiroResumo(): Promise<FinanceiroResumo> {
-  return mockResponse(calcularResumo(mockListLancamentos()), 150)
+export async function getFinanceiroResumo(): Promise<FinanceiroResumo> {
+  return calcularResumo(listarLancamentos())
 }
 
-export function getFluxoCaixa(): Promise<FluxoCaixaMes[]> {
-  return mockResponse(mockFluxoCaixa(), 150)
+export async function getFluxoCaixa(): Promise<FluxoCaixaMes[]> {
+  return fluxoDeCaixa(listarLancamentos())
 }
 
-export function createLancamento(values: LancamentoFormValues): Promise<Lancamento> {
-  return mockResponse(mockCreateLancamento(values), 250)
+export async function createLancamento(values: LancamentoFormValues): Promise<Lancamento> {
+  return criarLancamento(values)
 }

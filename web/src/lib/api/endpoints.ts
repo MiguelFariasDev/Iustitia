@@ -47,10 +47,32 @@ export const endpoints = {
     byId: (id: string) => `/contatos/${id}`,
     reactivate: (id: string) => `/contatos/${id}/reactivate`,
   },
+  tarefas: {
+    root: '/tarefas',
+    byId: (id: string) => `/tarefas/${id}`,
+    status: (id: string) => `/tarefas/${id}/status`,
+  },
+  tags: {
+    root: '/tags',
+    byId: (id: string) => `/tags/${id}`,
+    atribuicoes: '/tags/atribuicoes',
+  },
   agenda: {
     eventos: '/agenda/eventos',
     eventoById: (id: string) => `/agenda/eventos/${id}`,
     reschedule: (id: string) => `/agenda/eventos/${id}/reschedule`,
+  },
+  /** Criação de peças com IA (Drafting). A geração é assíncrona: enfileira e se acompanha por status. */
+  pecas: {
+    gerar: '/pecas/gerar',
+    status: (id: string) => `/pecas/${id}/status`,
+    byId: (id: string) => `/pecas/${id}`,
+    cancelar: (id: string) => `/pecas/${id}/cancelar`,
+  },
+  /** Acervo de documentos que alimenta a geração de peças (upload indexa de forma assíncrona). */
+  acervo: {
+    upload: '/documentos/upload',
+    byId: (id: string) => `/documentos/${id}`,
   },
   clientes: {
     list: '/clientes',

@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
+import { reiniciarArmazens } from '@/lib/storage/armazem'
 import { navigationState, routerMock } from './navigation'
 
 afterEach(() => {
@@ -10,6 +11,7 @@ afterEach(() => {
   navigationState.searchParams = new URLSearchParams()
   document.cookie = 'adv-mock-session=; Path=/; Max-Age=0'
   localStorage.clear()
+  reiniciarArmazens()
 })
 
 // App Router: navegação mockada e inspecionável nos testes (ver ./navigation).

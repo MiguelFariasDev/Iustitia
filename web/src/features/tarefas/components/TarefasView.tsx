@@ -1,8 +1,9 @@
 'use client'
 
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
-import { DemoNotice } from '@/components/shared/DemoNotice'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useNow } from '@/hooks/useNow'
 import { getInitials } from '@/lib/format'
@@ -15,16 +16,18 @@ import {
   type Coluna,
   type Tarefa,
 } from '../kanban'
-import { useTarefasStore } from '../store'
+import { useTarefaActions, useTarefas } from '../hooks'
 import { AnelPrazo } from './AnelPrazo'
+import { NovaTarefaDialog } from './NovaTarefaDialog'
 
 interface CartaoProps {
   tarefa: Tarefa
   agora: Date | null
   onMover: (destino: Coluna) => void
+  onRemover: () => void
 }
 
-function Cartao({ tarefa, agora, onMover }: CartaoProps) {
+function Cartao({ tarefa, agora, onMover, onRemover }: CartaoProps) {
   const esquerda = colunaVizinha(tarefa.coluna, -1)
   const direita = colunaVizinha(tarefa.coluna, 1)
   const prog = agora ? progresso(tarefa, agora) : { pct: 0, tom: 'ok' as const, rotulo: '…' }
@@ -42,17 +45,33 @@ function Cartao({ tarefa, agora, onMover }: CartaoProps) {
         <h3 className="text-[17px] leading-snug font-medium">{tarefa.titulo}</h3>
         <AnelPrazo progresso={prog} />
       </div>
-      <p className="font-mono text-xs text-muted-foreground">{tarefa.processo}</p>
+      {tarefa.processo ? (
+        <p className="font-mono text-xs text-muted-foreground">{tarefa.processo}</p>
+      ) : null}
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Avatar className="size-6">
-            <AvatarFallback className="bg-muted text-[10px] font-semibold">
-              {getInitials(tarefa.responsavel)}
-            </AvatarFallback>
-          </Avatar>
-          {tarefa.responsavel}
+          {tarefa.responsavel ? (
+            <>
+              <Avatar className="size-6">
+                <AvatarFallback className="bg-muted text-[10px] font-semibold">
+                  {getInitials(tarefa.responsavel)}
+                </AvatarFallback>
+              </Avatar>
+              {tarefa.responsavel}
+            </>
+          ) : (
+            'Sem responsável'
+          )}
         </span>
         <span className="flex gap-1">
+          <button
+            type="button"
+            onClick={onRemover}
+            aria-label={`Excluir “${tarefa.titulo}”`}
+            className="inline-flex size-7 items-center justify-center rounded-md border outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </button>
           {([-1, 1] as const).map((passo) => {
             const destino = passo === -1 ? esquerda : direita
 
@@ -85,11 +104,13 @@ function Cartao({ tarefa, agora, onMover }: CartaoProps) {
 
 /**
  * Kanban de equipe. Mover um cartão: botões ‹ › (caminho por teclado e leitor de tela) ou arrastar
- * e soltar. Não há módulo de tarefas no backend — tudo aqui é demonstração em memória.
+ * e soltar. Sem módulo de tarefas no servidor ainda: as tarefas ficam neste navegador.
  */
 export function TarefasView() {
-  const tarefas = useTarefasStore((s) => s.tarefas)
-  const mover = useTarefasStore((s) => s.mover)
+  const tarefas = useTarefas()
+  const { mover, remover } = useTarefaActions()
+  const searchParams = useSearchParams()
+  const [novaAberta, setNovaAberta] = useState(searchParams.get('nova') === '1')
   const agora = useNow()
   const [sobre, setSobre] = useState<Coluna | null>(null)
   const [aviso, setAviso] = useState('')
@@ -97,19 +118,29 @@ export function TarefasView() {
   function moverPara(id: string, destino: Coluna) {
     const tarefa = tarefas.find((t) => t.id === id)
     if (!tarefa || tarefa.coluna === destino) return
-    mover(id, destino)
+    void mover(id, destino)
     // Leitor de tela: o cartão some de uma coluna e aparece em outra; sem isto ninguém é avisado.
     setAviso(`“${tarefa.titulo}” movida para ${rotuloColuna(destino)}.`)
   }
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <p className="text-xs font-medium text-muted-foreground">Equipe</p>
-        <h1 className="text-[33px] leading-tight font-semibold">Kanban de equipe</h1>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Equipe</p>
+          <h1 className="text-[33px] leading-tight font-semibold">Tarefas</h1>
+        </div>
+        <Button onClick={() => setNovaAberta(true)}>
+          <Plus aria-hidden />
+          Nova tarefa
+        </Button>
       </header>
 
-      <DemoNotice modulo="Tarefas" />
+      <p role="note" className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+        As tarefas são do escritório: toda a equipe vê o mesmo quadro.
+      </p>
+
+      <NovaTarefaDialog open={novaAberta} onClose={() => setNovaAberta(false)} />
 
       <p className="sr-only" role="status" aria-live="polite">
         {aviso}
@@ -151,6 +182,7 @@ export function TarefasView() {
                       tarefa={tarefa}
                       agora={agora}
                       onMover={(destino) => moverPara(tarefa.id, destino)}
+                      onRemover={() => void remover(tarefa.id)}
                     />
                   </li>
                 ))}

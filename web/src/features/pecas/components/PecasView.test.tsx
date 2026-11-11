@@ -1,15 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react'
-import * as documentosApi from '@/features/documentos/api'
+import { screen, waitFor } from '@testing-library/react'
 import * as processosApi from '@/features/processos/api'
-import { notify } from '@/lib/notify'
 import { renderWithProviders } from '@/test/render'
 import * as pecasApi from '../api'
-import { montarMinuta } from '../modelos'
 import { PecasView } from './PecasView'
 
-const envMock = vi.hoisted(() => ({ useMocks: true }))
-vi.mock('@/config/env', () => ({ env: envMock, isMockAuth: false }))
-vi.mock('@/features/documentos/api')
 vi.mock('@/features/processos/api')
 vi.mock('../api')
 vi.mock('@/lib/api/toastHandler', () => ({ handleApiError: vi.fn() }))
@@ -17,178 +11,138 @@ vi.mock('@/lib/notify', () => ({
   notify: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }))
 
-const processo = {
-  id: 'proc-1',
-  cnjNumber: '0000777-07.2018.8.06.0100',
-  clienteId: 'c1',
-  area: 'Civel' as const,
-  status: 'Ativo' as const,
-  tribunal: 'TJCE',
-  parteContraria: 'Banco Alfa S.A.',
-  dataDistribuicao: null,
-}
+const PECA_ID = '11111111-1111-1111-1111-111111111111'
 
 beforeEach(() => {
-  envMock.useMocks = true
   vi.mocked(processosApi.listProcessos).mockResolvedValue({
-    items: [processo],
+    items: [],
     page: 1,
     pageSize: 100,
-    totalCount: 1,
-    totalPages: 1,
+    totalCount: 0,
+    totalPages: 0,
   })
-  vi.mocked(pecasApi.gerarMinuta).mockImplementation(async (tipo, dados) =>
-    montarMinuta(tipo, dados)
-  )
-  vi.mocked(documentosApi.uploadDocumento).mockResolvedValue({} as never)
+  vi.mocked(pecasApi.submeterPeca).mockResolvedValue({
+    id: PECA_ID,
+    status: 'Pendente',
+    mensagem: 'Na fila',
+  })
+  vi.mocked(pecasApi.getStatusPeca).mockResolvedValue({
+    id: PECA_ID,
+    status: 'Concluido',
+    etapa: null,
+    progresso: 100,
+    mensagem: 'Pronta',
+    erro: null,
+  })
+  vi.mocked(pecasApi.getPeca).mockResolvedValue({
+    id: PECA_ID,
+    status: 'Concluido',
+    tipoPeca: 'contestacao',
+    area: 'civel',
+    versao: 1,
+    textoGerado:
+      'EXCELENTÍSSIMO SENHOR DOUTOR JUIZ.\n\nNos termos do art. 335 do CPC, contesta-se.',
+    fontes: [],
+    avisos: ['Confira os fatos citados.'],
+    aviso: 'Rascunho: exige revisão de profissional habilitado.',
+    exportacaoBloqueada: false,
+  })
 })
 
-afterEach(() => vi.resetAllMocks())
-
-async function escolherProcesso(user: ReturnType<typeof renderWithProviders>['user']) {
-  await user.click(screen.getByRole('combobox', { name: 'Processo' }))
-  await user.click(await screen.findByRole('option', { name: /0000777-07\.2018\.8\.06\.0100/ }))
-}
-
-describe('PecasView', () => {
-  it('avisa que são modelos de demonstração, não peças prontas', () => {
+describe('PecasView — formulário', () => {
+  it('oferece fatos, pedidos, o comando do advogado e o anexo de documentos do processo', () => {
     renderWithProviders(<PecasView />)
 
-    expect(screen.getByRole('note')).toHaveTextContent(/Modelos de demonstração/)
-    expect(screen.getByRole('note')).toHaveTextContent(/lacunas/)
+    expect(screen.getByLabelText('Fatos do caso')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pedidos')).toBeInTheDocument()
+    expect(screen.getByLabelText('Comando do advogado')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Anexar documentos/ })).toBeInTheDocument()
+    expect(screen.getByLabelText('Selecionar documentos do processo')).toBeInTheDocument()
   })
 
-  it('"Gerar minuta com IA" só habilita depois de escolher o processo', async () => {
-    const { user } = renderWithProviders(<PecasView />)
-    const gerar = screen.getByRole('button', { name: /Gerar minuta com IA/ })
-    expect(gerar).toBeDisabled()
+  it('não gera sem os fatos', () => {
+    renderWithProviders(<PecasView />)
 
-    await escolherProcesso(user)
-
-    expect(gerar).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Gerar minuta com IA/ })).toBeDisabled()
   })
+})
 
-  it('gera a minuta do tipo e do processo escolhidos, como rascunho que exige revisão', async () => {
+describe('PecasView — geração', () => {
+  it('envia fatos, pedidos, comando e os documentos anexados já indexados', async () => {
+    vi.mocked(pecasApi.enviarAnexo).mockResolvedValue({ id: 'doc-1', status: 'Indexado' })
     const { user } = renderWithProviders(<PecasView />)
-    await escolherProcesso(user)
 
+    const arquivo = new File(['conteudo'], 'inicial.pdf', { type: 'application/pdf' })
+    await user.upload(screen.getByLabelText('Selecionar documentos do processo'), arquivo)
+    expect(await screen.findByText('Pronto para uso')).toBeInTheDocument()
+    expect(pecasApi.enviarAnexo).toHaveBeenCalledWith(arquivo, 'peticao')
+
+    await user.type(screen.getByLabelText('Fatos do caso'), 'O autor foi cobrado indevidamente.')
+    await user.type(screen.getByLabelText('Pedidos'), 'Improcedência total.')
+    await user.type(screen.getByLabelText('Comando do advogado'), 'Priorize a preliminar.')
     await user.click(screen.getByRole('button', { name: /Gerar minuta com IA/ }))
 
-    const minuta = await screen.findByRole('region', { name: 'Minuta gerada' })
-    expect(pecasApi.gerarMinuta).toHaveBeenCalledWith(
-      'contestacao',
-      expect.objectContaining({
-        cnjNumber: '0000777-07.2018.8.06.0100',
-        parteContraria: 'Banco Alfa S.A.',
+    await waitFor(() =>
+      expect(pecasApi.submeterPeca).toHaveBeenCalledWith({
+        tipoPeca: 'contestacao',
+        area: 'civel',
+        fatos: 'O autor foi cobrado indevidamente.',
+        pedidos: 'Improcedência total.',
+        instrucoesAdicionais: 'Priorize a preliminar.',
+        documentosIds: ['doc-1'],
       })
     )
-    expect(within(minuta).getByText(/exige revisão do advogado/)).toBeInTheDocument()
-    expect(within(minuta).getByRole('heading', { name: 'CONTESTAÇÃO' })).toBeInTheDocument()
-    expect(
-      within(minuta).getByText(/Processo nº 0000777-07\.2018\.8\.06\.0100/)
-    ).toBeInTheDocument()
-  })
+    expect(await screen.findByRole('article', { name: 'Minuta gerada' })).toBeInTheDocument()
+    expect(screen.getByText(/EXCELENTÍSSIMO SENHOR DOUTOR JUIZ/)).toBeInTheDocument()
+    expect(screen.getByText('Confira os fatos citados.')).toBeInTheDocument()
+    expect(screen.getByText(/exige revisão do advogado/)).toBeInTheDocument()
+  }, 20_000)
 
-  it('destaca as citações legais com <mark>', async () => {
+  it('segura o botão enquanto um anexo ainda está sendo indexado', async () => {
+    vi.mocked(pecasApi.enviarAnexo).mockResolvedValue({ id: 'doc-2', status: 'Pendente' })
     const { user } = renderWithProviders(<PecasView />)
-    await escolherProcesso(user)
-    await user.click(screen.getByRole('button', { name: /Gerar minuta com IA/ }))
-    await screen.findByRole('region', { name: 'Minuta gerada' })
 
-    const marcas = Array.from(document.querySelectorAll('mark')).map((m) => m.textContent)
+    await user.upload(
+      screen.getByLabelText('Selecionar documentos do processo'),
+      new File(['x'], 'contrato.docx')
+    )
+    await user.type(screen.getByLabelText('Fatos do caso'), 'Fatos.')
 
-    expect(marcas).toContain('art. 335 do CPC')
-  })
-
-  it('durante a geração mostra o carregamento e trava o botão', async () => {
-    let concluir: (valor: ReturnType<typeof montarMinuta>) => void = () => undefined
-    vi.mocked(pecasApi.gerarMinuta).mockReturnValue(new Promise((resolve) => (concluir = resolve)))
-    const { user } = renderWithProviders(<PecasView />)
-    await escolherProcesso(user)
-
-    await user.click(screen.getByRole('button', { name: /Gerar minuta com IA/ }))
-
-    expect(screen.getByText('Gerando a minuta…')).toBeInTheDocument()
+    expect(await screen.findByText(/Aguardando os documentos/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Gerar minuta com IA/ })).toBeDisabled()
-
-    concluir(montarMinuta('contestacao', { ...processo, comarca: null, vara: null }))
-    expect(await screen.findByRole('region', { name: 'Minuta gerada' })).toBeInTheDocument()
   })
 
-  it('trocar o tipo descarta a minuta: ela era de outra peça', async () => {
+  it('remover o anexo o tira do acervo e da lista', async () => {
+    vi.mocked(pecasApi.enviarAnexo).mockResolvedValue({ id: 'doc-3', status: 'Indexado' })
+    vi.mocked(pecasApi.removerAnexo).mockResolvedValue()
     const { user } = renderWithProviders(<PecasView />)
-    await escolherProcesso(user)
-    await user.click(screen.getByRole('button', { name: /Gerar minuta com IA/ }))
-    await screen.findByRole('region', { name: 'Minuta gerada' })
 
-    await user.click(screen.getByRole('combobox', { name: 'Tipo de peça' }))
-    await user.click(await screen.findByRole('option', { name: 'Recurso de apelação' }))
+    await user.upload(
+      screen.getByLabelText('Selecionar documentos do processo'),
+      new File(['x'], 'parecer.txt')
+    )
+    await user.click(await screen.findByRole('button', { name: 'Remover parecer.txt' }))
 
-    expect(screen.queryByRole('region', { name: 'Minuta gerada' })).toBeNull()
+    expect(screen.queryByText('parecer.txt')).toBeNull()
+    expect(pecasApi.removerAnexo).toHaveBeenCalledWith('doc-3')
   })
 
-  it('salvar cria o rascunho em Documentos, vinculado ao processo, com o texto da minuta', async () => {
-    const { user } = renderWithProviders(<PecasView />)
-    await escolherProcesso(user)
-    await user.click(screen.getByRole('button', { name: /Gerar minuta com IA/ }))
-    await screen.findByRole('region', { name: 'Minuta gerada' })
-
-    await user.click(screen.getByRole('button', { name: 'Salvar como rascunho' }))
-
-    await waitFor(() => expect(documentosApi.uploadDocumento).toHaveBeenCalled())
-    const valores = vi.mocked(documentosApi.uploadDocumento).mock.calls[0]![0]
-    expect(valores.file.name).toBe('Rascunho - CONTESTAÇÃO - 0000777-07.2018.8.06.0100.txt')
-    expect(valores).toMatchObject({
-      vinculoTipo: 'Processo',
-      vinculoRotulo: '0000777-07.2018.8.06.0100',
+  it('mostra o erro quando a geração falha e deixa tentar de novo', async () => {
+    vi.mocked(pecasApi.getStatusPeca).mockResolvedValue({
+      id: PECA_ID,
+      status: 'Falhou',
+      etapa: null,
+      progresso: 0,
+      mensagem: 'Falhou',
+      erro: 'O serviço de IA está indisponível.',
     })
-    expect(await valores.file.text()).toContain('CONTESTAÇÃO')
-    expect(notify.success).toHaveBeenCalledWith('Minuta salva em Documentos como rascunho')
-    expect(await screen.findByRole('button', { name: 'Salva em Documentos' })).toBeDisabled()
-  })
-
-  it('se salvar falhar, o botão continua disponível para tentar de novo', async () => {
-    vi.mocked(documentosApi.uploadDocumento).mockRejectedValue(new Error('falha'))
     const { user } = renderWithProviders(<PecasView />)
-    await escolherProcesso(user)
+
+    await user.type(screen.getByLabelText('Fatos do caso'), 'Fatos.')
     await user.click(screen.getByRole('button', { name: /Gerar minuta com IA/ }))
-    await screen.findByRole('region', { name: 'Minuta gerada' })
 
-    await user.click(screen.getByRole('button', { name: 'Salvar como rascunho' }))
-
-    await waitFor(() => expect(documentosApi.uploadDocumento).toHaveBeenCalled())
-    expect(notify.success).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Salvar como rascunho' })).toBeEnabled()
-  })
-
-  it('a exportação para PDF/DOCX aparece como indisponível, sem fingir que funciona', async () => {
-    const { user } = renderWithProviders(<PecasView />)
-    await escolherProcesso(user)
-    await user.click(screen.getByRole('button', { name: /Gerar minuta com IA/ }))
-    await screen.findByRole('region', { name: 'Minuta gerada' })
-
-    expect(screen.getByRole('button', { name: /Exportar PDF\/DOCX/ })).toBeDisabled()
-  })
-
-  it('sem processos reais, em demonstração, oferece um processo de exemplo', async () => {
-    vi.mocked(processosApi.listProcessos).mockRejectedValue(new Error('sem API'))
-    const { user } = renderWithProviders(<PecasView />)
-
-    await user.click(screen.getByRole('combobox', { name: 'Processo' }))
-
-    expect(
-      await screen.findByRole('option', { name: /0000777-07\.2018\.8\.06\.0100/ })
-    ).toBeInTheDocument()
-  })
-
-  it('sem mocks não há geração: a tela diz isso, sem controles nem consulta', () => {
-    envMock.useMocks = false
-    renderWithProviders(<PecasView />)
-
-    expect(
-      screen.getByText('A criação de peças com IA ainda não está disponível')
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Gerar minuta/ })).toBeNull()
-    expect(processosApi.listProcessos).not.toHaveBeenCalled()
+    expect(await screen.findByText('O serviço de IA está indisponível.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })

@@ -36,7 +36,7 @@ describe('OnboardingWizard — tipo de conta', () => {
 
     expect(screen.getByRole('heading', { name: /Etapa 1 de 3: Escritório/ })).toBeInTheDocument()
     expect(screen.getByLabelText('Nome do escritório')).toBeInTheDocument()
-    expect(screen.getByLabelText('CNPJ (opcional)')).toBeInTheDocument()
+    expect(screen.getByLabelText('CNPJ')).toBeInTheDocument()
     expect(screen.queryByLabelText('CPF')).toBeNull()
   })
 
@@ -55,12 +55,23 @@ describe('OnboardingWizard — tipo de conta', () => {
     await user.click(screen.getByRole('radio', { name: /Advogado\(a\) autônomo\(a\)/ }))
 
     expect(screen.queryByLabelText('Nome do escritório')).toBeNull()
-    expect(screen.queryByLabelText('CNPJ (opcional)')).toBeNull()
+    expect(screen.queryByLabelText('CNPJ')).toBeNull()
     expect(screen.getByLabelText('CPF')).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /Etapa 1 de 3: Dados profissionais/ })
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Crie sua conta' })).toBeInTheDocument()
+  })
+
+  it('escritório não avança sem CNPJ', async () => {
+    const { user } = renderWithProviders(<OnboardingWizard />)
+
+    await user.type(screen.getByLabelText('Nome do escritório'), 'Souza & Associados')
+    await escolherOab(user)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByText('Informe o CNPJ do escritório.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Etapa 1 de 3/ })).toBeInTheDocument()
   })
 
   it('autônomo não avança sem CPF', async () => {
@@ -109,6 +120,7 @@ async function concluirPreferencias(user: UserEvent, { equipe }: { equipe: boole
 
 async function cadastrarEscritorio(user: UserEvent) {
   await user.type(screen.getByLabelText('Nome do escritório'), 'Souza & Associados')
+  await user.type(screen.getByLabelText('CNPJ'), '11222333000181')
   await escolherOab(user)
   await user.click(screen.getByRole('button', { name: 'Continuar' }))
   await preencherTitular(user)

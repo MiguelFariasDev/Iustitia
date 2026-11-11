@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, Pencil } from 'lucide-react'
+import { Archive, ListChecks, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -17,6 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { listUsers } from '@/features/settings/api'
+import { NovaTarefaDialog } from '@/features/tarefas/components/NovaTarefaDialog'
+import { TagsEditor } from '@/features/tags/components/TagsEditor'
+import { queryKeys } from '@/lib/query/queryKeys'
 import { clienteQuery } from '@/features/clientes/queries'
 import { routes } from '@/config/routes'
 import { formatCurrency, formatDate } from '@/lib/format'
@@ -36,6 +40,8 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
   const changeStatus = useChangeProcessoStatus(processoId)
   const archive = useArchiveProcesso(processoId)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [tarefaAberta, setTarefaAberta] = useState(false)
+  const { data: usuarios } = useQuery({ queryKey: queryKeys.users.list(), queryFn: listUsers })
 
   // Só busca o cliente depois de saber qual é: `enabled` evita uma requisição com id vazio
   // enquanto o processo carrega.
@@ -91,6 +97,11 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
 
           <AgendarNoProcessoButton processoId={processo.id} />
 
+          <Button variant="outline" size="sm" onClick={() => setTarefaAberta(true)}>
+            <ListChecks aria-hidden />
+            Nova tarefa
+          </Button>
+
           <Button variant="outline" size="sm" asChild>
             <Link href={`${routes.processes}/${processo.id}/editar` as never}>
               <Pencil aria-hidden />
@@ -110,6 +121,11 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Tags do processo</span>
+        <TagsEditor alvo="processo" alvoId={processo.id} rotulo="processo" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -132,6 +148,16 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
                     {cliente.nome}
                   </Link>
                 ) : null}
+              </Field>
+              <Field label="Advogado responsável">
+                <span className="flex flex-col gap-1.5">
+                  {usuarios?.find((u) => u.id === processo.responsavelUserId)?.name ?? null}
+                  <TagsEditor
+                    alvo="advogado"
+                    alvoId={processo.responsavelUserId}
+                    rotulo="advogado responsável"
+                  />
+                </span>
               </Field>
               <Field label="Distribuição">
                 {processo.dataDistribuicao ? formatDate(processo.dataDistribuicao) : null}
@@ -176,7 +202,13 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
         </Card>
       </div>
 
-      <ProcessoAbas processo={processo} />
+      <ProcessoAbas processo={processo} onNovaTarefa={() => setTarefaAberta(true)} />
+
+      <NovaTarefaDialog
+        open={tarefaAberta}
+        onClose={() => setTarefaAberta(false)}
+        processo={{ id: processo.id, cnjNumber: processo.cnjNumber }}
+      />
 
       <ConfirmDialog
         open={confirmOpen}

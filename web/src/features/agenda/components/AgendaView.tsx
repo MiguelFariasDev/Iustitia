@@ -1,6 +1,7 @@
 'use client'
 
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { FilterChip } from '@/components/shared/FilterChip'
@@ -32,7 +33,9 @@ export function AgendaView() {
   const [anchor, setAnchor] = useState(() => new Date())
   const [responsavelId, setResponsavelId] = useState('')
   const [tipos, setTipos] = useState<ReadonlySet<TipoEvento>>(new Set())
-  const [dialog, setDialog] = useState<EventoDialogState | null>(null)
+  // "Novo > Novo evento" do topo chega aqui com ?novo=1 e já abre o formulário.
+  const abrirNovo = useSearchParams().get('novo') === '1'
+  const [dialog, setDialog] = useState<EventoDialogState | null>(abrirNovo ? {} : null)
 
   const periodo = periodFor(view, anchor)
   const { data, error, isPending, isError, refetch } = useAgenda(

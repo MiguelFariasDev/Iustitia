@@ -8,7 +8,6 @@ import type { Publication } from '@/features/publicacoes/types'
 import { useNow } from '@/hooks/useNow'
 import { mockUser } from '@/lib/auth/mockAuth'
 import type { AccountType, UserRole } from '@/lib/auth/types'
-import { notify } from '@/lib/notify'
 import { queryKeys } from '@/lib/query/queryKeys'
 import { useAuthStore } from '@/stores/authStore'
 import { useTenantStore } from '@/stores/tenantStore'
@@ -292,52 +291,25 @@ describe('DashboardView — perfis', () => {
     expect(screen.queryByText('Aprovações pendentes')).toBeNull()
   })
 
-  it('sócio vê aprovações, carga da equipe e riscos de prazo, com o selo de demonstração', async () => {
+  it('sócio vê só o que é real: prazos da agenda, sem aprovações, carga nem valores inventados', async () => {
     entrar('Owner')
     render()
 
-    expect(screen.getByText('Aprovações pendentes')).toBeInTheDocument()
-    expect(screen.getByText('Carga da equipe')).toBeInTheDocument()
-    expect(screen.getAllByText('Demonstração').length).toBeGreaterThanOrEqual(2)
-    // Riscos de prazo são reais, então não levam o selo.
     expect(await screen.findByText('Contestação Souza')).toBeInTheDocument()
+    expect(screen.queryByText('Aprovações pendentes')).toBeNull()
+    expect(screen.queryByText('Carga da equipe')).toBeNull()
+    expect(screen.queryByText('Receita do mês')).toBeNull()
+    expect(screen.queryByText('Demonstração')).toBeNull()
     expect(vi.mocked(agendaApi.listEventos).mock.calls[0]![1]).toBeNull() // agenda do escritório inteiro
   })
 
-  it('sócio aprova: o item some e aparece o aviso; peça vai para revisão', async () => {
-    entrar('Partner')
-    const { user } = render()
-
-    await user.click(screen.getByRole('button', { name: /Aprovar: Proposta de êxito/ }))
-    expect(notify.success).toHaveBeenLastCalledWith('Aprovado')
-    expect(screen.queryByText(/Proposta de êxito/)).toBeNull()
-
-    await user.click(
-      screen.getByRole('button', { name: /Revisar: Contestação · Souza × Banco Alfa/ })
-    )
-    expect(notify.success).toHaveBeenLastCalledWith('Peça enviada para sua revisão')
-  })
-
-  it('sócio decide todas as aprovações e vê o estado vazio', async () => {
-    entrar('Owner')
-    const { user } = render()
-
-    for (const botao of screen.getAllByRole('button', { name: /^(Aprovar|Revisar):/ })) {
-      await user.click(botao)
-    }
-
-    expect(screen.getByText('Nenhuma aprovação pendente.')).toBeInTheDocument()
-  })
-
-  it('secretária: marcar o checklist atualiza o indicador "A protocolar"', async () => {
+  it('secretária: sem checklist nem indicadores de exemplo', () => {
     entrar('Admin')
-    const { user } = render()
-    const indicadores = screen.getByRole('region', { name: 'Indicadores' })
-    const protocolar = () => within(indicadores).getByText('A protocolar').closest('div')!
+    render()
 
-    expect(within(protocolar()).getByText('3')).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: /Protocolar contestação/ }))
-    expect(within(protocolar()).getByText('2')).toBeInTheDocument()
+    expect(screen.getByText('Nada para mostrar por enquanto')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.queryByText('Demonstração')).toBeNull()
   })
 
   it.each(['Admin', 'Intern', 'Financial'] as const)(
@@ -362,16 +334,12 @@ describe('DashboardView — perfis', () => {
     expect(processosApi.listProcessos).not.toHaveBeenCalled()
   })
 
-  it('financeiro: gráfico com alternativa em texto e conciliação', async () => {
+  it('financeiro: sem valores consolidados até haver servidor', () => {
     entrar('Financial')
-    const { user } = render()
+    render()
 
-    expect(screen.getByRole('table', { name: /Entradas e saídas por mês/ })).toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', { name: /Conciliar: Honorários · Reis Transportes/ })
-    )
-    expect(
-      screen.getByRole('button', { name: /Conciliado: Honorários · Reis Transportes/ })
-    ).toBeDisabled()
+    expect(screen.getByText('Valores do escritório ainda indisponíveis')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByText(/R\$/)).toBeNull()
   })
 })
