@@ -34,7 +34,7 @@ public class OllamaServiceTests
     private static string Line(string content, bool done = false, int? prompt = null, int? output = null) =>
         JsonSerializer.Serialize(new Dictionary<string, object?>
         {
-            ["model"] = "qwen3:8b",
+            ["model"] = "jurema-7b",
             ["message"] = new { role = "assistant", content },
             ["done"] = done,
             ["prompt_eval_count"] = prompt,
@@ -97,11 +97,11 @@ public class OllamaServiceTests
         request.RequestUri!.AbsolutePath.Should().Be("/api/chat");
         using var json = JsonDocument.Parse(body);
         var root = json.RootElement;
-        root.GetProperty("model").GetString().Should().Be("qwen3:8b");
+        root.GetProperty("model").GetString().Should().Be("jurema-7b");
         root.GetProperty("stream").GetBoolean().Should().BeTrue();
-        root.GetProperty("think").GetBoolean().Should().BeFalse();
+        root.TryGetProperty("think", out _).Should().BeFalse("Jurema-7B não tem modo de raciocínio; o parâmetro só vai se configurado");
         root.GetProperty("keep_alive").GetString().Should().Be("10m");
-        root.GetProperty("options").GetProperty("num_ctx").GetInt32().Should().Be(16384);
+        root.GetProperty("options").GetProperty("num_ctx").GetInt32().Should().Be(8192);
         root.GetProperty("options").GetProperty("temperature").GetDouble().Should().Be(0.2);
         root.GetProperty("options").GetProperty("top_p").GetDouble().Should().Be(0.9);
         root.GetProperty("messages").EnumerateArray().Select(m => m.GetProperty("role").GetString())
@@ -138,7 +138,7 @@ public class OllamaServiceTests
     {
         var handler = new StubHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)
         {
-            Content = new StringContent("model 'qwen3:8b' not found: DADO-DO-PROMPT"),
+            Content = new StringContent("model 'jurema-7b' not found: DADO-DO-PROMPT"),
         }));
 
         var act = () => Collect(Service(handler).ChatStreamAsync(Chat()));
@@ -340,12 +340,12 @@ public class OllamaServiceTests
         var handler = new StubHandler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(
-                "{\"models\":[{\"name\":\"qwen3:8b\",\"size\":123},{\"name\":\"bge-m3:latest\"}]}", Encoding.UTF8, "application/json"),
+                "{\"models\":[{\"name\":\"jurema-7b\",\"size\":123},{\"name\":\"bge-m3:latest\"}]}", Encoding.UTF8, "application/json"),
         }));
 
         var modelos = await Service(handler).ListarModelosAsync();
 
-        modelos.Should().Equal("qwen3:8b", "bge-m3:latest");
+        modelos.Should().Equal("jurema-7b", "bge-m3:latest");
     }
 
     [Fact]

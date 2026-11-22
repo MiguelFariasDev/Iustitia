@@ -106,7 +106,7 @@ public class GerarPecaValidationTests
 
         return new GerarPecaRequest(
             (string)f["tipo"]!, (string)f["area"]!, (string)f["fatos"]!, (string)f["pedidos"]!,
-            (IReadOnlyList<Guid>?)f["docs"], (string?)f["instrucoes"]);
+            (IReadOnlyList<Guid>?)f["docs"], (string?)f["instrucoes"], CasoId: Samples.CasoId);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class GerarPecaValidationTests
     public void PedidosSaoOpcionais_VazioOuAusenteViraVazio()
     {
         var vazio = GerarPecaValidation.Validate(Valid(f => f["pedidos"] = "   "));
-        var ausente = GerarPecaValidation.Validate(new GerarPecaRequest("peticao_inicial", "civel", "Fatos."));
+        var ausente = GerarPecaValidation.Validate(new GerarPecaRequest("peticao_inicial", "civel", "Fatos.", CasoId: Samples.CasoId));
 
         vazio.IsSuccess.Should().BeTrue();
         vazio.Value.Pedidos.Should().BeEmpty();

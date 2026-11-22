@@ -1,3 +1,6 @@
+using Advocacia.Modules.Drafting.Application.Busca;
+using Advocacia.Modules.Drafting.Domain.Casos;
+
 namespace Advocacia.Modules.Drafting.Application.Models;
 
 /// <summary>Metadados de um trecho indexado (o payload do ponto no banco vetorial).</summary>
@@ -12,15 +15,13 @@ public sealed record ChunkMetadata(
     string? UrlOrigem,
     string HashConteudo,
     IReadOnlyList<string>? Tags = null,
-    Guid? UsuarioId = null,
-    string? Visibilidade = null,
-    string? Referencia = null,
-    NormaRef? Norma = null);
+    NormaRef? Norma = null,
+    CasoRef? Caso = null);
 
 /// <summary>
 /// Presente só em trechos do acervo normativo público (leis, jurisprudência…). Carrega o necessário para
 /// citar com rastreabilidade: qual norma, qual dispositivo, qual versão, qual arquivo Markdown e qual a
-/// fonte oficial. Trechos de documentos do cliente não têm isto.
+/// fonte oficial. Trechos de anexos não têm isto.
 /// </summary>
 public sealed record NormaRef(
     Guid NormaId,
@@ -42,63 +43,102 @@ public sealed record NormaRef(
     string? Hierarquia,
     int VersaoNumero);
 
-/// <summary>Ponto a gravar no banco vetorial. <see cref="TenantId"/> é obrigatório e vira filtro de toda busca.</summary>
-public sealed record VectorPoint(Guid TenantId, string Id, float[] Vector, string Texto, ChunkMetadata Meta);
-
-public sealed record VectorHit(string PointId, string Texto, double Score, ChunkMetadata Meta);
-
-/// <param name="TenantId">Sempre aplicado como filtro: o banco vetorial não tem RLS, então o isolamento entre escritórios é isto.</param>
-/// <param name="UsuarioId">
-/// Quem está pedindo. Com ele, documentos <c>privado</c> de OUTRO usuário nunca aparecem; documentos
-/// do escritório aparecem para todos. Sem ele, só documentos do escritório.
-/// </param>
-public sealed record VectorSearchQuery(
+/// <summary>
+/// Presente só em trechos de anexos. É o lastro do ISOLAMENTO: sem isto um trecho não pode ser usado, e o
+/// <see cref="CasoId"/> é conferido de novo depois da busca, além do filtro obrigatório no banco vetorial.
+/// </summary>
+public sealed record CasoRef(
     Guid TenantId,
-    float[] Vector,
-    int Limit,
-    string? Area = null,
-    string? TipoDocumento = null,
-    DateOnly? PublicadoDe = null,
-    DateOnly? PublicadoAte = null,
-    IReadOnlyList<Guid>? DocumentosIds = null,
-    double? ScoreMinimo = null,
-    Guid? UsuarioId = null,
-    string? Tribunal = null);
+    Guid CasoId,
+    Guid ClienteId,
+    Guid DocumentoId,
+    Guid UsuarioIdResponsavel,
+    OrigemTexto Origem,
+    double? Confianca,
+    string? Secao,
+    bool Restrito,
+    bool Suspeito,
+    bool RevisaoPendente = false);
+
+/// <summary>Trecho encontrado por uma das buscas. A escala do score depende da busca: compare só dentro da mesma lista.</summary>
+public sealed record VectorHit(string PointId, string Texto, double Score, ChunkMetadata Meta);
 
 public sealed record RetrievedChunk(string PointId, string Texto, double Score, ChunkMetadata Meta)
 {
     /// <summary>Rótulo de citação: o que o modelo deve escrever entre colchetes. Fonte única de verdade.</summary>
-    public string Rotulo => Meta.Norma is { } norma
-        ? CitationLabel.For(norma)
-        : CitationLabel.For(Meta.NomeArquivo, Meta.Pagina);
+    public string Rotulo => CitationLabel.For(Meta);
 }
 
-public sealed record RagQuery(
-    Guid TenantId,
-    string TipoPeca,
-    string Area,
-    string Fatos,
-    string Pedidos,
-    IReadOnlyList<Guid> DocumentosIds,
-    Guid? UsuarioId = null);
+/// <summary>Grupo de contexto mostrado ao modelo. A separação é exigência do produto: fato não se mistura com norma.</summary>
+public enum GrupoContexto
+{
+    DocumentosDoCaso = 0,
+    Constituicao = 1,
+    LeisFederais = 2,
+    Jurisprudencia = 3,
+}
 
-public sealed record RagContext(IReadOnlyList<RetrievedChunk> Chunks, int TokensAproximados, int Descartados);
+/// <param name="Chunks">5 a 10 trechos, já na ordem de apresentação (grupo, depois relevância).</param>
+/// <param name="Cortados">Trechos relevantes que não couberam na janela do modelo.</param>
+public sealed record RagContext(
+    IReadOnlyList<RetrievedChunk> Chunks, int TokensAproximados, int Descartados, int Cortados = 0)
+{
+    public static GrupoContexto GrupoDe(ChunkMetadata meta) => meta.Norma switch
+    {
+        null => GrupoContexto.DocumentosDoCaso,
+        { Colecao: Normas.Colecoes.ConstituicaoFederal } => GrupoContexto.Constituicao,
+        { Colecao: Normas.Colecoes.Jurisprudencia } => GrupoContexto.Jurisprudencia,
+        _ => GrupoContexto.LeisFederais,
+    };
+
+    public IEnumerable<RetrievedChunk> DoGrupo(GrupoContexto grupo) => Chunks.Where(c => GrupoDe(c.Meta) == grupo);
+}
 
 public static class CitationLabel
 {
-    /// <summary>"[" e "]" no nome quebrariam o formato [ARQUIVO, p. X]; viram parênteses.</summary>
-    /// <summary>Norma do acervo: "[NORMA, art. X]". Sem artigo (súmula, decisão) o sufixo é "texto".</summary>
-    public static string For(NormaRef norma)
+    public static string For(ChunkMetadata meta) =>
+        meta.Norma is { } norma ? For(norma, meta) : For(meta.NomeArquivo, meta.Pagina);
+
+    /// <summary>
+    /// Lei: "Código Civil, art. 186". Jurisprudência: "STJ, Súmula nº 297" (com página quando existe).
+    /// Colchetes e vírgulas do nome quebrariam o formato; viram parênteses e ponto e vírgula.
+    /// </summary>
+    private static string For(NormaRef norma, ChunkMetadata meta)
     {
-        var nome = norma.Titulo.Replace('[', '(').Replace(']', ')').Replace(',', ';').Trim();
+        if (norma.Colecao == Normas.Colecoes.Jurisprudencia)
+        {
+            var tribunal = meta.Tribunal?.ToUpperInvariant();
+            var titulo = Limpar(norma.Titulo);
+            if (tribunal is not null)
+            {
+                foreach (var sufixo in new[] { $" do {tribunal}", $" da {tribunal}" })
+                {
+                    if (titulo.EndsWith(sufixo, StringComparison.OrdinalIgnoreCase))
+                    {
+                        titulo = titulo[..^sufixo.Length];
+                    }
+                }
+            }
+
+            var rotulo = tribunal is null ? titulo : $"{tribunal}, {titulo}";
+
+            return meta.Pagina is { } pagina ? $"{rotulo}, p. {pagina}" : rotulo;
+        }
+
+        var conhecida = NormasConhecidas.Identificar(norma.Tipo, norma.Numero, meta.DataPublicacao?.Year, norma.Colecao);
+        var nome = conhecida?.Apelido ?? Limpar(norma.Titulo);
+
+        // ADCT e anexos reiniciam a numeração: "Constituição Federal, art. 5º" e o art. 5º do ADCT são coisas diferentes.
+        if (norma.Hierarquia is { } hierarquia && hierarquia.StartsWith("ATO DAS", StringComparison.OrdinalIgnoreCase))
+        {
+            nome += " (ADCT)";
+        }
 
         return string.IsNullOrWhiteSpace(norma.Artigo) ? $"{nome}, texto" : $"{nome}, art. {norma.Artigo.Trim()}";
     }
 
-    public static string For(string nomeArquivo, int? pagina)
-    {
-        var nome = nomeArquivo.Replace('[', '(').Replace(']', ')').Replace(',', ';').Trim();
+    public static string For(string nomeArquivo, int? pagina) =>
+        $"{Limpar(nomeArquivo)}, p. {(pagina is { } p ? p.ToString(System.Globalization.CultureInfo.InvariantCulture) : "s/n")}";
 
-        return $"{nome}, p. {(pagina is { } p ? p.ToString(System.Globalization.CultureInfo.InvariantCulture) : "s/n")}";
-    }
+    private static string Limpar(string nome) => nome.Replace('[', '(').Replace(']', ')').Replace(',', ';').Trim();
 }

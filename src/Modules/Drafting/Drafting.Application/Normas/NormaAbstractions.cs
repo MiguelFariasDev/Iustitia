@@ -1,3 +1,4 @@
+using Advocacia.Modules.Drafting.Application.Busca;
 using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Domain.Normas;
 
@@ -16,6 +17,9 @@ public interface IObjectStorage
     Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
 
     Task CopyAsync(string sourceKey, string destinationKey, CancellationToken cancellationToken = default);
+
+    /// <summary>Idempotente: apagar o que não existe é sucesso.</summary>
+    Task DeleteAsync(string key, CancellationToken cancellationToken = default);
 }
 
 public sealed record RepoArquivo(string CaminhoRelativo, string CaminhoAbsoluto, long Bytes, string? Hash = null);
@@ -76,8 +80,7 @@ public sealed record NormaFiltro(
     IReadOnlyList<string>? Esferas = null,
     IReadOnlyList<string>? Ufs = null,
     IReadOnlyList<string>? Municipios = null,
-    string? Area = null,
-    bool AreaEstrita = false,
+    IReadOnlyList<string>? Areas = null,
     DateOnly? DataDe = null,
     DateOnly? DataAte = null,
     bool IncluirRevogadas = true,
@@ -133,40 +136,36 @@ public sealed record NormaPayload(
                 Colecao, ArquivoMarkdownPath, Artigo, Paragrafo, Inciso, Secao, VersaoNumero)));
 }
 
-public sealed record NormaVectorPoint(Guid Id, float[] Vector, NormaPayload Payload);
+public sealed record NormaVectorPoint(Guid Id, float[] Vector, VetorEsparso Esparso, NormaPayload Payload);
 
-/// <summary>Banco vetorial do acervo PÚBLICO (sem tenant). Documentos de cliente usam <c>IVectorStore</c>.</summary>
+/// <summary>Banco vetorial do acervo PÚBLICO (sem tenant). Anexos usam <c>ICasoVectorStore</c>.</summary>
 public interface INormaVectorStore
 {
-    /// <summary>Cria as coleções que faltam (int8, vetores em disco, índices de payload). Idempotente.</summary>
-    Task EnsureCollectionsAsync(int dimensions, CancellationToken cancellationToken = default);
-
     Task UpsertAsync(string colecao, IReadOnlyList<NormaVectorPoint> points, CancellationToken cancellationToken = default);
 
     /// <summary>Apaga os pontos da norma; com <paramref name="manterVersao"/>, preserva essa versão.</summary>
     Task DeleteAsync(string colecao, Guid normaId, int? manterVersao, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<VectorHit>> SearchAsync(
-        NormaFiltro filtro, float[] vetor, int limit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VectorHit>> BuscarDensoAsync(
+        string colecao, NormaFiltro filtro, float[] vetor, int limite, CancellationToken cancellationToken = default);
 
-    Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VectorHit>> BuscarBm25Async(
+        string colecao, NormaFiltro filtro, VetorEsparso consulta, int limite, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Busca por palavra-chave (full-text do PostgreSQL) e conferências de existência.</summary>
+/// <summary>
+/// O que o PostgreSQL responde melhor que o Qdrant: dispositivo citado pelo nome (exato), conferência de URN e
+/// um full-text de reserva para quando o BM25 do Qdrant estiver fora do ar.
+/// </summary>
 public interface INormaSearchIndex
 {
+    Task<IReadOnlyList<VectorHit>> BuscarReferenciasAsync(
+        IReadOnlyList<ReferenciaLegal> referencias, int limite, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<VectorHit>> BuscarPalavrasChaveAsync(
         NormaFiltro filtro, string consulta, int limit, CancellationToken cancellationToken = default);
 
     Task<bool> UrnExisteAsync(string urn, CancellationToken cancellationToken = default);
-}
-
-public sealed record NormaBusca(string TextoConsulta, NormaFiltro Filtro);
-
-public interface IHybridSearchService
-{
-    /// <summary>Candidatos fundidos, deduplicados e reordenados — já no tamanho final (5–10).</summary>
-    Task<IReadOnlyList<VectorHit>> BuscarAsync(NormaBusca busca, float[] vetor, CancellationToken cancellationToken = default);
 }
 
 public enum IngestaoResultado

@@ -126,12 +126,14 @@ public class NormaMetadataResolverTests
         meta.Ano.Should().Be(1988);
         meta.FonteOficialUrl.Should().Contain("planalto.gov.br");
         meta.Area.Should().Be("constitucional");
-        meta.Colecao.Should().Be(Colecoes.LeisFederais);
+        meta.Colecao.Should().Be(Colecoes.ConstituicaoFederal);
+        meta.Ementa.Should().BeNull("o preâmbulo não é ementa");
+        meta.Data.Should().Be(new DateOnly(1988, 10, 5));
         meta.Urn.Should().BeNull("a URN não é inventada");
     }
 
     [Fact]
-    public void SumulaDoStf_VaiParaAColecaoDeSumulasComTribunal()
+    public void SumulaDoStf_VaiParaJurisprudenciaComTribunal()
     {
         var meta = Resolve("jurisprudencia/stf/sumulas/sumula-1.md", """
             ---
@@ -151,7 +153,7 @@ public class NormaMetadataResolverTests
 
         meta.Tribunal.Should().Be("STF");
         meta.Esfera.Should().Be("jurisprudencia");
-        meta.Colecao.Should().Be(Colecoes.Sumulas);
+        meta.Colecao.Should().Be(Colecoes.Jurisprudencia);
     }
 
     [Fact]
@@ -175,55 +177,26 @@ public class NormaMetadataResolverTests
         meta.Situacao.Should().Be("Trânsito em Julgado");
     }
 
-    [Fact]
-    public void DecretoMunicipal_UsaUfEMunicipioDoYaml_ERevogadaNulaViraNaoInformada()
+    [Theory]
+    [InlineData("municipais/CE/fortaleza/leis/lei-1.md")]
+    [InlineData("estaduais/CE/leis/lei-1.md")]
+    [InlineData("reguladores/rfb/x.md")]
+    [InlineData("tratados/oit/convencao-102.md")]
+    public void ForaDoEscopo_ERecusado_MesmoQueChegueAqui(string path)
     {
-        var meta = Resolve("municipais/CE/fortaleza/decretos-legislativos/2018/decretos-legislativos-838-2018-sapl-5322.md", """
-            ---
-            titulo: "Decreto Legislativo nº 838, de 06 de setembro de 2018"
-            tipo: "Decreto legislativo"
-            numero: "838"
-            data: "2018-09-06"
-            municipio: "Fortaleza"
-            uf: "CE"
-            fonte: "https://sapl.fortaleza.ce.leg.br/norma/5322"
-            revogada: null
-            ---
-            # Decreto Legislativo nº 838, de 06 de setembro de 2018
+        var resolucao = NormaMetadataResolver.Resolver(path, FrontMatterParser.Parse(LeiCivil));
 
-            Concede o Título de Cidadão de Fortaleza ao senhor Luciano Nunes Maia.
-            """);
-
-        meta.Esfera.Should().Be("municipal");
-        meta.Uf.Should().Be("CE");
-        meta.Municipio.Should().Be("Fortaleza");
-        meta.Colecao.Should().Be(Colecoes.LegislacaoMunicipal);
-        meta.Revogada.Should().BeFalse();
-        meta.Situacao.Should().Be("Não informada", "o acervo não disse: não se inventa vigência");
+        resolucao.Ok.Should().BeFalse();
+        resolucao.Motivo.Should().Contain("fora do escopo");
     }
 
     [Fact]
-    public void Tratado_UsaSituacaoIndiceEAceitaDataVazia()
+    public void VigenciaAusenteNoYaml_ViraNaoInformada_NuncaInventada()
     {
-        var meta = Resolve("tratados/oit/convencao-102.md", """
-            ---
-            titulo: "Convenção OIT nº 102 - Norma Mínima sobre Previdência Social"
-            tipo: "Convenção da OIT"
-            fonte: "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2026/decreto/D12936.htm"
-            numero: "102"
-            data: ""
-            situacao_indice: "Vigente"
-            ---
-            # Convenção OIT nº 102
+        var meta = Resolve("federal/decretos/2001/d.md", "---\ntitulo: \"Decreto nº 1 de 2001\"\nrevogada: null\n---\n# Decreto\n\nTexto do decreto com conteúdo.");
 
-            A Conferência Geral da Organização Internacional do Trabalho, convocada em Genebra.
-            """);
-
-        meta.Situacao.Should().Be("Vigente");
-        meta.Data.Should().BeNull();
-        meta.Esfera.Should().Be("internacional");
-        meta.Colecao.Should().Be(Colecoes.Tratados);
-        meta.Area.Should().Be("previdenciario");
+        meta.Situacao.Should().Be("Não informada");
+        meta.Revogada.Should().BeFalse();
     }
 
     [Fact]
@@ -261,14 +234,14 @@ public class NormaMetadataResolverTests
 
 public class NormaFilePolicyTests
 {
-    private readonly NormasIngestaoOptions _options = new();
+    private readonly NormasIngestaoOptions _options = new() { SomenteAltaUtilizacao = false };
 
     [Theory]
     [InlineData("constituicao.md", true)]
     [InlineData("federal/leis-ordinarias/2002/lei-10406-2002-01-10.md", true)]
     [InlineData("jurisprudencia/stf/sumulas/sumula-1.md", true)]
-    [InlineData("municipais/CE/fortaleza/leis/lei-1.md", true)]
-    [InlineData("estaduais/CE/leis/lei-1.md", true)]
+    [InlineData("municipais/CE/fortaleza/leis/lei-1.md", false)]
+    [InlineData("estaduais/CE/leis/lei-1.md", false)]
     [InlineData("README.md", false)]
     [InlineData("federal/_fonte/auditorias/QA100/dec-1.md", false)]
     [InlineData("federal/leis-ordinarias/_lotes/lote-1.md", false)]
@@ -283,33 +256,55 @@ public class NormaFilePolicyTests
         NormaFilePolicy.Elegivel(path, _options).Should().Be(esperado);
 
     [Fact]
-    public void PastasConfiguradasMudamOEscopo()
+    public void ConfiguracaoConsegueReduzirOEscopo_MasNaoIncluirOQueEProibido()
     {
-        _options.PastasIncluidas = ["estaduais/BA"];
+        _options.PastasIncluidas = ["jurisprudencia/stf", "estaduais/BA"];
 
-        NormaFilePolicy.Elegivel("estaduais/BA/leis/lei-1.md", _options).Should().BeTrue();
-        NormaFilePolicy.Elegivel("estaduais/CE/leis/lei-1.md", _options).Should().BeFalse();
+        NormaFilePolicy.Elegivel("jurisprudencia/stf/sumulas/s.md", _options).Should().BeTrue();
+        NormaFilePolicy.Elegivel("federal/decretos/2001/d.md", _options).Should().BeFalse();
+        NormaFilePolicy.Elegivel("estaduais/BA/leis/lei-1.md", _options).Should().BeFalse("estaduais é exclusão fixa");
     }
 
+    /// <summary>O binder do .NET anexa a arrays com valor padrão: com padrões na propriedade, reduzir seria impossível.</summary>
     [Fact]
-    public void PrioridadeColocaAConstituicaoELeisAntesDoVolume()
+    public void ListasNascemVazias_ParaOBinderSubstituir()
+    {
+        new NormasIngestaoOptions().PastasIncluidas.Should().BeEmpty();
+        new NormasIngestaoOptions().Incluidas.Should().Equal("constituicao.md", "federal", "jurisprudencia");
+        new NormasIngestaoOptions().Excluidas.Should().Contain(["_fonte", ".git", "scripts", "estaduais", "municipais", "reguladores", "tratados"]);
+    }
+
+    [Theory]
+    [InlineData("constituicao.md", true)]
+    [InlineData("federal/leis-ordinarias/2002/lei-10406-2002-01-10.md", true)]
+    [InlineData("federal/decretos-lei/1943/del-5452-1943-05-01.md", true)]
+    [InlineData("federal/leis-complementares/1966/lcp-1.md", true)]
+    [InlineData("jurisprudencia/stj/sumulas/sumula-297.md", true)]
+    [InlineData("jurisprudencia/stf/sumulas-vinculantes/sumula-vinculante-10.md", true)]
+    [InlineData("federal/decretos/1918/dec-13105-1918-07-17.md", false)]
+    [InlineData("jurisprudencia/regimentos/regimento-tcu.md", false)]
+    public void SubconjuntoDeAltaUtilizacao_EOPontoDePartida(string path, bool esperado) =>
+        NormaFilePolicy.Elegivel(path, new NormasIngestaoOptions()).Should().Be(esperado);
+
+    [Fact]
+    public void PrioridadeColocaAConstituicaoEOsCodigosAntesDoVolume()
     {
         var ordenados = new[]
         {
-            "reguladores/rfb/x.md", "federal/decretos/2001/d.md", "jurisprudencia/stf/sumulas/s.md",
-            "constituicao.md", "federal/leis-ordinarias/2002/l.md", "tratados/oit/t.md",
-        }.OrderBy(NormaFilePolicy.Prioridade).ToList();
+            "federal/decretos/2001/d.md", "jurisprudencia/stf/sumulas/s.md", "federal/leis-ordinarias/2003/l.md",
+            "federal/leis-ordinarias/2002/lei-10406-2002-01-10.md", "constituicao.md",
+        }.OrderBy(NormaFilePolicy.Prioridade).ThenBy(p => p, StringComparer.Ordinal).ToList();
 
-        ordenados[0].Should().Be("constituicao.md");
-        ordenados[1].Should().Be("federal/leis-ordinarias/2002/l.md");
-        ordenados[^1].Should().Be("reguladores/rfb/x.md");
+        ordenados.Take(2).Should().Equal("constituicao.md", "federal/leis-ordinarias/2002/lei-10406-2002-01-10.md");
+        ordenados[2].Should().Be("federal/leis-ordinarias/2003/l.md");
+        ordenados[^1].Should().Be("federal/decretos/2001/d.md");
     }
 
     [Fact]
     public void FiltrosDeRecorte_ConsideramUfMunicipioTipoEPeriodo()
     {
         var meta = new NormaMetadata(
-            "T", "Lei Ordinária", "1", 2010, null, null, null, "Vigente", false, "v", null, "", "estadual", "BA", null, null, null, [], Colecoes.LegislacaoEstadual);
+            "T", "Lei Ordinária", "1", 2010, null, null, null, "Vigente", false, "v", null, "", "estadual", "BA", null, null, null, [], Colecoes.LeisFederais);
 
         NormaFilePolicy.MotivoDeRecusa(meta, new NormasFiltroOptions { Ufs = ["CE"] }).Should().Contain("UF");
         NormaFilePolicy.MotivoDeRecusa(meta, new NormasFiltroOptions { Ufs = ["BA"] }).Should().BeNull();
@@ -353,7 +348,7 @@ public class NormaChunkerTests
 
         var artigos = chunks.Where(c => c.Artigo is not null).ToList();
         artigos.Select(c => c.Artigo).Should().Equal("1º", "2º");
-        artigos[0].Texto.Should().StartWith("Lei nº 10.406 de 10/01/2002 — Art. 1º");
+        artigos[0].Texto.Should().StartWith("Código Civil — Lei nº 10.406 de 10/01/2002 — Art. 1º");
         artigos[0].Texto.Should().Contain("PARTE GERAL > TÍTULO I — DAS PESSOAS NATURAIS > CAPÍTULO I — DA PERSONALIDADE E DA CAPACIDADE");
         artigos[0].Texto.Should().Contain("Ementa: Institui o Código Civil.");
         artigos[0].Texto.Should().Contain("Toda pessoa é capaz de direitos e deveres na ordem civil.");
@@ -403,7 +398,7 @@ public class NormaChunkerTests
         var porFrase = _chunker.Dividir(Meta(), $"**Art. 21.** {semEstrutura}").Where(c => c.Artigo == "21").ToList();
 
         porInciso.Should().HaveCountGreaterThan(1);
-        porInciso.Should().Contain(c => c.Inciso is "I" or "II" or "III" or "IV" or "V");
+        porInciso.Should().Contain(c => new[] { "I", "II", "III", "IV", "V" }.Contains(c.Inciso));
         porFrase.Should().HaveCountGreaterThan(1);
         porFrase.Should().OnlyContain(c => c.Tokens <= 900);
     }
@@ -411,7 +406,7 @@ public class NormaChunkerTests
     [Fact]
     public void DocumentoSemArtigos_Sumula_VirraUmChunkSoComOTitulo()
     {
-        var chunks = _chunker.Dividir(Meta("Súmula nº 1 do STF", null), """
+        var chunks = _chunker.Dividir(Meta("Súmula nº 1 do STF", null) with { Tipo = "Súmula", Numero = "1", Esfera = "jurisprudencia", Colecao = Colecoes.Jurisprudencia }, """
             # Súmula nº 1 do STF
 
             SÚMULA 1

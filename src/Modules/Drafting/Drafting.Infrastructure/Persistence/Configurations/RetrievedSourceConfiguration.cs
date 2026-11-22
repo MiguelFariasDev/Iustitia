@@ -19,7 +19,7 @@ public sealed class RetrievedSourceConfiguration : IEntityTypeConfiguration<Retr
         builder.Property(source => source.TenantId).IsRequired();
         builder.Property(source => source.QdrantPointId).HasMaxLength(64).IsRequired();
         builder.Property(source => source.NomeArquivo).HasMaxLength(RetrievedSource.FileNameMaxLength).IsRequired();
-        builder.Property(source => source.Trecho).IsRequired();
+        builder.Property(source => source.Trecho).HasConversion(DraftingEncryption.Conversor(DraftingEncryption.Trecho)).IsRequired();
         builder.Property(source => source.UtilizadaNaGeracao).IsRequired();
         builder.Property(source => source.MetadadosJson).HasColumnType("jsonb");
 

@@ -11,7 +11,7 @@ namespace Advocacia.Modules.Drafting.Application.Services;
 /// </summary>
 public static partial class InputSanitizer
 {
-    [GeneratedRegex(@"^[ \t]*(TIPO DE PEÇA|ÁREA|FATOS|PEDIDOS|INSTRUÇÕES ADICIONAIS|CONTEXTO RECUPERADO|TAREFA)[ \t]*:", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^[ \t]*(TIPO DE PEÇA|ÁREA|FATOS(?: FORNECIDOS PELA ADVOGADA)?|PEDIDOS(?: SOLICITADOS)?|INSTRUÇÕES ADICIONAIS|DOCUMENTOS DO CASO|CONTEXTO (?:JURÍDICO )?RECUPERADO|TAREFA|REGRAS ABSOLUTAS)[ \t]*:", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex SectionMarker();
 
     [GeneratedRegex(@"\n{3,}")]
@@ -27,6 +27,23 @@ public static partial class InputSanitizer
             return string.Empty;
         }
 
+        var text = NeutralizarMarcadores(RemoverInvisiveis(value));
+        text = ExcessSpaces().Replace(text, " ");
+        text = ExcessNewlines().Replace(text, "\n\n");
+
+        return text.Trim();
+    }
+
+    /// <summary>Uma linha "TAREFA:" vinda de fora vira "TAREFA -": não abre seção falsa no prompt.</summary>
+    public static string NeutralizarMarcadores(string texto) =>
+        SectionMarker().Replace(texto, match => match.Value.TrimEnd(':').TrimEnd() + " -");
+
+    /// <summary>
+    /// Quebras de linha uniformes e sem caracteres de controle ou invisíveis. Preserva a estrutura: é o que se
+    /// aplica ao texto de documentos (o Markdown guardado não pode ter as seções do original alteradas).
+    /// </summary>
+    public static string RemoverInvisiveis(string value)
+    {
         var normalized = value.Normalize(NormalizationForm.FormC).Replace("\r\n", "\n").Replace('\r', '\n');
 
         var builder = new StringBuilder(normalized.Length);
@@ -46,10 +63,6 @@ public static partial class InputSanitizer
             builder.Append(rune.ToString());
         }
 
-        var text = SectionMarker().Replace(builder.ToString(), match => match.Value.TrimEnd(':').TrimEnd() + " -");
-        text = ExcessSpaces().Replace(text, " ");
-        text = ExcessNewlines().Replace(text, "\n\n");
-
-        return text.Trim();
+        return builder.ToString();
     }
 }

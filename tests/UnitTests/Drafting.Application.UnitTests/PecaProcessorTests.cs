@@ -1,5 +1,10 @@
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Busca;
+using Advocacia.Modules.Drafting.Application.Models;
+using Advocacia.Modules.Drafting.Application.Normas;
 using Advocacia.Modules.Drafting.Application.Services;
+using Advocacia.Modules.Drafting.Application.Validacao;
+using Advocacia.Modules.Drafting.Domain.Casos;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,7 +15,7 @@ namespace Advocacia.Modules.Drafting.Application.UnitTests;
 public class PecaProcessorTests
 {
     private const string MinutaBoa =
-        "DOS FATOS\nO autor contratou o serviço.\nDO DIREITO\nHá ato ilícito [contrato.pdf, p. 3].\n" +
+        "DOS FATOS\nO autor contratou o serviço.\nDO DIREITO\nHá ato ilícito [Código Civil, art. 186], com multa contratual [contrato.pdf, p. 3].\n" +
         "FONTES UTILIZADAS\ncontrato.pdf, p. 3\nPONTOS PARA REVISÃO HUMANA\nConferir os valores.";
 
     private sealed class Harness
@@ -21,22 +26,28 @@ public class PecaProcessorTests
 
         public FakeUnitOfWork UnitOfWork { get; } = new();
 
-        public FakeClock Clock { get; } = new();
+        public Mundo Mundo { get; } = new();
+
+        public FakeClock Clock => Mundo.Clock;
 
         public FakeNotificacao Notificacao { get; } = new();
 
-        public FakeVectorStore Store { get; init; } = new([Samples.Hit("pt-1", "Art. 186: ato ilícito.", 0.91)]);
+        public bool ComAnexo { get; init; } = true;
+
+        public VectorHit[] Juridico { get; init; } = [Samples.HitNorma()];
+
+        public ILlmEstruturado Extracao { get; init; } = new FakeEstruturado(falha: new LlmServiceException("sem extração"));
 
         public FakeLlm Llm { get; init; } = new(
         [
             "DOS FATOS\nO autor contratou o serviço.\n",
-            "DO DIREITO\nHá ato ilícito [contrato.pdf, p. 3].\n",
+            "DO DIREITO\nHá ato ilícito [Código Civil, art. 186], com multa contratual [contrato.pdf, p. 3].\n",
             "FONTES UTILIZADAS\ncontrato.pdf, p. 3\nPONTOS PARA REVISÃO HUMANA\nConferir os valores.",
         ]);
 
         public int MaxTentativas { get; init; } = 3;
 
-        public Harness() => Queue = new FakeQueue(Clock);
+        public Harness() => Queue = new FakeQueue(Mundo.Clock);
 
         public PecaProcessor Processor { get; private set; } = null!;
 
@@ -44,25 +55,37 @@ public class PecaProcessorTests
 
         public Harness Build()
         {
+            if (ComAnexo)
+            {
+                Mundo.NovoDocumento();
+            }
+
             var user = new FakeCurrentUser();
             Documents = new LegalDocumentService(Repository, Queue, UnitOfWork, user, Clock, Options.Create(new CustoOptions { GpuUsdPorHora = 0.40m }));
-            var audit = new DraftingAuditService(Repository, UnitOfWork, Clock, NullLogger<DraftingAuditService>.Instance);
-            var rag = new RagService(new FakeEmbeddings(), Store, Options.Create(new RagOptions()), NullLogger<RagService>.Instance);
+            var audit = new AuditoriaIaService(Repository, UnitOfWork, Clock, NullLogger<AuditoriaIaService>.Instance);
+            var busca = Options.Create(new BuscaNormasOptions());
+            var rag = new RagService(
+                new ConsultaEnriquecidaService(Extracao, NullLogger<ConsultaEnriquecidaService>.Instance),
+                new FakeEmbeddings(),
+                new BuscaDocumentosCasoService(
+                    Mundo.Vetores, Mundo.Documentos, new RerankerService(), Mundo.Seguranca, busca, NullLogger<BuscaDocumentosCasoService>.Instance),
+                new FakeBuscaJuridica(Juridico),
+                Options.Create(new RagOptions()), busca, Options.Create(new JanelaModeloOptions()));
 
             Processor = new PecaProcessor(
                 Repository, Documents, rag, new PromptBuilder(), Llm, audit, Notificacao,
-                Options.Create(new FilaOptions { MaxTentativas = MaxTentativas, ParcialIntervaloMs = 0 }), Clock,
-                NullLogger<PecaProcessor>.Instance);
+                Options.Create(new FilaOptions { MaxTentativas = MaxTentativas, ParcialIntervaloMs = 0 }),
+                Mundo.Casos, Mundo.Documentos, new ValidacaoCitacaoService(new MemNormaStore()), NullLogger<PecaProcessor>.Instance);
 
             return this;
         }
 
-        public async Task<LegalDocumentRequest> NewRequestAsync()
-        {
-            var created = await Documents.CreateAndEnqueueAsync(Samples.Input());
+        public Task<LegalDocumentRequest> NewRequestAsync(string? fatos = null) => NewRequestAsync(Input(fatos));
 
-            return created.Value;
-        }
+        public PecaInput Input(string? fatos = null) =>
+            (fatos is null ? Samples.Input() : Samples.Input(fatos)) with { CasoId = Mundo.Caso.Id.Value, ClienteId = Mundo.Caso.ClienteId };
+
+        public async Task<LegalDocumentRequest> NewRequestAsync(PecaInput input) => (await Documents.CreateAndEnqueueAsync(input)).Value;
     }
 
     [Fact]
@@ -78,7 +101,7 @@ public class PecaProcessorTests
         request.Status.Should().Be(LegalDocumentStatus.Concluido);
         request.TextoGerado.Should().Be(MinutaBoa);
         request.Progresso.Should().Be(100);
-        request.ModeloUtilizado.Should().Be("qwen3:8b");
+        request.ModeloUtilizado.Should().Be("jurema-7b");
         request.PromptVersao.Should().Be(SystemPrompt.Versao);
         request.TokensEntrada.Should().Be(120);
         request.TokensSaida.Should().Be(340);
@@ -86,7 +109,9 @@ public class PecaProcessorTests
         request.CustoEstimadoUsd.Should().NotBeNull();
         request.ConcluidoEm.Should().NotBeNull();
         request.Tentativas.Should().Be(1);
-        h.Repository.Sources.Should().ContainSingle().Which.UtilizadaNaGeracao.Should().BeTrue();
+        h.Repository.Sources.Should().HaveCount(2).And.OnlyContain(f => f.UtilizadaNaGeracao);
+        h.Repository.Citacoes.Should().HaveCount(2).And.OnlyContain(c => c.Status == CitacaoStatus.Validada);
+        request.ConsultaJson.Should().Contain("heuristica");
         h.Repository.Events.Select(e => e.Tipo)
             .Should().Equal("Reservada", "ContextoRecuperado", "GeracaoIniciada", "GeracaoConcluida");
         h.Notificacao.Eventos.Should().ContainSingle().Which.Should().StartWith("concluida:");
@@ -103,9 +128,9 @@ public class PecaProcessorTests
         var mensagens = h.Llm.LastRequest!.Messages;
         mensagens.Select(m => m.Role).Should().Equal("system", "user");
         mensagens[0].Content.Should().Be(SystemPrompt.Texto);
-        mensagens[1].Content.Should().Contain("[contrato.pdf, p. 3]").And.Contain("Art. 186: ato ilícito.");
-        h.Store.LastQuery!.TenantId.Should().Be(Ids.Tenant);
-        h.Store.LastQuery.UsuarioId.Should().Be(Ids.User);
+        mensagens[1].Content.Should().Contain("[contrato.pdf, p. 3]").And.Contain("[Código Civil, art. 186]").And.Contain("Cláusula 5: multa de 10%");
+        h.Mundo.Vetores.Filtros.Should().NotBeEmpty().And.OnlyContain(f =>
+            f.TenantId == Ids.Tenant && f.CasoId == h.Mundo.Caso.Id.Value && f.UsuarioId == Ids.User);
     }
 
     [Fact]
@@ -120,6 +145,86 @@ public class PecaProcessorTests
         await h.Processor.AoPrepararGpuAsync(request.Id.Value);
         request.Status.Should().Be(LegalDocumentStatus.PreparandoGpu);
         request.EtapaAtual.Should().Contain("ambiente de IA");
+    }
+
+    [Fact]
+    public async Task EtapasDaBusca_SaoAsDoContratoDeStreaming()
+    {
+        var h = new Harness().Build();
+        var request = await h.NewRequestAsync();
+        var etapas = new List<string>();
+        h.UnitOfWork.OnSave = () => etapas.Add($"{request.Status}|{request.EtapaAtual}");
+
+        await h.Processor.ProcessarAsync(request.Id.Value, 1);
+
+        etapas.Distinct().Should().ContainInOrder(
+            "BuscandoDocumentosCaso|Analisando anexos do caso.",
+            "BuscandoJuridico|Buscando fundamentos jurídicos.",
+            "Gerando|Gerando minuta.",
+            "Validando|Conferindo as citações da minuta.",
+            "Salvando|Salvando a minuta.");
+    }
+
+    [Fact]
+    public async Task SolicitacaoSemCaso_FalhaSemTocarNoModelo()
+    {
+        var h = new Harness().Build();
+        var request = await h.NewRequestAsync(Samples.Input() with { CasoId = Guid.NewGuid() });
+
+        var outcome = await h.Processor.ProcessarAsync(request.Id.Value, 1);
+
+        outcome.Kind.Should().Be(WorkOutcomeKind.Falhou);
+        h.Llm.Calls.Should().Be(0);
+        h.Mundo.Vetores.Filtros.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AnexoDeOutroCaso_NuncaChegaAoPrompt_MesmoQueOIndiceDevolva()
+    {
+        var h = new Harness().Build();
+        h.Mundo.NovoDocumento(h.Mundo.NovoCaso(), "segredo.pdf", "SEGREDO DE OUTRO CLIENTE");
+        h.Mundo.Vetores.IgnorarFiltro = true;
+        var request = await h.NewRequestAsync();
+
+        await h.Processor.ProcessarAsync(request.Id.Value, 1);
+
+        h.Llm.LastRequest!.Messages[1].Content.Should().NotContain("SEGREDO").And.Contain("Cláusula 5");
+        h.Mundo.Seguranca.Eventos.Should().Contain(e => e.Tipo == "TrechoForaDoCaso");
+    }
+
+    [Fact]
+    public async Task DocumentoRestritoDeOutraPessoa_NaoEntraNaMinutaDeQuemNaoPodeVer()
+    {
+        var h = new Harness().Build();
+        var colega = Guid.NewGuid();
+        h.Mundo.Caso.Conceder(colega, CasoPermissao.Leitura, Ids.User, h.Clock.UtcNow);
+        h.Mundo.NovoDocumento(nome: "restrito.pdf", texto: "CONTEÚDO RESTRITO", restrito: true);
+        var criada = LegalDocumentRequest.Create(
+            Ids.Tenant, colega, "peticao_inicial", "civel", "Fatos.", "Pedidos.", null, null, h.Clock.UtcNow,
+            casoId: h.Mundo.Caso.Id.Value).Value;
+        h.Repository.Add(criada);
+
+        await h.Processor.ProcessarAsync(criada.Id.Value, 1);
+
+        h.Llm.LastRequest!.Messages[1].Content.Should().NotContain("RESTRITO");
+        h.Mundo.Vetores.Filtros.Should().OnlyContain(f => !f.VeRestritos);
+    }
+
+    [Fact]
+    public async Task AnexoPendenteEAnexoComFalha_ViramAvisoNaMinuta()
+    {
+        var h = new Harness().Build();
+        h.Mundo.Documentos.Itens.Add(CasoDocumento.Criar(
+            CasoDocumentoId.New(), h.Mundo.Caso, Ids.User, "novo.pdf", FormatoDocumento.Pdf, 1, "h1", "k", false, h.Clock.UtcNow));
+        var falho = CasoDocumento.Criar(
+            CasoDocumentoId.New(), h.Mundo.Caso, Ids.User, "ruim.pdf", FormatoDocumento.Pdf, 1, "h2", "k", false, h.Clock.UtcNow);
+        falho.MarcarFalha("x");
+        h.Mundo.Documentos.Itens.Add(falho);
+        var request = await h.NewRequestAsync();
+
+        await h.Processor.ProcessarAsync(request.Id.Value, 1);
+
+        Avisos(request).Should().Contain(a => a.Contains("ainda estavam sendo processados")).And.Contain(a => a.Contains("não puderam ser lidos"));
     }
 
     [Fact]
@@ -139,12 +244,12 @@ public class PecaProcessorTests
     [Fact]
     public async Task SemTrechosRecuperados_AvisaQueNaoHaBaseDocumental()
     {
-        var h = new Harness { Store = new FakeVectorStore() }.Build();
+        var h = new Harness { ComAnexo = false, Juridico = [] }.Build();
         var request = await h.NewRequestAsync();
 
         await h.Processor.ProcessarAsync(request.Id.Value, 1);
 
-        request.AvisosJson.Should().Contain("Nenhum trecho relevante");
+        Avisos(request).Should().Contain(a => a.Contains("Nenhum trecho dos anexos")).And.Contain(a => a.Contains("Nenhuma norma ou decisão"));
         h.Repository.Sources.Should().BeEmpty();
     }
 
@@ -161,9 +266,11 @@ public class PecaProcessorTests
 
         await h.Processor.ProcessarAsync(request.Id.Value, 1);
 
-        request.AvisosJson.Should().Contain("inventado.pdf, p. 9").And.Contain("art. 927").And.Contain("Súmula 297");
-        request.AvisosJson.Should().Contain("não cita nenhuma das fontes");
-        h.Repository.Sources.Single().UtilizadaNaGeracao.Should().BeFalse();
+        var avisos = string.Join('\n', Avisos(request));
+        avisos.Should().Contain("inventado.pdf, p. 9").And.Contain("art. 927").And.Contain("Súmula nº 297").And.Contain("DO DIREITO");
+        h.Repository.Sources.Should().OnlyContain(f => !f.UtilizadaNaGeracao);
+        h.Repository.Citacoes.Should().Contain(c => c.Status == CitacaoStatus.PossivelAlucinacao && c.Texto.Contains("inventado"));
+        h.Repository.Citacoes.Should().Contain(c => c.Status == CitacaoStatus.PendenteDeVerificacao && c.Texto.Contains("927"));
     }
 
     [Fact]
@@ -226,7 +333,8 @@ public class PecaProcessorTests
     [Fact]
     public async Task FalhaNoBancoVetorial_ETransitoria()
     {
-        var h = new Harness { Store = new ThrowingStore() }.Build();
+        var h = new Harness().Build();
+        h.Mundo.Vetores.ForaDoAr = true;
         var request = await h.NewRequestAsync();
 
         var outcome = await h.Processor.ProcessarAsync(request.Id.Value, 1);
@@ -331,25 +439,14 @@ public class PecaProcessorTests
     public async Task Trilha_NuncaGravaFatosPedidosNemTrechos()
     {
         var h = new Harness().Build();
-        var created = await h.Documents.CreateAndEnqueueAsync(Samples.Input("FATO-SIGILOSO-123"));
+        var request = await h.NewRequestAsync("FATO-SIGILOSO-123");
 
-        await h.Processor.ProcessarAsync(created.Value.Id.Value, 1);
+        await h.Processor.ProcessarAsync(request.Id.Value, 1);
 
         var tudo = string.Join('\n', h.Repository.Events.Select(e => e.Tipo + e.DetalheJson));
-        tudo.Should().NotContain("FATO-SIGILOSO-123").And.NotContain("Art. 186").And.NotContain("ato ilícito");
+        tudo.Should().NotContain("FATO-SIGILOSO-123").And.NotContain("multa de 10%").And.NotContain("ato ilícito");
     }
 
-    private sealed class ThrowingStore : IVectorStore
-    {
-        public Task EnsureCollectionAsync(int dimensions, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task<IReadOnlyList<Models.VectorHit>> SearchAsync(Models.VectorSearchQuery query, CancellationToken cancellationToken = default) =>
-            throw new VectorStoreException("qdrant fora do ar");
-
-        public Task UpsertAsync(IReadOnlyList<Models.VectorPoint> points, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task DeleteByDocumentAsync(Guid tenantId, Guid documentoOrigemId, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
-    }
+    private static List<string> Avisos(LegalDocumentRequest request) =>
+        System.Text.Json.JsonSerializer.Deserialize<List<string>>(request.AvisosJson ?? "[]")!;
 }

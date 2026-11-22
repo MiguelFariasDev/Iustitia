@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Busca;
+using Advocacia.Modules.Drafting.Application.Conversao;
 using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Application.Normas;
 using Advocacia.Modules.Drafting.Application.Services;
@@ -80,8 +82,14 @@ internal sealed class MemNormaStore : INormaStore, INormaSearchIndex
     public Task<int> SalvarAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
 
     public Task<IReadOnlyList<VectorHit>> BuscarPalavrasChaveAsync(
-        NormaFiltro filtro, string consulta, int limit, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<VectorHit>>([]);
+        NormaFiltro filtro, string consulta, int limit, CancellationToken cancellationToken = default) => Task.FromResult(FullText);
+
+    public IReadOnlyList<VectorHit> Referencias { get; init; } = [];
+
+    public IReadOnlyList<VectorHit> FullText { get; init; } = [];
+
+    public Task<IReadOnlyList<VectorHit>> BuscarReferenciasAsync(
+        IReadOnlyList<ReferenciaLegal> referencias, int limite, CancellationToken cancellationToken = default) => Task.FromResult(Referencias);
 
     public Task<bool> UrnExisteAsync(string urn, CancellationToken cancellationToken = default) =>
         Task.FromResult(Normas.Any(n => n.Urn == urn));
@@ -104,6 +112,13 @@ internal sealed class MemObjectStorage : IObjectStorage
         Task.FromResult(Objects.TryGetValue(key, out var value) ? value : null);
 
     public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult(Objects.ContainsKey(key));
+
+    public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
+    {
+        Objects.Remove(key);
+
+        return Task.CompletedTask;
+    }
 
     public Task CopyAsync(string sourceKey, string destinationKey, CancellationToken cancellationToken = default)
     {
@@ -137,7 +152,7 @@ internal sealed class StubEmbeddings(int failTimes = 0) : IEmbeddingService
 
         Inputs += inputs.Count;
 
-        return Task.FromResult<IReadOnlyList<float[]>>(inputs.Select(_ => new float[DocumentIndexer.EmbeddingDimensions]).ToList());
+        return Task.FromResult<IReadOnlyList<float[]>>(inputs.Select(_ => new float[EmbeddingConstants.Dimensoes]).ToList());
     }
 }
 
@@ -147,11 +162,15 @@ internal sealed class MemNormaVectorStore : INormaVectorStore
 
     public List<(string Colecao, Guid NormaId, int? Manter)> Deletes { get; } = [];
 
-    public IReadOnlyList<VectorHit> Hits { get; set; } = [];
+    public Dictionary<string, IReadOnlyList<VectorHit>> Densos { get; } = [];
 
-    public NormaFiltro? LastFiltro { get; private set; }
+    public Dictionary<string, IReadOnlyList<VectorHit>> Esparsos { get; } = [];
 
-    public Task EnsureCollectionsAsync(int dimensions, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public bool Bm25ForaDoAr { get; set; }
+
+    public bool DensoForaDoAr { get; set; }
+
+    public List<NormaFiltro> Filtros { get; } = [];
 
     public Task UpsertAsync(string colecao, IReadOnlyList<NormaVectorPoint> points, CancellationToken cancellationToken = default)
     {
@@ -171,14 +190,21 @@ internal sealed class MemNormaVectorStore : INormaVectorStore
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<VectorHit>> SearchAsync(NormaFiltro filtro, float[] vetor, int limit, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<VectorHit>> BuscarDensoAsync(
+        string colecao, NormaFiltro filtro, float[] vetor, int limite, CancellationToken cancellationToken = default)
     {
-        LastFiltro = filtro;
+        Filtros.Add(filtro);
 
-        return Task.FromResult(Hits);
+        return DensoForaDoAr
+            ? throw new VectorStoreException("qdrant fora do ar")
+            : Task.FromResult(Densos.GetValueOrDefault(colecao, []));
     }
 
-    public Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+    public Task<IReadOnlyList<VectorHit>> BuscarBm25Async(
+        string colecao, NormaFiltro filtro, VetorEsparso consulta, int limite, CancellationToken cancellationToken = default) =>
+        Bm25ForaDoAr
+            ? throw new VectorStoreException("bm25 fora do ar")
+            : Task.FromResult(Esparsos.GetValueOrDefault(colecao, []));
 }
 
 internal sealed class FakeGpuOrchestrator : IGpuOrchestrator
@@ -201,18 +227,6 @@ internal sealed class FakeGpuOrchestrator : IGpuOrchestrator
 
 internal static class NormaSamples
 {
-    public static VectorHit Hit(
-        string id, string titulo, string tipo = "Lei Ordinária", string? numero = "10406", string? artigo = "186",
-        string texto = "Art. 186. Aquele que, por ação ou omissão voluntária, comete ato ilícito.", bool revogada = false,
-        string esfera = "federal", string? tribunal = null, string fonte = "https://www.planalto.gov.br/x",
-        string? area = null, Guid? normaId = null, string versaoTexto = "compilada", double score = 0.5, string? urn = null) =>
-        new NormaPayload(
-            normaId ?? Guid.NewGuid(), urn, titulo, tipo, numero, new DateOnly(2002, 1, 10), revogada ? "Revogada" : "Vigente",
-            revogada, versaoTexto, 1, esfera, null, null, area, tribunal, [], Colecoes.LeisFederais, "juridico/markdown/x.md",
-            fonte, null, null, artigo, null, null, ContextSelector.HashText(id + texto), texto).ToHit(id, score);
-
-    public static RetrievedChunk Chunk(VectorHit hit) => new(hit.PointId, hit.Texto, hit.Score, hit.Meta);
-
     public static string LeiCivil(string artigo1 = "Toda pessoa é capaz de direitos e deveres na ordem civil.") => $"""
         ---
         titulo: "Lei nº 10.406 de 10/01/2002"
@@ -235,291 +249,6 @@ internal static class NormaSamples
         """;
 }
 
-// ------------------------------------------------------------------ reranker e busca híbrida
-
-public class NormaRerankerTests
-{
-    private static IReadOnlyList<CandidatoRerankeado> Rank(string consulta, string? area, params (VectorHit Hit, double Fusao)[] candidatos) =>
-        NormaReranker.Reordenar(candidatos.Select(c => new CandidatoBusca(c.Hit, c.Fusao)).ToList(), new RerankContexto(consulta, area, null));
-
-    [Fact]
-    public void ArtigoENormaCitadosNaConsulta_PassamNaFrenteDeUmTrechoMaisSimilar()
-    {
-        var alvo = NormaSamples.Hit("a", "Lei nº 10.406 de 10/01/2002", artigo: "186", texto: "Ato ilícito: dano moral gera indenização.");
-        var outro = NormaSamples.Hit("b", "Lei nº 10.406 de 10/01/2002", artigo: "927", texto: "Aplica-se o disposto neste capítulo.");
-
-        var ordem = Rank("indenização por dano moral, art. 186 da Lei 10.406", "civel", (alvo, 0.016), (outro, 0.033));
-
-        ordem[0].Hit.PointId.Should().Be("a");
-    }
-
-    [Fact]
-    public void NormaRevogada_NaoEDescartada_SoPerdePontos()
-    {
-        var vigente = NormaSamples.Hit("v", "Lei nº 1 de 2000", numero: "1", artigo: "1", texto: "Dano moral indenizável.");
-        var revogada = NormaSamples.Hit("r", "Lei nº 2 de 1990", numero: "2", artigo: "1", texto: "Dano moral indenizável.", revogada: true);
-
-        var ordem = Rank("dano moral indenizável", null, (vigente, 0.03), (revogada, 0.03));
-
-        ordem.Should().HaveCount(2);
-        ordem[0].Hit.PointId.Should().Be("v");
-        ordem[1].Hit.PointId.Should().Be("r");
-        ordem[0].Score.Should().BeGreaterThan(ordem[1].Score);
-    }
-
-    [Fact]
-    public void HierarquiaNormativa_ConstituicaoAntesDeDecreto()
-    {
-        var cf = NormaSamples.Hit("cf", "Constituição de 1988", tipo: "Constituição", numero: null, texto: "Direito de propriedade.");
-        var decreto = NormaSamples.Hit("d", "Decreto nº 5 de 2001", tipo: "Decreto", numero: "5", texto: "Direito de propriedade.");
-
-        Rank("direito de propriedade", null, (decreto, 0.03), (cf, 0.03))[0].Hit.PointId.Should().Be("cf");
-    }
-
-    [Fact]
-    public void AreaDiferente_PerdePontos_AreaIgual_Ganha()
-    {
-        var civel = NormaSamples.Hit("c", "Lei nº 1", numero: "1", area: "civel", texto: "Contrato de locação.");
-        var trab = NormaSamples.Hit("t", "Lei nº 2", numero: "2", area: "trabalhista", texto: "Contrato de locação.");
-
-        Rank("contrato de locação", "civel", (trab, 0.03), (civel, 0.03))[0].Hit.PointId.Should().Be("c");
-    }
-
-    [Fact]
-    public void FonteOficialAusente_PerdePontos()
-    {
-        var comFonte = NormaSamples.Hit("f", "Lei nº 1", numero: "1", texto: "Texto idêntico sobre contrato.");
-        var semFonte = NormaSamples.Hit("s", "Lei nº 2", numero: "2", texto: "Texto idêntico sobre contrato.", fonte: "");
-
-        Rank("contrato", null, (semFonte, 0.03), (comFonte, 0.03))[0].Hit.PointId.Should().Be("f");
-    }
-
-    [Fact]
-    public void ListaVazia_DevolveVazio() =>
-        NormaReranker.Reordenar([], new RerankContexto("x", null, null)).Should().BeEmpty();
-
-    [Fact]
-    public void TermosEReferencias_SaoExtraidosDaConsulta()
-    {
-        NormaTexto.ArtigosMencionados("art. 186 e artigos 927").Should().BeEquivalentTo("186", "927");
-        NormaTexto.NormasMencionadas("Lei nº 10.406 e Súmula 297").Should().BeEquivalentTo("10406", "297");
-        NormaTexto.NumeroDoArtigo("121-A").Should().Be("121");
-        NormaTexto.Termos("O autor pede indenização por dano moral").Should().Contain("indenização").And.NotContain("autor");
-    }
-}
-
-public class HybridSearchServiceTests
-{
-    private static HybridSearchService Service(MemNormaVectorStore vectors, INormaSearchIndex keywords, BuscaNormasOptions? options = null) =>
-        new(vectors, keywords, new RuleBasedNormaReranker(), Options.Create(options ?? new BuscaNormasOptions()), NullLogger<HybridSearchService>.Instance);
-
-    private sealed class KeywordIndex(IReadOnlyList<VectorHit> hits, bool fail = false) : INormaSearchIndex
-    {
-        public Task<IReadOnlyList<VectorHit>> BuscarPalavrasChaveAsync(NormaFiltro filtro, string consulta, int limit, CancellationToken cancellationToken = default) =>
-            fail ? throw new InvalidOperationException("db fora") : Task.FromResult(hits);
-
-        public Task<bool> UrnExisteAsync(string urn, CancellationToken cancellationToken = default) => Task.FromResult(false);
-    }
-
-    [Fact]
-    public void Fusao_RrfPremiaQuemApareceNasDuasBuscas()
-    {
-        var a = NormaSamples.Hit("a", "A");
-        var b = NormaSamples.Hit("b", "B");
-        var c = NormaSamples.Hit("c", "C");
-
-        var fundidos = HybridSearchService.Fundir([a, b], [c, b], 60);
-
-        fundidos[0].Hit.PointId.Should().Be("b", "está nas duas listas");
-        fundidos.Select(f => f.Hit.PointId).Should().BeEquivalentTo("a", "b", "c");
-        fundidos[0].Fusao.Should().BeApproximately((1.0 / 62) + (1.0 / 62), 1e-9);
-    }
-
-    [Fact]
-    public void Selecao_RemoveDuplicatasELimitaTrechosPorNorma()
-    {
-        var norma = Guid.NewGuid();
-        var hits = Enumerable.Range(0, 6).Select(i => NormaSamples.Hit($"n{i}", "Lei X", normaId: norma, artigo: $"{i}", texto: $"Texto {i}")).ToList();
-        var duplicado = NormaSamples.Hit("d", "Lei Y", texto: hits[0].Texto) with { Meta = hits[0].Meta with { HashConteudo = hits[0].Meta.HashConteudo } };
-
-        var final = HybridSearchService.Selecionar(
-            hits.Append(duplicado).Select((h, i) => new CandidatoRerankeado(h, 1.0 - (i * 0.01))).ToList(), 10);
-
-        final.Count(h => h.Meta.Norma!.NormaId == norma).Should().Be(3, "uma norma não monopoliza o contexto");
-        final.Select(h => h.PointId).Should().NotContain("d", "mesmo conteúdo já presente");
-    }
-
-    [Fact]
-    public async Task Busca_CombinaVetorEPalavraChave_ELimitaAoMaximo()
-    {
-        var vectors = new MemNormaVectorStore
-        {
-            Hits = Enumerable.Range(0, 20).Select(i => NormaSamples.Hit($"v{i}", $"Lei {i}", numero: $"{i}", texto: $"Vetor {i}")).ToList(),
-        };
-        var keywords = new KeywordIndex(Enumerable.Range(0, 20).Select(i => NormaSamples.Hit($"k{i}", $"Decreto {i}", numero: $"{100 + i}", texto: $"Palavra {i}")).ToList());
-
-        var result = await Service(vectors, keywords).BuscarAsync(new NormaBusca("dano moral", new NormaFiltro(Area: "civel")), new float[4]);
-
-        result.Count.Should().Be(10);
-        vectors.LastFiltro!.Area.Should().Be("civel");
-        result.Select(h => h.PointId).Should().OnlyHaveUniqueItems();
-    }
-
-    [Fact]
-    public async Task FalhaNaPalavraChave_DegradaParaSoVetor()
-    {
-        var vectors = new MemNormaVectorStore { Hits = [NormaSamples.Hit("v", "Lei", texto: "Só vetor.")] };
-
-        var result = await Service(vectors, new KeywordIndex([], fail: true)).BuscarAsync(new NormaBusca("x", new NormaFiltro()), new float[4]);
-
-        result.Should().ContainSingle().Which.PointId.Should().Be("v");
-    }
-
-    [Fact]
-    public async Task IncluirRevogadasFalsoNaConfiguracao_PropagaAoFiltro()
-    {
-        var vectors = new MemNormaVectorStore();
-
-        await Service(vectors, new KeywordIndex([]), new BuscaNormasOptions { IncluirRevogadas = false })
-            .BuscarAsync(new NormaBusca("x", new NormaFiltro()), new float[4]);
-
-        vectors.LastFiltro!.IncluirRevogadas.Should().BeFalse();
-    }
-}
-
-// ------------------------------------------------------------------ validação de citações
-
-public class NormaCitationValidatorTests
-{
-    private const string Lei = "Lei nº 10.406 de 10/01/2002";
-
-    private static ValidacaoCitacoes Validar(string texto, IEnumerable<VectorHit> hits, string caso = "", IReadOnlySet<string>? urns = null) =>
-        NormaCitationValidator.Validar(texto, hits.Select(NormaSamples.Chunk).ToList(), caso, urns);
-
-    [Fact]
-    public void CitacaoQueConfereComOTrechoRecuperado_EValidada_ENaoBloqueia()
-    {
-        var hit = NormaSamples.Hit("a", Lei, artigo: "186");
-
-        var resultado = Validar($"O ato ilícito gera dever de indenizar [{Lei}, art. 186].", [hit]);
-
-        resultado.Itens.Should().Contain(i => i.Status == CitacaoStatus.Validada);
-        resultado.ExportacaoBloqueada.Should().BeFalse();
-    }
-
-    [Fact]
-    public void NormaRevogadaSemContextoTemporal_EMarcada_ComContextoEValidada()
-    {
-        var hit = NormaSamples.Hit("a", Lei, artigo: "186", revogada: true);
-
-        var semData = Validar($"Aplica-se o dispositivo [{Lei}, art. 186].", [hit]);
-        var comData = Validar($"A norma, hoje revogada (2015), previa o dispositivo [{Lei}, art. 186].", [hit]);
-
-        semData.Itens.Should().Contain(i => i.Status == CitacaoStatus.NormaRevogada);
-        comData.Itens.Should().NotContain(i => i.Status == CitacaoStatus.NormaRevogada);
-    }
-
-    [Fact]
-    public void ArtigoDaMesmaNormaQueNaoFoiRecuperado_FicaPendente_EBloqueiaAExportacao()
-    {
-        var hit = NormaSamples.Hit("a", Lei, artigo: "186");
-
-        var resultado = Validar($"A responsabilidade decorre do [{Lei}, art. 927].", [hit]);
-
-        resultado.Itens.Should().Contain(i => i.Status == CitacaoStatus.PendenteDeVerificacao && i.Texto.Contains("927"));
-        resultado.ExportacaoBloqueada.Should().BeTrue();
-    }
-
-    [Fact]
-    public void FonteQueNaoEstaNoContexto_EPossivelAlucinacao()
-    {
-        var hit = NormaSamples.Hit("a", Lei, artigo: "186");
-
-        var resultado = Validar("Aplica-se o CDC [Lei nº 8.078 de 11/09/1990, art. 6].", [hit]);
-
-        resultado.Itens.Should().Contain(i => i.Status == CitacaoStatus.PossivelAlucinacao);
-        resultado.ExportacaoBloqueada.Should().BeTrue();
-    }
-
-    [Fact]
-    public void SumulaAtribuidaAoTribunalErrado_EPossivelAlucinacao()
-    {
-        var sumula = NormaSamples.Hit(
-            "s", "Súmula nº 5 do STJ", tipo: "Súmula", numero: "5", artigo: null, tribunal: "STJ", esfera: "jurisprudencia",
-            texto: "Súmula nº 5 do STJ. A simples interpretação de cláusula contratual não enseja recurso especial.");
-
-        var resultado = Validar("Conforme a Súmula 5 do STF, a interpretação de cláusula não enseja recurso.", [sumula]);
-
-        resultado.Itens.Should().Contain(i => i.Status == CitacaoStatus.PossivelAlucinacao && i.Detalhe.Contains("outro tribunal"));
-    }
-
-    [Fact]
-    public void TrechoEntreAspasInexistente_EPossivelAlucinacao_ETrechoReal_Passa()
-    {
-        var hit = NormaSamples.Hit("a", Lei, artigo: "186", texto: "Aquele que, por ação ou omissão voluntária, violar direito e causar dano a outrem, comete ato ilícito.");
-
-        var inventado = Validar("Diz a lei: “o dano moral dispensa qualquer prova de culpa do agente causador do prejuízo”.", [hit]);
-        var real = Validar("Diz a lei: “Aquele que, por ação ou omissão voluntária, violar direito e causar dano a outrem, comete ato ilícito.”", [hit]);
-
-        inventado.Itens.Should().Contain(i => i.Status == CitacaoStatus.PossivelAlucinacao && i.Detalhe.Contains("aspas"));
-        real.Itens.Should().NotContain(i => i.Detalhe.Contains("aspas"));
-    }
-
-    [Fact]
-    public void UrnForaDoContexto_EAlucinacao_ComUrnConhecidaNoBanco_FicaPendente()
-    {
-        var hit = NormaSamples.Hit("a", Lei, artigo: "186", urn: "urn:lex:br:federal:lei:2002-01-10;10406");
-        const string urn = "urn:lex:br:federal:lei:1990-09-11;8078";
-
-        var desconhecida = Validar($"Veja {urn}.", [hit]);
-        var conhecida = Validar($"Veja {urn}.", [hit], urns: new HashSet<string> { urn });
-
-        desconhecida.Itens.Should().Contain(i => i.Status == CitacaoStatus.PossivelAlucinacao);
-        conhecida.Itens.Should().Contain(i => i.Status == CitacaoStatus.PendenteDeVerificacao);
-        NormaCitationValidator.UrnsParaConferir($"Veja {urn}.", [NormaSamples.Chunk(hit)]).Should().Equal(urn);
-    }
-
-    [Fact]
-    public void MesmaNormaEmDoisArquivosDistintos_GeraConflitoDeVersao()
-    {
-        var a = NormaSamples.Hit("a", Lei, artigo: "186", versaoTexto: "original");
-        var b = NormaSamples.Hit("b", Lei, artigo: "187", versaoTexto: "compilada");
-
-        var resultado = Validar($"Cita-se o [{Lei}, art. 186].", [a, b]);
-
-        resultado.Itens.Should().Contain(i => i.Status == CitacaoStatus.ConflitoDeVersao);
-    }
-
-    [Fact]
-    public void TextoSemCitacoes_NaoBloqueia()
-    {
-        var resultado = Validar("DOS FATOS\nO autor contratou os serviços.", [NormaSamples.Hit("a", Lei)]);
-
-        resultado.Itens.Should().BeEmpty();
-        resultado.ExportacaoBloqueada.Should().BeFalse();
-    }
-
-    [Fact]
-    public void RotuloDaNorma_UsaNormaEArtigo_SemArtigoUsaTexto()
-    {
-        NormaSamples.Chunk(NormaSamples.Hit("a", Lei, artigo: "186")).Rotulo.Should().Be($"{Lei}, art. 186");
-        NormaSamples.Chunk(NormaSamples.Hit("s", "Súmula nº 1 do STF", artigo: null)).Rotulo.Should().Be("Súmula nº 1 do STF, texto");
-    }
-
-    [Fact]
-    public void AvisosDoProcessor_IncluemProblemasETravaDeExportacao()
-    {
-        var hit = NormaSamples.Hit("a", Lei, artigo: "186");
-        var texto = $"Veja [{Lei}, art. 927] e [Lei nº 8.078 de 11/09/1990, art. 6].";
-        var chunks = new[] { NormaSamples.Chunk(hit) };
-
-        var validacao = NormaCitationValidator.Validar(texto, chunks, string.Empty);
-        var avisos = PecaProcessor.CitationWarnings(validacao, CitationVerifier.Verify(texto, chunks, string.Empty)).ToList();
-
-        avisos.Should().Contain(a => a.StartsWith(NormaCitationValidator.MarcadorBloqueio));
-    }
-}
-
 // ------------------------------------------------------------------ ingestão
 
 public class NormaIngestionServiceTests : IDisposable
@@ -528,7 +257,7 @@ public class NormaIngestionServiceTests : IDisposable
     private readonly MemNormaStore _store = new();
     private readonly MemObjectStorage _storage = new();
     private readonly MemNormaVectorStore _vectors = new();
-    private readonly NormasIngestaoOptions _options = new();
+    private readonly NormasIngestaoOptions _options = new() { SomenteAltaUtilizacao = false };
     private StubEmbeddings _embeddings = new();
 
     public NormaIngestionServiceTests() => Directory.CreateDirectory(_dir);
@@ -536,7 +265,7 @@ public class NormaIngestionServiceTests : IDisposable
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
     private NormaIngestionService Service() => new(
-        _store, _storage, _embeddings, _vectors, new NormaChunker(new ChunkingOptions()), Options.Create(_options),
+        _store, _storage, _embeddings, _vectors, new FakeQdrant(), new ChunkerJuridicoService(Options.Create(new ChunkingOptions())), Options.Create(_options),
         new GpuStateService(Options.Create(new VastAiOptions())), new FakeClock(), NullLogger<NormaIngestionService>.Instance);
 
     private RepoArquivo Escrever(string relativo, string conteudo)
@@ -570,7 +299,7 @@ public class NormaIngestionServiceTests : IDisposable
         ponto.Id.Should().NotBe(Guid.Empty);
         ponto.Payload.Titulo.Should().Be("Lei nº 10.406 de 10/01/2002");
         ponto.Payload.Urn.Should().Be("urn:lex:br:federal:lei:2002-01-10;10406");
-        ponto.Payload.ArquivoMarkdownPath.Should().Be($"juridico/markdown/{Caminho}");
+        ponto.Payload.ArquivoMarkdownPath.Should().Be(Caminho, "o payload aponta para o arquivo do acervo, não para a chave interna do storage");
         ponto.Payload.FonteOficialUrl.Should().StartWith("https://normas.leg.br/");
         ponto.Payload.Texto.Should().Contain("Art. 186");
         _vectors.Deletes.Should().Contain((Colecoes.LeisFederais, norma.Id, 1), "a versão anterior (nenhuma) sai só depois da nova");
@@ -683,7 +412,7 @@ public class NormaSyncOrchestratorTests : IDisposable
     private readonly MemObjectStorage _storage = new();
     private readonly MemNormaVectorStore _vectors = new();
     private readonly FakeGpuOrchestrator _gpu = new();
-    private readonly NormasIngestaoOptions _options = new() { ParalelismoArquivos = 1 };
+    private readonly NormasIngestaoOptions _options = new() { ParalelismoArquivos = 1, SomenteAltaUtilizacao = false };
     private readonly StubEmbeddings _embeddings = new();
 
     public NormaSyncOrchestratorTests() => Directory.CreateDirectory(_dir);
@@ -707,7 +436,8 @@ public class NormaSyncOrchestratorTests : IDisposable
         services.AddSingleton<INormaVectorStore>(_vectors);
         services.AddSingleton<IEmbeddingService>(embeddings ?? _embeddings);
         services.AddSingleton<IGpuOrchestrator>(_gpu);
-        services.AddSingleton(new NormaChunker(new ChunkingOptions()));
+        services.AddSingleton<IQdrantService, FakeQdrant>();
+        services.AddSingleton<IChunkerJuridicoService>(new ChunkerJuridicoService(Options.Create(new ChunkingOptions())));
         services.AddSingleton(Options.Create(_options));
         services.AddSingleton<IGpuStateService>(new GpuStateService(Options.Create(new VastAiOptions())));
         services.AddSingleton<Advocacia.BuildingBlocks.Domain.Time.IDateTimeProvider>(new FakeClock());
@@ -797,15 +527,15 @@ public class NormaSyncOrchestratorTests : IDisposable
     public async Task EscopoReduzidoDeConfiguracao_NaoMarcaRemovidoOQueSoSaiuDoEscopo()
     {
         Escrever("federal/leis-ordinarias/2001/lei-1.md", Lei("1"));
-        Escrever("estaduais/CE/leis/lei-9.md", Lei("9"));
-        _options.PastasIncluidas = ["federal", "estaduais/CE"];
+        Escrever("federal/decretos/2001/dec-9.md", Lei("9"));
+        _options.PastasIncluidas = ["federal"];
         var orchestrator = Orchestrator();
         await orchestrator.SincronizarAsync(IngestaoJobTipo.Completa);
 
-        _options.PastasIncluidas = ["federal"];
+        _options.PastasIncluidas = ["federal/leis-ordinarias"];
         var resumo = await orchestrator.SincronizarAsync(IngestaoJobTipo.Incremental);
 
-        resumo.Removidos.Should().Be(0, "estaduais/CE deixou de ser monitorado, não foi apagado do repositório");
+        resumo.Removidos.Should().Be(0, "decretos deixaram de ser monitorados, não foram apagados do repositório");
         _store.Normas.Should().OnlyContain(n => n.Status == NormaStatus.Indexada);
     }
 
@@ -860,7 +590,7 @@ public class NormaAdminServiceTests
     public async Task SolicitarSincronizacao_CriaUmPedidoPendente_EPedidosRepetidosReaproveitamOMesmo()
     {
         var store = new MemNormaStore();
-        var service = new NormaAdminService(store, new FakeClock());
+        var service = new NormaAdminService(store, new FakeQdrant(), new FakeClock());
 
         var primeira = await service.SolicitarSincronizacaoAsync(reprocessar: false);
         var segunda = await service.SolicitarSincronizacaoAsync(reprocessar: true);
@@ -879,7 +609,7 @@ public class NormaAdminServiceTests
             Colecoes.LeisFederais);
         var norma = NormaJuridica.Criar(meta, "federal/leis/x.md", "juridico/markdown/federal/leis/x.md", "h", "ctresb/leis", DateTimeOffset.UtcNow);
         store.Adicionar(norma);
-        var service = new NormaAdminService(store, new FakeClock());
+        var service = new NormaAdminService(store, new FakeQdrant(), new FakeClock());
 
         var ok = await service.ObterNormaAsync(norma.Id);
         norma.MarcarRemovida(DateTimeOffset.UtcNow);

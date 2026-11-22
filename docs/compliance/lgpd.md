@@ -50,3 +50,19 @@
   `contrato-nao-treinamento-anthropic.md`).
 - Toda sugestão de IA passa por revisão humana antes de qualquer efeito
   sobre o caso do cliente (ver ADR-012).
+
+## Geração assistida de peças (módulo Drafting)
+
+Detalhe técnico em [`docs/modules/drafting.md`](../modules/drafting.md) e [ADR-074](../adr/074-casos-busca-hibrida-e-revisao-humana.md).
+
+- O texto do caso é processado por modelo próprio (Ollama) numa GPU alugada (Vast.ai): é **operador
+  terceiro e host não certificado**. Exige contrato, avaliação de sigilo profissional (OAB) e registro no
+  DPIA antes de usar com dado real. **TODO: decisão do escritório e do DPO.**
+- Nenhum dado vai a serviço externo de OCR ou transcrição: Tesseract local e Whisper próprio (desligado por
+  padrão).
+- Em repouso: anexos, Markdown, trechos, fatos, pedidos, minuta e citações cifrados (AES-GCM, ADR-068). O
+  Qdrant guarda trechos de anexos em texto, necessários à busca: exige disco cifrado, API key e rede privada.
+- Isolamento por escritório e por caso; tentativa de acesso negada vira evento de segurança, sem conteúdo.
+- Logs guardam identificadores e contagens, nunca fatos, trechos ou prompts.
+- Exclusão de anexo remove vetores, trechos e arquivos do storage. Trechos já usados como fonte de uma
+  minuta permanecem (cifrados) no histórico da peça.

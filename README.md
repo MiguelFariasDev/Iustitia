@@ -97,7 +97,7 @@ Sem Docker, aponte para um PostgreSQL 16 já em pé (superusuário); a fixture c
 descartável nele:
 
 ```bash
-ADVOCACIA_TEST_PG_SERVER="Host=127.0.0.1;Port=5432;Username=postgres;Password=postgres" \
+ADVOCACIA_TEST_PG="Host=127.0.0.1;Port=5432;Username=postgres;Password=postgres" \
   dotnet test tests/IntegrationTests/Platform.IntegrationTests
 ```
 

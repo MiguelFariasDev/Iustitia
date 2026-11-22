@@ -44,12 +44,16 @@ dotnet ef database update \
 dotnet ef database update \
   --project src/Modules/Legal/Legal.Infrastructure \
   --context LegalDbContext
+dotnet ef database update \
+  --project src/Modules/Drafting/Drafting.Infrastructure \
+  --context DraftingDbContext
 
 echo "==> 2/3  Migrations SQL (extensões, RLS, índices, hook)"
 # Ordem importa: 002 cria a RLS de users, 004 depende de users existir.
 for f in 000_extensions 001_fulltext 002_rls 003_autovacuum 004_custom_access_token_hook \
          010_publications_indexes 011_publications_rls 012_clientes_processos \
-         013_alerts 014_audit_immutability; do
+         013_alerts 014_audit_immutability \
+         016_drafting 017_normas_juridicas 019_drafting_casos; do
   echo "    $f"
   psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f "infra/supabase/migrations/${f}.sql"
 done

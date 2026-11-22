@@ -24,15 +24,22 @@ public sealed class LegalDocumentRequestConfiguration : IEntityTypeConfiguration
         builder.Property(request => request.UsuarioId).IsRequired();
         builder.Property(request => request.TipoPeca).HasMaxLength(LegalDocumentRequest.TipoMaxLength).IsRequired();
         builder.Property(request => request.Area).HasMaxLength(LegalDocumentRequest.AreaMaxLength).IsRequired();
-        builder.Property(request => request.Fatos).IsRequired();
-        builder.Property(request => request.Pedidos).IsRequired();
-        builder.Property(request => request.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        // Dado sigiloso do caso: cifrado em repouso (linhas antigas em texto puro continuam legíveis, ver ADR-068).
+        builder.Property(request => request.Fatos).HasConversion(DraftingEncryption.Conversor(DraftingEncryption.Fatos)).IsRequired();
+        builder.Property(request => request.Pedidos).HasConversion(DraftingEncryption.Conversor(DraftingEncryption.Pedidos)).IsRequired();
+        builder.Property(request => request.InstrucoesAdicionais).HasConversion(DraftingEncryption.Conversor(DraftingEncryption.Instrucoes));
+        builder.Property(request => request.TextoGerado).HasConversion(DraftingEncryption.Conversor(DraftingEncryption.Texto));
+        builder.Property(request => request.TextoRevisado).HasConversion(DraftingEncryption.Conversor(DraftingEncryption.TextoRevisado));
+        builder.Property(request => request.ConsultaJson).HasConversion(DraftingEncryption.Conversor(DraftingEncryption.Consulta));
+        builder.Property(request => request.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(request => request.EtapaAtual).HasMaxLength(LegalDocumentRequest.EtapaMaxLength);
         builder.Property(request => request.Progresso).IsRequired();
         builder.Property(request => request.Tentativas).IsRequired();
         builder.Property(request => request.CriadoEm).IsRequired();
         builder.Property(request => request.CustoEstimadoUsd).HasPrecision(12, 6);
-        builder.Property(request => request.AvisosJson).HasColumnType("jsonb");
+        // Os avisos podem repetir fatos do caso: texto cifrado (era jsonb, que não aceita cifra).
+        builder.Property(request => request.AvisosJson).HasColumnType("text")
+            .HasConversion(DraftingEncryption.Conversor(DraftingEncryption.Avisos));
         builder.Property(request => request.ModeloUtilizado).HasMaxLength(LegalDocumentRequest.ModeloMaxLength);
         builder.Property(request => request.Erro).HasMaxLength(LegalDocumentRequest.ErroMaxLength);
         builder.Property(request => request.Versao).IsRequired();
@@ -55,6 +62,15 @@ public sealed class LegalDocumentRequestConfiguration : IEntityTypeConfiguration
             .HasForeignKey(evento => evento.LegalDocumentRequestId)
             .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(request => request.Events).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(request => request.Citacoes)
+            .WithOne()
+            .HasForeignKey(citacao => citacao.LegalDocumentRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(request => request.Citacoes).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasIndex(request => new { request.TenantId, request.CasoId })
+            .HasDatabaseName("ix_legal_document_requests_tenant_caso");
 
         // Histórico do usuário e cadeia de versões.
         builder.HasIndex(request => new { request.TenantId, request.UsuarioId, request.CriadoEm })

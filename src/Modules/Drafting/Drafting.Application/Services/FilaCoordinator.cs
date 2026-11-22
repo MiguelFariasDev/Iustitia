@@ -15,7 +15,7 @@ namespace Advocacia.Modules.Drafting.Application.Services;
 /// <see cref="RunCycleAsync"/> de tempos em tempos; toda a lógica testável mora aqui.
 ///
 /// Cada item roda no SEU escopo de DI, com o tenant da solicitação definido (RLS) e dentro de uma
-/// Task separada: o tenant fica num AsyncLocal, e sem a Task ele "vazaria" para o resto do ciclo e
+/// Task separada (escopo ASSÍNCRONO: a unidade de trabalho só implementa IAsyncDisposable): o tenant fica num AsyncLocal, e sem a Task ele "vazaria" para o resto do ciclo e
 /// passaria a filtrar a reserva dos itens seguintes por um escritório só.
 /// </summary>
 public sealed class FilaCoordinator(
@@ -38,7 +38,7 @@ public sealed class FilaCoordinator(
         while (!cancellationToken.IsCancellationRequested)
         {
             IReadOnlyList<ReservedQueueItem> batch;
-            using (var scope = scopes.CreateScope())
+            await using (var scope = scopes.CreateAsyncScope())
             {
                 batch = await scope.ServiceProvider.GetRequiredService<IGeracaoPecaFila>()
                     .ReservarAsync(_worker, Math.Max(1, options.LoteMax), reserva, cancellationToken);
@@ -57,30 +57,58 @@ public sealed class FilaCoordinator(
                 await InItemScopeAsync(item, (handler, ct) => handler.AoReservarAsync(item.ReferenciaId, ct), cancellationToken);
             }
 
-            var gpu = await EnsureGpuAsync(batch, cancellationToken);
+            // Primeiro o que só usa CPU (ler anexos, OCR): a GPU não fica ligada esperando por isso.
+            var semGpu = new List<ReservedQueueItem>();
+            foreach (var grupo in batch.GroupBy(item => item.Tipo))
+            {
+                if (!await RequerGpuAsync(grupo.Key))
+                {
+                    semGpu.AddRange(grupo);
+                }
+            }
+
+            var comGpu = batch.Except(semGpu).ToList();
+            if (semGpu.Count > 0)
+            {
+                await ProcessBatchAsync(semGpu, options.ParalelismoCpu, cancellationToken);
+            }
+
+            if (comGpu.Count == 0)
+            {
+                continue;
+            }
+
+            var gpu = await EnsureGpuAsync(comGpu, cancellationToken);
             if (gpu.IsFailure)
             {
-                await ReleaseBatchAsync(batch, cancellationToken);
+                await ReleaseBatchAsync(comGpu, cancellationToken);
 
                 break; // não insiste neste ciclo: o circuito e o intervalo do worker cuidam da nova tentativa
             }
 
-            await ProcessBatchAsync(batch, options.Paralelismo, cancellationToken);
+            await ProcessBatchAsync(comGpu, options.Paralelismo, cancellationToken);
         }
 
         if (!worked && !cancellationToken.IsCancellationRequested)
         {
-            using var scope = scopes.CreateScope();
+            await using var scope = scopes.CreateAsyncScope();
             await scope.ServiceProvider.GetRequiredService<IGpuOrchestrator>().PararSeOciosaAsync(cancellationToken);
         }
 
         return worked;
     }
 
+    private async Task<bool> RequerGpuAsync(QueueItemKind tipo)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+
+        return ResolveHandler(scope, tipo).RequerGpu;
+    }
+
     private async Task<Result> EnsureGpuAsync(
         IReadOnlyList<ReservedQueueItem> batch, CancellationToken ct)
     {
-        using var scope = scopes.CreateScope();
+        await using var scope = scopes.CreateAsyncScope();
         var orchestrator = scope.ServiceProvider.GetRequiredService<IGpuOrchestrator>();
 
         return await orchestrator.GarantirProntaAsync(
@@ -106,7 +134,7 @@ public sealed class FilaCoordinator(
                 async (handler, c) =>
                 {
                     await handler.AoFaltarInfraAsync(item.ReferenciaId, "GPU indisponível", c);
-                    using var scope = scopes.CreateScope();
+                    await using var scope = scopes.CreateAsyncScope();
                     // Sem consumir tentativa: a falha foi da infraestrutura, não da geração.
                     await scope.ServiceProvider.GetRequiredService<IGeracaoPecaFila>()
                         .ReagendarAsync(item.Id, retryAt, "GPU indisponível", consumirTentativa: false, c);
@@ -138,7 +166,7 @@ public sealed class FilaCoordinator(
         Task.Run(
             async () =>
             {
-                using var scope = scopes.CreateScope();
+                await using var scope = scopes.CreateAsyncScope();
                 scope.ServiceProvider.GetRequiredService<ITenantContext>().SetTenant(item.TenantId);
                 var handler = ResolveHandler(scope, item.Tipo);
                 var fila = scope.ServiceProvider.GetRequiredService<IGeracaoPecaFila>();
@@ -194,7 +222,7 @@ public sealed class FilaCoordinator(
         var limite = clock.UtcNow.AddMinutes(-filaOptions.Value.ExpiraAposMinutos);
 
         IReadOnlyList<ReservedQueueItem> expired;
-        using (var scope = scopes.CreateScope())
+        await using (var scope = scopes.CreateAsyncScope())
         {
             expired = await scope.ServiceProvider.GetRequiredService<IGeracaoPecaFila>()
                 .ReservarExpiradosAsync(_worker, limite, 50, reserva, ct);
@@ -208,7 +236,7 @@ public sealed class FilaCoordinator(
                 async (handler, c) =>
                 {
                     await handler.AoExpirarAsync(item.ReferenciaId, c);
-                    using var scope = scopes.CreateScope();
+                    await using var scope = scopes.CreateAsyncScope();
                     await scope.ServiceProvider.GetRequiredService<IGeracaoPecaFila>()
                         .FinalizarAsync(item.Id, QueueItemStatus.Falhou, "Tempo máximo de espera esgotado.", c);
                 },
@@ -222,13 +250,13 @@ public sealed class FilaCoordinator(
         Task.Run(
             async () =>
             {
-                using var scope = scopes.CreateScope();
+                await using var scope = scopes.CreateAsyncScope();
                 scope.ServiceProvider.GetRequiredService<ITenantContext>().SetTenant(item.TenantId);
                 await action(ResolveHandler(scope, item.Tipo), ct);
             },
             CancellationToken.None);
 
-    private static IQueueWorkHandler ResolveHandler(IServiceScope scope, QueueItemKind tipo) =>
+    private static IQueueWorkHandler ResolveHandler(AsyncServiceScope scope, QueueItemKind tipo) =>
         scope.ServiceProvider.GetServices<IQueueWorkHandler>().First(handler => handler.Tipo == tipo);
 
     private async Task TryAsync(Func<Task> action)

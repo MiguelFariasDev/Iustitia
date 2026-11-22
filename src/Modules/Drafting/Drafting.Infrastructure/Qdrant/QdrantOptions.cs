@@ -3,7 +3,7 @@ using Advocacia.Modules.Drafting.Infrastructure.Ollama;
 namespace Advocacia.Modules.Drafting.Infrastructure.Qdrant;
 
 /// <summary>
-/// Seção <c>Qdrant</c> (só a conexão; nome da coleção e limites ficam em <c>Rag</c>). O cliente
+/// Seção <c>Qdrant</c> (só a conexão; limites de busca ficam em <c>Rag</c>). O cliente
 /// oficial fala gRPC: a porta da URL é a do gRPC (6334 por padrão no Qdrant), não a REST (6333).
 /// URL e chave vêm de <c>QDRANT__BASEURL</c> / <c>QDRANT__APIKEY</c>.
 ///
@@ -18,7 +18,8 @@ public sealed class QdrantOptions
 
     public string? ApiKey { get; set; }
 
-    public int Dimensoes { get; set; } = 1024;
+    /// <summary>Vetores originais em disco (os quantizados int8 ficam na RAM). Desligue só com acervo pequeno.</summary>
+    public bool VetoresEmDisco { get; set; } = true;
 
     public int TimeoutSegundos { get; set; } = 30;
 

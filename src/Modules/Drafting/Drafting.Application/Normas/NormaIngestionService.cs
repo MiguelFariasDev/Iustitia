@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Busca;
+using Advocacia.Modules.Drafting.Application.Conversao;
 using Advocacia.Modules.Drafting.Application.Services;
 using Advocacia.Modules.Drafting.Domain.Normas;
 using Microsoft.Extensions.Logging;
@@ -21,7 +23,8 @@ public sealed class NormaIngestionService(
     IObjectStorage storage,
     IEmbeddingService embeddings,
     INormaVectorStore vectors,
-    NormaChunker chunker,
+    IQdrantService qdrant,
+    IChunkerJuridicoService chunker,
     IOptions<NormasIngestaoOptions> options,
     IGpuStateService gpu,
     IDateTimeProvider clock,
@@ -59,7 +62,7 @@ public sealed class NormaIngestionService(
             return new IngestaoArquivoResultado(IngestaoResultado.Ignorado, recusa);
         }
 
-        var rascunhos = chunker.Dividir(meta, frontMatter.Corpo)
+        var rascunhos = chunker.DividirNorma(meta, frontMatter.Corpo)
             .DistinctBy(chunk => chunk.Hash) // embedding de trecho duplicado só é pago uma vez
             .Select((chunk, indice) => chunk with { Ordem = indice })
             .ToList();
@@ -113,7 +116,7 @@ public sealed class NormaIngestionService(
 
         try
         {
-            await IndexarAsync(norma, meta, chave, chunks, settings, cancellationToken);
+            await IndexarAsync(norma, meta, chunks, settings, cancellationToken);
             if (colecaoAnterior is not null && !string.Equals(colecaoAnterior, meta.Colecao, StringComparison.Ordinal))
             {
                 await vectors.DeleteAsync(colecaoAnterior, norma.Id, null, cancellationToken);
@@ -142,10 +145,10 @@ public sealed class NormaIngestionService(
     }
 
     private async Task IndexarAsync(
-        NormaJuridica norma, NormaMetadata meta, string chave, List<NormaChunk> chunks,
+        NormaJuridica norma, NormaMetadata meta, List<NormaChunk> chunks,
         NormasIngestaoOptions settings, CancellationToken cancellationToken)
     {
-        await vectors.EnsureCollectionsAsync(DocumentIndexer.EmbeddingDimensions, cancellationToken);
+        await qdrant.GarantirColecoesAsync(cancellationToken);
 
         var lote = Math.Max(1, settings.LoteEmbedding);
         for (var offset = 0; offset < chunks.Count; offset += lote)
@@ -154,7 +157,7 @@ public sealed class NormaIngestionService(
             gpu.RegistrarUso(clock.UtcNow);
 
             var vetores = await embeddings.EmbedAsync(parte.Select(c => c.Texto).ToList(), cancellationToken);
-            if (vetores.Count != parte.Count || vetores.Any(v => v.Length != DocumentIndexer.EmbeddingDimensions))
+            if (vetores.Count != parte.Count || vetores.Any(v => v.Length != EmbeddingConstants.Dimensoes))
             {
                 throw new InvalidOperationException("O serviço de embeddings devolveu vetores inesperados.");
             }
@@ -162,10 +165,11 @@ public sealed class NormaIngestionService(
             var pontos = parte.Select((chunk, i) => new NormaVectorPoint(
                 chunk.Id,
                 vetores[i],
+                Bm25.Documento(chunk.Texto),
                 new NormaPayload(
                     norma.Id, meta.Urn, meta.Titulo, meta.Tipo, meta.Numero, meta.Data, meta.Situacao, meta.Revogada,
                     meta.VersaoTexto, norma.VersaoAtual, meta.Esfera, meta.Uf, meta.Municipio, meta.Area, meta.Tribunal,
-                    meta.Assuntos, meta.Colecao, chave, meta.FonteOficialUrl, null, chunk.Secao, chunk.Artigo,
+                    meta.Assuntos, meta.Colecao, norma.RepoPath, meta.FonteOficialUrl, null, chunk.Secao, chunk.Artigo,
                     chunk.Paragrafo, chunk.Inciso, chunk.HashSha256, chunk.Texto))).ToList();
 
             await vectors.UpsertAsync(meta.Colecao, pontos, cancellationToken);

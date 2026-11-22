@@ -57,6 +57,8 @@
     <!-- Extração de texto do acervo (módulo Drafting, ADR-072): PDF com camada de texto e DOCX. Ambas sem custo e com licença permissiva (Apache-2.0 / MIT). -->
     <PackageVersion Include="PdfPig" Version="0.1.16" />
     <PackageVersion Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <!-- E-mails (.eml) anexados a um caso. Versão "Lite": sem S/MIME, logo sem BouncyCastle. -->
+    <PackageVersion Include="MimeKitLite" Version="4.18.1" />
 
     <!-- Jobs / Mensageria -->
     <PackageVersion Include="Hangfire.Core" Version="1.8.15" />

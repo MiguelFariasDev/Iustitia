@@ -145,6 +145,377 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                     b.ToTable("indexed_documents", (string)null);
                 });
 
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.Caso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Area")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("area");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
+                    b.Property<string>("ClienteNome")
+                        .HasColumnType("text")
+                        .HasColumnName("cliente_nome");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateTimeOffset?>("EncerradoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("encerrado_em");
+
+                    b.Property<string>("NumeroProcesso")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("numero_processo");
+
+                    b.Property<Guid?>("ProcessoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processo_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
+
+                    b.Property<string>("Uf")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("uf");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UsuarioIdResponsavel")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id_responsavel");
+
+                    b.HasKey("Id")
+                        .HasName("pk_casos");
+
+                    b.HasIndex("TenantId", "ClienteId")
+                        .HasDatabaseName("ix_casos_tenant_cliente");
+
+                    b.HasIndex("TenantId", "UsuarioIdResponsavel", "CriadoEm")
+                        .HasDatabaseName("ix_casos_tenant_responsavel");
+
+                    b.ToTable("casos", (string)null);
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.CasoDocumento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Area")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("area");
+
+                    b.Property<Guid>("CasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_id");
+
+                    b.Property<string>("ChaveMarkdown")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("chave_markdown");
+
+                    b.Property<string>("ChaveOriginal")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("chave_original");
+
+                    b.Property<string>("ClassificacaoJson")
+                        .HasColumnType("text")
+                        .HasColumnName("classificacao_json");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
+                    b.Property<double?>("ConfiancaOcr")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confianca_ocr");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<DateOnly?>("DataDocumento")
+                        .HasColumnType("date")
+                        .HasColumnName("data_documento");
+
+                    b.Property<string>("Erro")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("erro");
+
+                    b.Property<string>("Formato")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("formato");
+
+                    b.Property<string>("HashSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash_sha256");
+
+                    b.Property<DateTimeOffset?>("IndexadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("indexado_em");
+
+                    b.Property<bool>("InjecaoSuspeita")
+                        .HasColumnType("boolean")
+                        .HasColumnName("injecao_suspeita");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("nome_arquivo");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("origem");
+
+                    b.Property<int>("Paginas")
+                        .HasColumnType("integer")
+                        .HasColumnName("paginas");
+
+                    b.Property<bool>("RequerRevisaoHumana")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requer_revisao_humana");
+
+                    b.Property<bool>("Restrito")
+                        .HasColumnType("boolean")
+                        .HasColumnName("restrito");
+
+                    b.Property<DateTimeOffset?>("RevisadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revisado_em");
+
+                    b.Property<Guid?>("RevisadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revisado_por");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tamanho_bytes");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TipoDocumento")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("tipo_documento");
+
+                    b.Property<int>("Trechos")
+                        .HasColumnType("integer")
+                        .HasColumnName("trechos");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UsuarioIdResponsavel")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id_responsavel");
+
+                    b.HasKey("Id")
+                        .HasName("pk_caso_documentos");
+
+                    b.HasIndex("CasoId", "HashSha256")
+                        .IsUnique()
+                        .HasDatabaseName("ux_caso_documentos_caso_hash");
+
+                    b.HasIndex("TenantId", "CasoId", "Status")
+                        .HasDatabaseName("ix_caso_documentos_tenant_caso_status");
+
+                    b.ToTable("caso_documentos", (string)null);
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.CasoDocumentoChunk", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_id");
+
+                    b.Property<double?>("Confianca")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confianca");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("documento_id");
+
+                    b.Property<string>("HashSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash_sha256");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("origem");
+
+                    b.Property<int?>("Pagina")
+                        .HasColumnType("integer")
+                        .HasColumnName("pagina");
+
+                    b.Property<string>("Secao")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("secao");
+
+                    b.Property<bool>("Suspeito")
+                        .HasColumnType("boolean")
+                        .HasColumnName("suspeito");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("texto");
+
+                    b.Property<int>("Tokens")
+                        .HasColumnType("integer")
+                        .HasColumnName("tokens");
+
+                    b.HasKey("Id")
+                        .HasName("pk_caso_documento_chunks");
+
+                    b.HasIndex("DocumentoId", "Ordem")
+                        .IsUnique()
+                        .HasDatabaseName("ux_caso_documento_chunks_doc_ordem");
+
+                    b.HasIndex("TenantId", "CasoId")
+                        .HasDatabaseName("ix_caso_documento_chunks_tenant_caso");
+
+                    b.ToTable("caso_documento_chunks", (string)null);
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.CasoMembro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_id");
+
+                    b.Property<DateTimeOffset>("ConcedidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("concedido_em");
+
+                    b.Property<Guid>("ConcedidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("concedido_por");
+
+                    b.Property<string>("Permissao")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("permissao");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_caso_membros");
+
+                    b.HasIndex("CasoId", "UsuarioId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_caso_membros_caso_usuario");
+
+                    b.HasIndex("TenantId", "UsuarioId")
+                        .HasDatabaseName("ix_caso_membros_tenant_usuario");
+
+                    b.ToTable("caso_membros", (string)null);
+                });
+
             modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Fila.GenerationQueueItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -670,6 +1041,84 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                     b.ToTable("norma_versoes", (string)null);
                 });
 
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Pecas.CitacaoPeca", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("DecididoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decidido_em");
+
+                    b.Property<Guid?>("DecididoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decidido_por");
+
+                    b.Property<string>("Decisao")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("decisao");
+
+                    b.Property<string>("Detalhe")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)")
+                        .HasColumnName("detalhe");
+
+                    b.Property<string>("FonteUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("fonte_url");
+
+                    b.Property<string>("Justificativa")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("justificativa");
+
+                    b.Property<Guid>("LegalDocumentRequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("legal_document_request_id");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem");
+
+                    b.Property<string>("PontoId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ponto_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Texto")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("texto");
+
+                    b.Property<string>("Urn")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("urn");
+
+                    b.HasKey("Id")
+                        .HasName("pk_legal_document_citations");
+
+                    b.HasIndex("LegalDocumentRequestId", "Ordem")
+                        .HasDatabaseName("ix_legal_document_citations_request");
+
+                    b.ToTable("legal_document_citations", (string)null);
+                });
+
             modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Pecas.LegalDocumentEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -720,16 +1169,28 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                         .HasColumnName("area");
 
                     b.Property<string>("AvisosJson")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("text")
                         .HasColumnName("avisos_json");
 
                     b.Property<DateTimeOffset?>("CanceladoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("cancelado_em");
 
+                    b.Property<Guid?>("CasoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caso_id");
+
+                    b.Property<Guid?>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
                     b.Property<DateTimeOffset?>("ConcluidoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("concluido_em");
+
+                    b.Property<string>("ConsultaJson")
+                        .HasColumnType("text")
+                        .HasColumnName("consulta_json");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -748,6 +1209,10 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                         .HasPrecision(12, 6)
                         .HasColumnType("numeric(12,6)")
                         .HasColumnName("custo_estimado_usd");
+
+                    b.Property<DateOnly?>("DataFatos")
+                        .HasColumnType("date")
+                        .HasColumnName("data_fatos");
 
                     b.Property<string>("DocumentosIdsJson")
                         .HasColumnType("jsonb")
@@ -799,10 +1264,18 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("request_origem_id");
 
+                    b.Property<DateTimeOffset?>("RevisadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revisado_em");
+
+                    b.Property<Guid?>("RevisadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revisado_por");
+
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
                     b.Property<long?>("TempoGeracaoMs")
@@ -820,6 +1293,10 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                     b.Property<string>("TextoGerado")
                         .HasColumnType("text")
                         .HasColumnName("texto_gerado");
+
+                    b.Property<string>("TextoRevisado")
+                        .HasColumnType("text")
+                        .HasColumnName("texto_revisado");
 
                     b.Property<string>("TipoPeca")
                         .IsRequired()
@@ -858,6 +1335,9 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                     b.HasIndex("RequestOrigemId")
                         .HasDatabaseName("ix_legal_document_requests_origem")
                         .HasFilter("request_origem_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "CasoId")
+                        .HasDatabaseName("ix_legal_document_requests_tenant_caso");
 
                     b.HasIndex("TenantId", "Status", "CriadoEm")
                         .HasDatabaseName("ix_legal_document_requests_tenant_status");
@@ -931,6 +1411,80 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                     b.ToTable("retrieved_sources", (string)null);
                 });
 
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Seguranca.EventoSegurancaIa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("HashConteudo")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash_conteudo");
+
+                    b.Property<DateTimeOffset>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("origem");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("tipo");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_drafting_security_events");
+
+                    b.HasIndex("TenantId", "OcorridoEm")
+                        .HasDatabaseName("ix_drafting_security_events_tenant_data");
+
+                    b.ToTable("drafting_security_events", (string)null);
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.CasoDocumento", b =>
+                {
+                    b.HasOne("Advocacia.Modules.Drafting.Domain.Casos.Caso", null)
+                        .WithMany()
+                        .HasForeignKey("CasoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_caso_documentos_casos_caso_id");
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.CasoDocumentoChunk", b =>
+                {
+                    b.HasOne("Advocacia.Modules.Drafting.Domain.Casos.CasoDocumento", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_caso_documento_chunks_caso_documentos_documento_id");
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.CasoMembro", b =>
+                {
+                    b.HasOne("Advocacia.Modules.Drafting.Domain.Casos.Caso", null)
+                        .WithMany("Membros")
+                        .HasForeignKey("CasoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_caso_membros_casos_caso_id");
+                });
+
             modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Normas.NormaChunk", b =>
                 {
                     b.HasOne("Advocacia.Modules.Drafting.Domain.Normas.NormaJuridica", null)
@@ -949,6 +1503,16 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_norma_versoes_normas_juridicas_norma_juridica_id");
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Pecas.CitacaoPeca", b =>
+                {
+                    b.HasOne("Advocacia.Modules.Drafting.Domain.Pecas.LegalDocumentRequest", null)
+                        .WithMany("Citacoes")
+                        .HasForeignKey("LegalDocumentRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_legal_document_citations_legal_document_requests_legal_docu");
                 });
 
             modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Pecas.LegalDocumentEvent", b =>
@@ -971,8 +1535,15 @@ namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_retrieved_sources_legal_document_requests_legal_document_re");
                 });
 
+            modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Casos.Caso", b =>
+                {
+                    b.Navigation("Membros");
+                });
+
             modelBuilder.Entity("Advocacia.Modules.Drafting.Domain.Pecas.LegalDocumentRequest", b =>
                 {
+                    b.Navigation("Citacoes");
+
                     b.Navigation("Events");
 
                     b.Navigation("Sources");

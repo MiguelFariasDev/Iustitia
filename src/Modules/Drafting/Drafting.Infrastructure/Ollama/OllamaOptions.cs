@@ -7,7 +7,16 @@ public sealed class OllamaOptions
 
     public string BaseUrl { get; set; } = "http://localhost:11434";
 
-    public string Modelo { get; set; } = "qwen3:8b";
+    public string Modelo { get; set; } = "jurema-7b";
+
+    /// <summary>Modelo da extração estruturada (classificação, consulta). Nulo = o mesmo da geração.</summary>
+    public string? ModeloExtracao { get; set; }
+
+    /// <summary>
+    /// Parâmetro <c>think</c> do Ollama. Nulo = não envia (Jurema-7B não tem modo de raciocínio). Ao trocar para
+    /// um modelo que pensa (qwen3), ponha falso: pensar gasta GPU e não vira texto de peça.
+    /// </summary>
+    public bool? Pensar { get; set; }
 
     public string ModeloEmbedding { get; set; } = "bge-m3";
 
@@ -23,16 +32,14 @@ public sealed class OllamaOptions
     public double TopP { get; set; } = 0.9;
 
     /// <summary>
-    /// Janela de contexto pedida ao Ollama (prompt + resposta). O padrão dele é 4096 e TRUNCA EM
-    /// SILÊNCIO o começo do prompt (o system prompt!) quando estoura. Orçamento: ~450 (system) +
-    /// até ~3.500 (fatos/pedidos/instruções) + 8.000 (contexto do RAG) + 4.096 (resposta) ≈ 16.000.
-    /// Com 8192 e contexto de 8.000 tokens a conta NÃO fecha — reduza <c>Rag:MaxTokensContexto</c>
-    /// (para ~2.500) se precisar de uma janela menor.
+    /// Janela de contexto pedida ao Ollama (prompt + resposta). Ele TRUNCA EM SILÊNCIO o começo do prompt (o
+    /// system prompt!) quando estoura; por isso o contexto recuperado é dimensionado a partir daqui
+    /// (OrcamentoContexto). Com 8192 cabem, em média, 5 trechos; com GPU de 24 GB, 16384 dobra isso.
     /// </summary>
-    public int NumCtx { get; set; } = 16384;
+    public int NumCtx { get; set; } = 8192;
 
-    /// <summary>Teto de tokens da minuta (num_predict).</summary>
-    public int NumPredict { get; set; } = 4096;
+    /// <summary>Teto de tokens da minuta (num_predict). Sai da mesma janela: mais resposta = menos contexto.</summary>
+    public int NumPredict { get; set; } = 2560;
 
     /// <summary>Quanto o modelo fica carregado na GPU depois do último uso (evita recarregar a cada peça).</summary>
     public string KeepAlive { get; set; } = "10m";

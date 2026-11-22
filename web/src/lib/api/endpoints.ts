@@ -68,11 +68,19 @@ export const endpoints = {
     status: (id: string) => `/pecas/${id}/status`,
     byId: (id: string) => `/pecas/${id}`,
     cancelar: (id: string) => `/pecas/${id}/cancelar`,
+    citacao: (id: string, citacaoId: string) => `/pecas/${id}/citacoes/${citacaoId}`,
+    revisao: (id: string) => `/pecas/${id}/revisao`,
+    exportar: (id: string) => `/pecas/${id}/exportar`,
   },
-  /** Acervo de documentos que alimenta a geração de peças (upload indexa de forma assíncrona). */
-  acervo: {
-    upload: '/documentos/upload',
-    byId: (id: string) => `/documentos/${id}`,
+  /** Casos: a unidade de isolamento da geração. Os anexos de um caso nunca entram em outro. */
+  casos: {
+    list: '/casos',
+    documentos: (id: string) => `/casos/${id}/documentos`,
+    documento: (id: string, documentoId: string) => `/casos/${id}/documentos/${documentoId}`,
+    documentoMarkdown: (id: string, documentoId: string) =>
+      `/casos/${id}/documentos/${documentoId}/markdown`,
+    revisarDocumento: (id: string, documentoId: string) =>
+      `/casos/${id}/documentos/${documentoId}/revisar`,
   },
   clientes: {
     list: '/clientes',

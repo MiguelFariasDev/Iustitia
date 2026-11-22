@@ -1,6 +1,7 @@
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.BuildingBlocks.Domain.Time;
+using Advocacia.Modules.Drafting.Application.Abstractions;
 using Advocacia.Modules.Drafting.Domain.Normas;
 
 namespace Advocacia.Modules.Drafting.Application.Normas;
@@ -38,13 +39,16 @@ public interface INormaAdminService
     Task<Result<IReadOnlyList<IngestaoJobResponse>>> ListarJobsAsync(int limite, CancellationToken cancellationToken = default);
 
     Task<Result<NormaResponse>> ObterNormaAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>As cinco coleções do índice vetorial e quantos trechos cada uma tem.</summary>
+    Task<Result<IReadOnlyList<ColecaoInfo>>> ColecoesAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
 /// Operação do acervo: pedir sincronização (o worker executa), ver o histórico e consultar a norma por trás de
 /// uma citação. Não expõe a chave do object storage nem endereços internos — só o caminho no repositório de origem.
 /// </summary>
-public sealed class NormaAdminService(INormaStore store, IDateTimeProvider clock) : INormaAdminService
+public sealed class NormaAdminService(INormaStore store, IQdrantService qdrant, IDateTimeProvider clock) : INormaAdminService
 {
     public const string AvisoFonte =
         "Texto informativo, obtido por conversão automática (e, em alguns casos, OCR) do repositório ctresb/leis. " +
@@ -86,5 +90,17 @@ public sealed class NormaAdminService(INormaStore store, IDateTimeProvider clock
         return Result.Success(new NormaResponse(
             n.Id, n.Titulo, n.Tipo, n.Numero, n.Urn, n.Situacao, n.Revogada, n.VersaoTexto, n.VersaoAtual, n.FonteOficialUrl,
             n.RepoPath, n.Esfera, n.Uf, n.Municipio, n.Tribunal, n.DataIngestao, n.DataUltimaAtualizacao, AvisoFonte));
+    }
+
+    public async Task<Result<IReadOnlyList<ColecaoInfo>>> ColecoesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return Result.Success(await qdrant.EstadoAsync(cancellationToken));
+        }
+        catch (VectorStoreException)
+        {
+            return Result.Failure<IReadOnlyList<ColecaoInfo>>(ErrorFactory.From(ErrorCode.DRAFTING_VECTOR_STORE_UNAVAILABLE));
+        }
     }
 }

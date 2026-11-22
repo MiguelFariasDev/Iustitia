@@ -1,10 +1,11 @@
 'use client'
 
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Copy, Download, Sparkles, X } from 'lucide-react'
+import { AlertTriangle, Sparkles, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import {
   Select,
@@ -25,9 +26,12 @@ import {
   statusTerminal,
   tiposPeca,
   type AreaPeca,
+  type Caso,
   type TipoPeca,
 } from '../types'
 import { AnexosPeca, useAnexos } from './AnexosPeca'
+import { CasoPeca } from './CasoPeca'
+import { RevisaoPeca } from './RevisaoPeca'
 
 const POLLING_MS = 2000
 const MAX_TEXTO = 8000
@@ -78,19 +82,22 @@ function Campo({
 }
 
 /**
- * Criação de peças com a API real (Drafting): os fatos, os pedidos, o COMANDO do advogado
- * (instruções adicionais) e os documentos anexados do processo vão para a geração, que é
- * assíncrona — a tela acompanha o status até a minuta ficar pronta. A minuta é sempre rascunho.
+ * Criação de peças com a API real (Drafting): o CASO (limite do que a IA lê), os fatos, os pedidos, o
+ * comando (instruções adicionais) e os anexos do caso vão para a geração, que é assíncrona — a tela
+ * acompanha o status até a minuta ficar pronta. A minuta é sempre rascunho: só sai daqui depois da
+ * revisão humana.
  */
 export function PecasView() {
   const [tipo, setTipo] = useState<TipoPeca>('contestacao')
   const [area, setArea] = useState<AreaPeca>('civel')
+  const [casoId, setCasoId] = useState('')
+  const [dataFatos, setDataFatos] = useState('')
   const [processoId, setProcessoId] = useState('')
   const [fatos, setFatos] = useState('')
   const [pedidos, setPedidos] = useState('')
   const [comando, setComando] = useState('')
   const [pecaId, setPecaId] = useState<string | null>(null)
-  const anexos = useAnexos()
+  const anexos = useAnexos(casoId)
 
   const processos = useQuery(processosQuery({ pageSize: 100, status: 'Ativo' }))
   const opcoesProcesso = useMemo(() => processos.data?.items ?? [], [processos.data])
@@ -109,6 +116,12 @@ export function PecasView() {
       const tribunal = processo.tribunal ? ` Tribunal: ${processo.tribunal}.` : ''
       setFatos(`Processo nº ${processo.cnjNumber}.${tribunal}${contraria}\n`)
     }
+  }
+
+  function escolherCaso(caso: Caso) {
+    setCasoId(caso.id)
+    const areaDoCaso = areasPeca.find((a) => a.value === caso.area)
+    if (areaDoCaso) setArea(areaDoCaso.value)
   }
 
   const status = useQuery({
@@ -130,12 +143,14 @@ export function PecasView() {
   const gerar = useMutation({
     mutationFn: () =>
       submeterPeca({
+        casoId,
         tipoPeca: tipo,
         area,
         fatos: fatos.trim(),
         pedidos: pedidos.trim() || undefined,
         instrucoesAdicionais: comando.trim() || undefined,
-        documentosIds: anexos.ids.length > 0 ? anexos.ids : undefined,
+        documentosIds: anexos.ids,
+        dataFatos: dataFatos || undefined,
       }),
     onSuccess: (resposta) => setPecaId(resposta.id),
     onError: (error) => handleApiError(error),
@@ -150,7 +165,8 @@ export function PecasView() {
     onError: (error) => handleApiError(error),
   })
 
-  const podeGerar = fatos.trim().length > 0 && !anexos.ocupado && !gerar.isPending && !emAndamento
+  const podeGerar =
+    casoId !== '' && fatos.trim().length > 0 && !anexos.ocupado && !gerar.isPending && !emAndamento
 
   function nova() {
     setPecaId(null)
@@ -158,26 +174,6 @@ export function PecasView() {
   }
 
   const texto = peca.data?.textoGerado ?? ''
-  const bloqueada = peca.data?.exportacaoBloqueada ?? false
-
-  async function copiar() {
-    try {
-      await navigator.clipboard.writeText(texto)
-      notify.success('Minuta copiada')
-    } catch {
-      notify.error('Não foi possível copiar')
-    }
-  }
-
-  function baixar() {
-    const arquivo = new Blob([texto], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(arquivo)
-    const ancora = document.createElement('a')
-    ancora.href = url
-    ancora.download = `minuta-${tipo}-${pecaId?.slice(0, 8) ?? 'rascunho'}.txt`
-    ancora.click()
-    URL.revokeObjectURL(url)
-  }
 
   return (
     <div className="space-y-6">
@@ -194,6 +190,8 @@ export function PecasView() {
           if (podeGerar) gerar.mutate()
         }}
       >
+        <CasoPeca casoId={casoId} area={area} onEscolher={escolherCaso} disabled={emAndamento} />
+
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <label id="tipo-peca-rotulo" className="text-sm font-medium">
@@ -270,6 +268,20 @@ export function PecasView() {
         </Campo>
 
         <Campo
+          id="data-fatos"
+          rotulo="Data dos fatos"
+          dica="Opcional. Serve para conferir se a lei citada já estava em vigor na época."
+        >
+          <Input
+            id="data-fatos"
+            type="date"
+            className="w-48"
+            value={dataFatos}
+            onChange={(evento) => setDataFatos(evento.target.value)}
+          />
+        </Campo>
+
+        <Campo
           id="pedidos-peca"
           rotulo="Pedidos"
           dica="Recomendado. Sem pedidos, a IA é instruída a não criá-los."
@@ -298,18 +310,16 @@ export function PecasView() {
           />
         </Campo>
 
-        <AnexosPeca
-          anexos={anexos.anexos}
-          onAdicionar={anexos.adicionar}
-          onRemover={(anexo) => void anexos.remover(anexo)}
-          disabled={emAndamento}
-        />
+        <AnexosPeca casoId={casoId} estado={anexos} disabled={emAndamento} />
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={!podeGerar}>
             {gerar.isPending ? <LoadingSpinner size="sm" decorative /> : <Sparkles aria-hidden />}
             Gerar minuta com IA
           </Button>
+          {casoId === '' ? (
+            <p className="text-xs text-muted-foreground">Escolha ou abra um caso para gerar.</p>
+          ) : null}
           {anexos.ocupado ? (
             <p role="status" className="text-xs text-muted-foreground">
               Aguardando os documentos terminarem de ser processados…
@@ -397,10 +407,20 @@ export function PecasView() {
                     {peca.data.fontes.map((fonte) => (
                       <li key={fonte.id}>
                         <span className="font-medium">
-                          {fonte.nomeArquivo}
-                          {fonte.pagina ? ` · p. ${fonte.pagina}` : ''}
+                          {fonte.rotulo ?? fonte.nomeArquivo}
                           {fonte.citada ? ' · citada' : ''}
+                          {fonte.situacao ? ` · ${fonte.situacao}` : ''}
                         </span>
+                        {fonte.urlOrigem ? (
+                          <a
+                            href={fonte.urlOrigem}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 text-xs underline"
+                          >
+                            Fonte oficial
+                          </a>
+                        ) : null}
                         <span className="block text-xs text-muted-foreground">{fonte.trecho}</span>
                       </li>
                     ))}
@@ -408,24 +428,15 @@ export function PecasView() {
                 </details>
               ) : null}
 
-              <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-                <Button type="button" onClick={() => void copiar()} disabled={bloqueada}>
-                  <Copy aria-hidden />
-                  Copiar texto
-                </Button>
-                <Button type="button" variant="outline" onClick={baixar} disabled={bloqueada}>
-                  <Download aria-hidden />
-                  Baixar (.txt)
-                </Button>
-                <Button type="button" variant="ghost" onClick={nova}>
-                  Nova peça
-                </Button>
-                {bloqueada ? (
-                  <p className="text-xs text-muted-foreground">
-                    Exportação bloqueada: revise os avisos acima.
-                  </p>
-                ) : null}
-              </div>
+              <RevisaoPeca
+                key={`${peca.data.id}-${peca.data.revisadoEm ?? 'pendente'}`}
+                peca={peca.data}
+                onAtualizar={() => void peca.refetch()}
+              />
+
+              <Button type="button" variant="ghost" onClick={nova}>
+                Nova peça
+              </Button>
             </article>
           ) : (
             <div role="status" aria-busy="true" className="text-sm text-muted-foreground">

@@ -37,7 +37,7 @@ public class DraftingModuleConventionTests
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue(
-            "a Application fala só com as portas (ILlmService, IEmbeddingService, IVectorStore); trocar de provedor não pode tocá-la");
+            "a Application fala só com as portas (ILlmService, IEmbeddingService, ICasoVectorStore); trocar de provedor não pode tocá-la");
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class DraftingModuleConventionTests
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue(
-            $"o Qdrant não tem RLS: só QdrantService (que sempre filtra por tenant) e NormaQdrantStore (acervo público, sem dado de cliente) podem falar com o cliente. Violam: {string.Join(", ", result.FailingTypes?.Select(t => t.FullName) ?? [])}");
+            $"o Qdrant não tem RLS: só CasoQdrantStore (que sempre filtra por tenant e caso) e NormaQdrantStore (acervo público, sem dado de cliente) podem falar com o cliente. Violam: {string.Join(", ", result.FailingTypes?.Select(t => t.FullName) ?? [])}");
     }
 
     [Fact]
@@ -60,5 +60,20 @@ public class DraftingModuleConventionTests
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue();
+    }
+
+    /// <summary>Todo método de leitura/exclusão de anexos exige o filtro do caso (ou tenant + caso) na própria assinatura.</summary>
+    [Fact]
+    public void CasoVectorStore_HasNoOperationWithoutTenantAndCase()
+    {
+        foreach (var metodo in typeof(Advocacia.Modules.Drafting.Application.Abstractions.ICasoVectorStore).GetMethods())
+        {
+            var parametros = metodo.GetParameters();
+            var temFiltro = parametros.Any(p => p.ParameterType == typeof(Advocacia.Modules.Drafting.Application.Abstractions.FiltroCaso));
+            var temTenantECaso = parametros.Any(p => p.Name == "tenantId") && parametros.Any(p => p.Name == "casoId");
+            var ehGravacao = metodo.Name == "UpsertAsync";
+
+            (temFiltro || temTenantECaso || ehGravacao).Should().BeTrue($"{metodo.Name} precisa do caso na assinatura");
+        }
     }
 }

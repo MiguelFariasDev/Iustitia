@@ -111,3 +111,7 @@ logs/
 # --------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+
+# Cloudflare Tunnel (infra): configuração real e credenciais
+infra/cloudflared/*
+!infra/cloudflared/config.example.yml

@@ -19,10 +19,15 @@ WORKDIR /app
 RUN groupadd --system --gid 1500 advocacia \
     && useradd --system --uid 1500 --gid advocacia --shell /usr/sbin/nologin advocacia
 
-# O Worker ingere o acervo normativo (ADR-073): precisa do git (clone parcial) e de um diretório gravável
-# para o clone. O volume /var/lib/advocacia deve ser persistente para o clone sobreviver a reinícios.
+# O Worker ingere o acervo normativo (ADR-073) e converte os anexos dos casos (ADR-074):
+#   git ......................... clone parcial do acervo (Ingestao:Modo=Git)
+#   tesseract + por ............. OCR de páginas escaneadas e imagens
+#   poppler-utils ............... renderiza as páginas do PDF para o OCR
+#   libreoffice writer/calc ..... DOC, XLS e ODS
+# O volume /var/lib/advocacia deve ser persistente para o clone sobreviver a reinícios.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
+       tesseract-ocr tesseract-ocr-por poppler-utils libreoffice-writer-nogui libreoffice-calc-nogui \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /var/lib/advocacia/leis /var/lib/advocacia/storage \
     && chown -R advocacia:advocacia /var/lib/advocacia

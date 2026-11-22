@@ -7,8 +7,11 @@ public enum QueueItemKind
     /// <summary>Gerar uma peça (referência = id da LegalDocumentRequest).</summary>
     Geracao = 0,
 
-    /// <summary>Indexar um documento no banco vetorial (referência = id do IndexedDocument). Precisa da GPU para os embeddings.</summary>
+    /// <summary>Classificar e indexar um anexo já convertido (referência = id do CasoDocumento). Precisa da GPU.</summary>
     Indexacao = 1,
+
+    /// <summary>Converter um anexo em Markdown: extração, OCR ou transcrição (referência = id do CasoDocumento). Só CPU.</summary>
+    Conversao = 2,
 }
 
 public enum QueueItemStatus

@@ -54,6 +54,8 @@ public class FilaCoordinatorTests
 
     private sealed class RecordingHandler(QueueItemKind tipo, List<string> log) : IQueueWorkHandler
     {
+        public bool RequerGpu { get; init; } = true;
+
         public QueueItemKind Tipo => tipo;
 
         public Func<Guid, WorkOutcome> Outcome { get; set; } = _ => new WorkOutcome(WorkOutcomeKind.Concluido);
@@ -142,7 +144,7 @@ public class FilaCoordinatorTests
 
         public FilaCoordinator Coordinator { get; }
 
-        public Harness(FilaOptions? options = null)
+        public Harness(FilaOptions? options = null, Action<IServiceCollection>? extra = null)
         {
             Queue = new FakeQueue(Clock);
             Geracao = new RecordingHandler(QueueItemKind.Geracao, Log);
@@ -153,12 +155,14 @@ public class FilaCoordinatorTests
             services.AddSingleton<IGpuOrchestrator>(Orchestrator);
             services.AddSingleton<IQueueWorkHandler>(Geracao);
             services.AddSingleton<IQueueWorkHandler>(Indexacao);
+            services.AddSingleton<IQueueWorkHandler>(new RecordingHandler(QueueItemKind.Conversao, Log) { RequerGpu = false });
             services.AddSingleton<ITenantContext>(Tenants);
+            extra?.Invoke(services);
             var provider = services.BuildServiceProvider();
 
             Coordinator = new FilaCoordinator(
                 provider.GetRequiredService<IServiceScopeFactory>(),
-                Options.Create(options ?? new FilaOptions { LoteMax = 5, MaxTentativas = 3, BackoffBaseSeconds = 30, ExpiraAposMinutos = 60 }),
+                Options.Create(options ?? new FilaOptions { LoteMax = 5, MaxTentativas = 3, BackoffBaseSegundos = 30, ExpiraAposMinutos = 60 }),
                 Clock,
                 NullLogger<FilaCoordinator>.Instance);
         }
@@ -197,6 +201,87 @@ public class FilaCoordinatorTests
         h.Queue.Items.Single().Status.Should().Be(QueueItemStatus.Concluido);
         // Com trabalho, não pergunta se a GPU está ociosa neste ciclo.
         h.Orchestrator.Parar.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SoConversaoDeAnexos_NaoLigaAGpu()
+    {
+        var h = new Harness();
+        h.Enqueue(QueueItemKind.Conversao);
+
+        await h.Coordinator.RunCycleAsync(CancellationToken.None);
+
+        h.Orchestrator.Garantir.Should().Be(0);
+        h.Log.Should().Equal("Conversao:reservar", "Conversao:processar:1");
+        h.Queue.Items.Single().Status.Should().Be(QueueItemStatus.Concluido);
+    }
+
+    [Fact]
+    public async Task LoteMisto_ProcessaOQueSoUsaCpuAntesDeLigarAGpu()
+    {
+        var h = new Harness();
+        h.Enqueue();
+        h.Enqueue(QueueItemKind.Conversao);
+
+        await h.Coordinator.RunCycleAsync(CancellationToken.None);
+
+        h.Log.IndexOf("Conversao:processar:1").Should().BeLessThan(h.Log.IndexOf("Geracao:preparar"));
+        h.Orchestrator.Garantir.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GpuIndisponivel_NaoImpedeALeituraDosAnexos()
+    {
+        var h = new Harness();
+        h.Orchestrator.Falhar = true;
+        h.Enqueue();
+        var conversao = h.Enqueue(QueueItemKind.Conversao);
+
+        await h.Coordinator.RunCycleAsync(CancellationToken.None);
+
+        h.Queue.Items.Single(i => i.ReferenciaId == conversao).Status.Should().Be(QueueItemStatus.Concluido);
+        h.Queue.Items.Single(i => i.ReferenciaId != conversao).Status.Should().Be(QueueItemStatus.Pendente);
+    }
+
+    private sealed class SoDescarteAssincrono : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class HandlerComDescarteAssincrono(SoDescarteAssincrono recurso) : IQueueWorkHandler
+    {
+        public QueueItemKind Tipo => QueueItemKind.Geracao;
+
+        public Task AoReservarAsync(Guid referenciaId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task AoPrepararGpuAsync(Guid referenciaId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task AoFaltarInfraAsync(Guid referenciaId, string motivo, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<WorkOutcome> ProcessarAsync(Guid referenciaId, int tentativa, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new WorkOutcome(recurso is null ? WorkOutcomeKind.Falhou : WorkOutcomeKind.Concluido));
+
+        public Task AoExpirarAsync(Guid referenciaId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task AoFalharDefinitivoAsync(Guid referenciaId, string erro, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    /// <summary>Regressão: a unidade de trabalho real só implementa IAsyncDisposable; escopo síncrono estourava em TODO item.</summary>
+    [Fact]
+    public async Task ServicoComDescarteSoAssincrono_NaoDerrubaOItem()
+    {
+        var h = new Harness(extra: services =>
+        {
+            services.AddScoped<SoDescarteAssincrono>();
+            var existentes = services.Where(d => d.ServiceType == typeof(IQueueWorkHandler)).ToList();
+            existentes.ForEach(d => services.Remove(d));
+            services.AddScoped<IQueueWorkHandler, HandlerComDescarteAssincrono>();
+        });
+        h.Enqueue();
+
+        await h.Coordinator.RunCycleAsync(CancellationToken.None);
+
+        h.Queue.Items.Single().Status.Should().Be(QueueItemStatus.Concluido);
     }
 
     [Fact]

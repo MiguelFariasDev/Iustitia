@@ -1,6 +1,6 @@
 # ADR-073 — Acervo normativo em Markdown (ctresb/leis) com busca híbrida
 
-Status: proposto (código não compilado nem executado — ver "Estado da verificação" em `docs/modules/drafting.md`).
+Status: aceito, com partes substituídas pela [ADR-074](074-casos-busca-hibrida-e-revisao-humana.md) (escopo, coleções, BM25 e trava de exportação).
 
 ## Contexto
 O RAG do ADR-072 só enxergava documentos enviados pelo escritório. Para minutas fundamentadas é preciso um
@@ -60,4 +60,3 @@ escrito um cliente SigV4 mínimo).
   o escopo. O worker avança por prioridade e em fatias; ver estimativas em `docs/modules/drafting.md`.
 - Vigência é a informada pela fonte (`revogada`, `situacao`); não há motor de vigência por data.
 - Mudar o chunking ou o modelo de embedding exige reprocessamento (`?reprocessar=true`).
-- Código não compilado/executado; migração EF não gerada (o repositório usa SQL em `infra/supabase/migrations`).

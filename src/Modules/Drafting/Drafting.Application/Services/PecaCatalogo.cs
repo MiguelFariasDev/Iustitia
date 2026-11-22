@@ -13,6 +13,11 @@ public static class PecaCatalogo
         ["agravo_instrumento"] = "agravo de instrumento",
         ["contrarrazoes"] = "contrarrazões",
         ["manifestacao"] = "manifestação",
+        ["recurso_ordinario"] = "recurso ordinário",
+        ["recurso_especial"] = "recurso especial",
+        ["recurso_extraordinario"] = "recurso extraordinário",
+        ["contrato"] = "contrato",
+        ["parecer"] = "parecer jurídico",
     };
 
     public static readonly IReadOnlyDictionary<string, string> Areas = new Dictionary<string, string>
@@ -25,12 +30,15 @@ public static class PecaCatalogo
         ["consumidor"] = "consumidor",
         ["administrativo"] = "administrativo",
         ["empresarial"] = "empresarial",
+        ["penal"] = "penal",
+        ["constitucional"] = "constitucional",
     };
 
-    /// <summary>Tipos de documento aceitos no acervo (campo <c>tipoDocumento</c> do upload).</summary>
+    /// <summary>Tipos que a classificação de anexos pode devolver; qualquer outra coisa vira "outro".</summary>
     public static readonly IReadOnlySet<string> TiposDocumento = new HashSet<string>(StringComparer.Ordinal)
     {
-        "lei", "jurisprudencia", "sumula", "doutrina", "contrato", "peticao", "sentenca", "acordao", "parecer", "outro",
+        "contrato", "peticao", "sentenca", "acordao", "decisao", "procuracao", "nota_fiscal", "recibo", "extrato", "boleto",
+        "laudo", "email", "conversa", "identidade", "certidao", "parecer", "planilha", "fotografia", "audio", "outro",
     };
 
     public static string RotuloTipo(string chave) => Tipos.TryGetValue(chave, out var rotulo) ? rotulo : chave;

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using Advocacia.Modules.Drafting.Application.Busca;
 using Advocacia.Modules.Drafting.Application.Services;
 using Advocacia.Modules.Drafting.Domain.Normas;
 
@@ -39,7 +40,7 @@ public sealed partial class NormaChunker(ChunkingOptions options)
 
     public IReadOnlyList<ChunkDraft> Dividir(NormaMetadata meta, string markdownBody)
     {
-        var body = JsonBlockFlattener.Flatten(markdownBody).Replace("\r\n", "\n").Replace("**", string.Empty);
+        var body = TextoJuridicoLimpo.Limpar(markdownBody, meta.Esfera == "jurisprudencia").Replace("**", string.Empty);
         var units = ParseUnits(meta.Titulo, body);
         var result = new List<ChunkDraft>();
 
@@ -54,10 +55,16 @@ public sealed partial class NormaChunker(ChunkingOptions options)
 
             foreach (var part in Split(lines, unit.Artigo is not null ? ArtigoLevels : TextoLevels, 0, null))
             {
+                if (part.Linhas.All(SoTitulo))
+                {
+                    continue;
+                }
+
                 var text = Render(meta, unit, part, unit.Artigo is not null ? lines[0] : null);
                 var tokens = TokenEstimator.Estimate(text, options.CharsPorToken);
                 result.Add(new ChunkDraft(
-                    result.Count, text, unit.Hierarquia, unit.Artigo, part.Paragrafo, part.Inciso, tokens, Hash(text)));
+                    result.Count, text, Limite(unit.Hierarquia, SecaoMax), unit.Artigo, Limite(part.Paragrafo, 60),
+                    Limite(part.Inciso, 20), tokens, Hash(text)));
             }
         }
 
@@ -155,7 +162,13 @@ public sealed partial class NormaChunker(ChunkingOptions options)
     private static bool SameTitle(string heading, string titulo) =>
         string.Equals(heading.Trim(), titulo.Trim(), StringComparison.OrdinalIgnoreCase);
 
-    private static string NormalizeArtigo(string raw) => raw.Trim().TrimEnd('.', ',', ' ');
+    /// <summary>"1o" e "1°" (conversão do PDF) são "1º": o rótulo da citação é o que a advogada vai ler.</summary>
+    private static string NormalizeArtigo(string raw)
+    {
+        var limpo = raw.Trim().TrimEnd('.', ',', ' ');
+
+        return limpo.Length > 1 && (limpo[^1] is 'o' or '°') && char.IsDigit(limpo[^2]) ? limpo[..^1] + 'º' : limpo;
+    }
 
     private static bool IsRevogadoSomente(Segmento unit, List<string> lines)
     {
@@ -190,12 +203,19 @@ public sealed partial class NormaChunker(ChunkingOptions options)
     private static readonly Regex[] ArtigoLevels = [Paragrafo, Inciso, Alinea];
     private static readonly Regex[] TextoLevels = [Heading, Blank];
 
+    /// <summary>Espaço do cabeçalho que todo trecho carrega (título, hierarquia, ementa, caput): sai do teto do corpo.</summary>
+    private const int ReservaCabecalho = 150;
+
+    private int MaxCorpo => Math.Max(200, options.MaxTokens - ReservaCabecalho);
+
+    private int AlvoCorpo => Math.Min(options.AlvoTokens, MaxCorpo);
+
     private int Tok(IEnumerable<string> lines) =>
         TokenEstimator.Estimate(string.Join('\n', lines), options.CharsPorToken);
 
     private IEnumerable<Part> Split(List<string> lines, Regex[] levels, int level, string? paragrafoCtx)
     {
-        if (Tok(lines) <= options.MaxTokens)
+        if (Tok(lines) <= MaxCorpo)
         {
             yield return new Part(lines, paragrafoCtx, null, paragrafoCtx is not null);
             yield break;
@@ -235,12 +255,20 @@ public sealed partial class NormaChunker(ChunkingOptions options)
             }
         }
 
-        foreach (var block in blocks)
+        foreach (var bloco in blocks)
         {
+            var block = bloco;
+            if (group.Count > 0 && group.All(SoTitulo) && Tok(block) > MaxCorpo)
+            {
+                // Um título sozinho não é trecho: acompanha o conteúdo que ele anuncia.
+                block = [.. group, .. block];
+                group.Clear();
+            }
+
             var label = LabelOf(block[0], levels[level]);
             var blockTokens = Tok(block);
 
-            if (blockTokens > options.MaxTokens)
+            if (blockTokens > MaxCorpo)
             {
                 foreach (var part in Emit())
                 {
@@ -258,7 +286,7 @@ public sealed partial class NormaChunker(ChunkingOptions options)
                 continue;
             }
 
-            if (group.Count > 0 && Tok(group) + blockTokens > options.AlvoTokens)
+            if (group.Count > 0 && Tok(group) + blockTokens > AlvoCorpo)
             {
                 foreach (var part in Emit())
                 {
@@ -283,6 +311,8 @@ public sealed partial class NormaChunker(ChunkingOptions options)
             yield return part;
         }
     }
+
+    private static bool SoTitulo(string linha) => linha.Trim().Length == 0 || Heading.IsMatch(linha);
 
     /// <summary>Divide em blocos que COMEÇAM numa linha do padrão (o que vem antes é o primeiro bloco).</summary>
     private static List<List<string>> Partition(List<string> lines, Regex marker)
@@ -334,7 +364,7 @@ public sealed partial class NormaChunker(ChunkingOptions options)
             var parts = Hard(sentence);
             foreach (var piece in parts)
             {
-                if (group.Count > 0 && Tok([string.Join(' ', group), piece]) > options.AlvoTokens)
+                if (group.Count > 0 && Tok([string.Join(' ', group), piece]) > AlvoCorpo)
                 {
                     yield return [string.Join(' ', group)];
                     group = previous is null ? [] : [previous];
@@ -354,7 +384,7 @@ public sealed partial class NormaChunker(ChunkingOptions options)
     /// <summary>Frase maior que o teto (tabela, lista sem pontuação): corta em espaço.</summary>
     private IEnumerable<string> Hard(string sentence)
     {
-        var maxChars = (int)(options.MaxTokens * options.CharsPorToken);
+        var maxChars = (int)(MaxCorpo * options.CharsPorToken);
         while (sentence.Length > maxChars)
         {
             var cut = sentence.LastIndexOf(' ', maxChars);
@@ -392,6 +422,14 @@ public sealed partial class NormaChunker(ChunkingOptions options)
             dispositivo += $" — {part.Paragrafo}";
         }
 
+        var conhecida = NormasConhecidas.Identificar(meta.Tipo, meta.Numero, meta.Ano, meta.Colecao);
+        if (conhecida is not null && !meta.Titulo.Contains(conhecida.Apelido, StringComparison.OrdinalIgnoreCase)
+            && meta.Colecao != Colecoes.ConstituicaoFederal)
+        {
+            // "Código Civil" é como se busca e se cita; "Lei nº 10.406" é como o arquivo se chama.
+            sb.Append(conhecida.Apelido).Append(" — ");
+        }
+
         sb.Append(meta.Titulo);
         if (dispositivo is not null)
         {
@@ -419,6 +457,11 @@ public sealed partial class NormaChunker(ChunkingOptions options)
 
         return CollapseBlank(sb.ToString());
     }
+
+    /// <summary>Tamanho da coluna: uma hierarquia muito funda não pode derrubar a ingestão do arquivo.</summary>
+    private const int SecaoMax = 500;
+
+    private static string? Limite(string? valor, int max) => valor is null || valor.Length <= max ? valor : valor[..max];
 
     private static string CollapseBlank(string text) => Regex.Replace(text, @"\n{3,}", "\n\n").Trim();
 

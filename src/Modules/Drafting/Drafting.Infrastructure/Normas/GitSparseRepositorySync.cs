@@ -62,14 +62,14 @@ public sealed class GitSparseRepositorySync(
     internal static string PadroesSparse(NormasIngestaoOptions settings)
     {
         var sb = new StringBuilder();
-        foreach (var pasta in settings.PastasIncluidas)
+        foreach (var pasta in settings.Incluidas)
         {
             var p = pasta.Replace('\\', '/').Trim('/');
             sb.Append('/').Append(p).Append(p.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ? "\n" : "/\n");
         }
 
         sb.Append("!_*\n");
-        foreach (var excluida in settings.PastasExcluidas.Where(e => e != ".git"))
+        foreach (var excluida in settings.Excluidas.Where(e => e != ".git"))
         {
             sb.Append('!').Append(excluida.Trim('/')).Append(excluida.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ? "\n" : "/\n");
         }
@@ -112,7 +112,7 @@ public sealed class GitSparseRepositorySync(
         }
 
         // Branch e pastas viram argumento de git / linha do sparse-checkout: só caracteres previsíveis.
-        if (!SeguroParaGit(settings.Branch) || settings.PastasIncluidas.Any(p => !SeguroParaGit(p)))
+        if (!SeguroParaGit(settings.Branch) || settings.Incluidas.Any(p => !SeguroParaGit(p)))
         {
             throw new InvalidOperationException("Ingestao: branch ou pasta com caracteres inválidos.");
         }

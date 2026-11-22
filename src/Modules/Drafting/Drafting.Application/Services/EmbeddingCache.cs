@@ -41,7 +41,7 @@ public sealed class CachedEmbeddingService(IEmbeddingService inner, EmbeddingCac
 
         for (var i = 0; i < inputs.Count; i++)
         {
-            if (cache.TryGet(ContextSelector.HashText(inputs[i]), out var vector))
+            if (cache.TryGet(TextoHash.DoTexto(inputs[i]), out var vector))
             {
                 result[i] = vector;
             }
@@ -62,7 +62,7 @@ public sealed class CachedEmbeddingService(IEmbeddingService inner, EmbeddingCac
             for (var k = 0; k < missing.Count; k++)
             {
                 result[missing[k]] = fresh[k];
-                cache.Set(ContextSelector.HashText(inputs[missing[k]]), fresh[k]);
+                cache.Set(TextoHash.DoTexto(inputs[missing[k]]), fresh[k]);
             }
         }
 

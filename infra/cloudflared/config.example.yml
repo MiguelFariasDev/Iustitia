@@ -1,0 +1,20 @@
+# Exemplo de túnel gerenciado localmente. Com túnel gerenciado no painel (TUNNEL_TOKEN, como no
+# infra/vast/onstart.sh) este arquivo não é usado: configure lá o mesmo hostname e serviço.
+#
+#   cloudflared tunnel create advocacia-ia
+#   cloudflared tunnel route dns advocacia-ia ia.SEU-DOMINIO
+#   cloudflared tunnel --config infra/cloudflared/config.yml run
+#
+# O arquivo real (config.yml) e o JSON de credenciais NÃO são versionados.
+tunnel: ID-DO-TUNEL
+credentials-file: /etc/cloudflared/ID-DO-TUNEL.json
+
+ingress:
+  # Aponta para o nginx autenticado, NUNCA direto para o Ollama (11434).
+  - hostname: ia.SEU-DOMINIO
+    service: http://127.0.0.1:8080
+    originRequest:
+      connectTimeout: 30s
+      keepAliveTimeout: 120s
+      disableChunkedEncoding: false
+  - service: http_status:404
