@@ -41,6 +41,9 @@ public sealed record ChangeProcessoStatusCommand(Guid ProcessoId, string Status)
 [Audited("Deactivated", "Processo", EntityIdProperty = nameof(ProcessoId))]
 public sealed record ArchiveProcessoCommand(Guid ProcessoId) : ICommand;
 
+/// <summary>Marca/desmarca o sigilo interno do processo (Partner ou acima).</summary>
+public sealed record SetProcessoConfidencialCommand(Guid ProcessoId, bool Confidencial) : ICommand;
+
 [Audited("Viewed", "Processo", EntityIdProperty = nameof(ProcessoId))]
 public sealed record GetProcessoByIdQuery(Guid ProcessoId) : IQuery<ProcessoResponse>;
 
@@ -72,7 +75,8 @@ public sealed record ProcessoResponse(
     DateOnly? DataDistribuicao,
     string? Observacoes,
     bool GeraCaptura,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    bool Confidencial = false);
 
 public sealed record ProcessoListItem(
     Guid Id,

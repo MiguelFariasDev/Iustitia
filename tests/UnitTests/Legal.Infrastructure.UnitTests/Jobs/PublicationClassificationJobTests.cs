@@ -55,7 +55,7 @@ public class PublicationClassificationJobTests : IDisposable
 
         _suggestions.ListTenantsAwaitingSuggestionAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { _tenantId });
-        _suggestions.ListAwaitingSuggestionAsync(_tenantId, 0, Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _suggestions.ListAwaitingSuggestionAsync(_tenantId, Arg.Is(0), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<Publication> { _publication });
         _usageQuery.CountFailuresByReferenceAsync(
                 _tenantId, "classification", "AI_INVALID_RESPONSE", Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

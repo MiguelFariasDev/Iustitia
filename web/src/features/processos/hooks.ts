@@ -6,7 +6,13 @@ import { routes } from '@/config/routes'
 import { handleApiError } from '@/lib/api/toastHandler'
 import { notify } from '@/lib/notify'
 import { queryKeys } from '@/lib/query/queryKeys'
-import { archiveProcesso, changeProcessoStatus, createProcesso, updateProcesso } from './api'
+import {
+  archiveProcesso,
+  changeProcessoStatus,
+  createProcesso,
+  setProcessoConfidencial,
+  updateProcesso,
+} from './api'
 import { consultarProcessoTribunal } from './datajud'
 import type { ProcessoFormValues } from './schemas'
 import { findCard, moveCardNaPagina } from './kanban'
@@ -71,6 +77,23 @@ export function useChangeProcessoStatus(id: string) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.processos.all })
       notify.success(`Processo marcado como ${statusProcessoMeta[status].label.toLowerCase()}.`, {
         description: statusProcessoMeta[status].descricao,
+      })
+    },
+    onError: (error) => handleApiError(error),
+  })
+}
+
+export function useSetProcessoConfidencial(id: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (confidencial: boolean) => setProcessoConfidencial(id, confidencial),
+    onSuccess: (_data, confidencial) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.processos.all })
+      notify.success(confidencial ? 'Processo marcado como confidencial.' : 'Sigilo removido.', {
+        description: confidencial
+          ? 'Só o responsável e os sócios enxergam este processo.'
+          : 'Todos com acesso a processos voltam a vê-lo.',
       })
     },
     onError: (error) => handleApiError(error),

@@ -214,7 +214,7 @@ public class ObjectStorageTests : IDisposable
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Method = request.Method.Method;
-            Url = request.RequestUri!.ToString();
+            Url = request.RequestUri!.AbsoluteUri;
             Authorization = request.Headers.TryGetValues("Authorization", out var a) ? a.Single() : null;
             PayloadHash = request.Headers.TryGetValues("x-amz-content-sha256", out var h) ? h.Single() : null;
             CopySource = request.Headers.TryGetValues("x-amz-copy-source", out var c) ? c.Single() : null;

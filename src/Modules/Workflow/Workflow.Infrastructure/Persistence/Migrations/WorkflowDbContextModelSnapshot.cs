@@ -84,6 +84,10 @@ namespace Advocacia.Modules.Workflow.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("process_id");
 
+                    b.Property<Guid?>("SourcePublicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_publication_id");
+
                     b.Property<DateTimeOffset>("StartAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("start_at");
@@ -123,6 +127,11 @@ namespace Advocacia.Modules.Workflow.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "ProcessId")
                         .HasDatabaseName("ix_calendar_events_tenant_process")
                         .HasFilter("is_deleted = false AND process_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "SourcePublicationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_calendar_events_tenant_source_publication")
+                        .HasFilter("is_deleted = false AND source_publication_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "StartAt")
                         .HasDatabaseName("ix_calendar_events_tenant_start")

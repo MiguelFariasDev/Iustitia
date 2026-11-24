@@ -34,6 +34,8 @@ export interface Processo {
   /** Se o processo está sendo consultado no diário. Ativo e suspenso geram captura. */
   geraCaptura: boolean
   createdAt: string
+  /** Sigilo interno do escritório (distinto do segredo de justiça do tribunal). */
+  confidencial?: boolean
 }
 
 export interface ProcessoListItem {

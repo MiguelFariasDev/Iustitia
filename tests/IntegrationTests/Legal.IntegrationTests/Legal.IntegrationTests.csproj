@@ -24,6 +24,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Modules\Legal\Legal.Infrastructure\Legal.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Atendimento\Atendimento.Infrastructure\Atendimento.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\CRM\CRM.Infrastructure\CRM.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Workflow\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Drafting\Drafting.Infrastructure\Drafting.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Financeiro\Financeiro.Infrastructure\Financeiro.Infrastructure.csproj" />
+
     <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Integrations\Integrations.Anthropic\Integrations.Anthropic.Infrastructure\Integrations.Anthropic.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AssemblyName>Advocacia.Modules.Drafting.Application.UnitTests</AssemblyName>
     <RootNamespace>Advocacia.Modules.Drafting.Application.UnitTests</RootNamespace>
   </PropertyGroup>
 

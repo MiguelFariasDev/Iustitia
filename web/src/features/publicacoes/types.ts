@@ -14,6 +14,23 @@ export const publicationStatuses: PublicationStatus[] = [
 export type PublicationKind =
   'intimation' | 'citation' | 'decision' | 'sentence' | 'hearing' | 'other'
 
+/** O que a IA sugeriu para a publicação (só o resultado validado). É sugestão: o advogado decide. */
+export interface PublicationSuggestion {
+  /** Providência/ato sugerido (ex.: "Contestação"). */
+  actType: string
+  /** Prazo sugerido em dias; `null` quando a publicação não abre prazo ou a IA não soube determiná-lo. */
+  deadlineDays: number | null
+  /** "business" = dias úteis; "calendar" = corridos. */
+  deadlineKind: 'business' | 'calendar' | null
+  legalBasis: string | null
+  /** 0–100. */
+  confidence: number
+  /** Confiança baixa: conferir com atenção antes de aceitar. */
+  requiresManualReview: boolean
+  /** A IA viu só o começo do texto (publicação muito longa). */
+  contentTruncated: boolean
+}
+
 export interface Publication {
   id: string
   /** Data de divulgação no diário oficial (ISO). */
@@ -37,6 +54,8 @@ export interface Publication {
   reviewNotes: string | null
   /** Só no detalhe: órgão, classe, link do DJEN etc., já interpretados. */
   metadata: PublicationMetadata | null
+  /** Sugestão da IA; ausente enquanto a análise não rodou. */
+  suggestion?: PublicationSuggestion | null
 }
 
 export interface PublicationMetadata {

@@ -17,6 +17,7 @@ export const ErrorCode = {
   AUTH_REFRESH_TOKEN_EXPIRED: 'AUTH_REFRESH_TOKEN_EXPIRED',
   AUTH_REFRESH_TOKEN_INVALID: 'AUTH_REFRESH_TOKEN_INVALID',
   AUTH_EMAIL_NOT_CONFIRMED: 'AUTH_EMAIL_NOT_CONFIRMED',
+  AUTH_MFA_REQUIRED: 'AUTH_MFA_REQUIRED',
   AUTH_ACCOUNT_DISABLED: 'AUTH_ACCOUNT_DISABLED',
 
   // Autorização
@@ -88,6 +89,9 @@ const presentationByCode: Partial<Record<string, ErrorPresentation>> = {
   [ErrorCode.VALIDATION_REQUIRED_FIELD]: 'inline',
   [ErrorCode.VALIDATION_INVALID_FORMAT]: 'inline',
   [ErrorCode.USER_EMAIL_DUPLICATED]: 'inline',
+
+  // O cliente HTTP já leva o usuário à tela do segundo fator; um toast em cima seria ruído.
+  [ErrorCode.AUTH_MFA_REQUIRED]: 'silent',
 
   [ErrorCode.AUTH_TOKEN_EXPIRED]: 'signOut',
   [ErrorCode.AUTH_TOKEN_INVALID]: 'signOut',

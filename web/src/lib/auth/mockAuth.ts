@@ -8,6 +8,8 @@ import { AuthError } from './types'
  */
 export const MOCK_SESSION_COOKIE = 'adv-mock-session'
 export const MOCK_PASSWORD = 'demo1234'
+export const MOCK_MFA_CODE = '123456'
+let mockMfaEnrolled = false
 
 export const mockUser: AuthUser = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -114,5 +116,27 @@ export const mockAuthService: AuthService = {
   },
   async updatePassword() {
     await delay(300)
+  },
+  async mfaStatus() {
+    return { enrolled: mockMfaEnrolled, factorId: mockMfaEnrolled ? 'mock-factor' : null }
+  },
+  async mfaEnroll() {
+    await delay(200)
+    return {
+      factorId: 'mock-factor',
+      qrCode:
+        'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><rect width="160" height="160" fill="white"/><text x="80" y="84" text-anchor="middle" font-size="12">QR de teste</text></svg>',
+      secret: 'MOCKSECRET234567',
+    }
+  },
+  async mfaVerify(_factorId, code) {
+    await delay(200)
+    if (code !== MOCK_MFA_CODE) {
+      throw new AuthError(
+        'Código inválido ou expirado. Confira o aplicativo e tente de novo.',
+        'mfa_verification_failed'
+      )
+    }
+    mockMfaEnrolled = true
   },
 }

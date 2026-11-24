@@ -17,7 +17,7 @@ vi.mock('@/lib/notify', () => ({
   notify: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }))
 
-const pub = (id: string, extra: Partial<Publication>): Publication =>
+const pub = (id: string, extra: Partial<Publication> = {}): Publication =>
   ({
     id,
     publishedAt: '2026-11-05T12:00:00Z',
@@ -90,12 +90,14 @@ describe('RevisaoView — leitura (variação A)', () => {
     expect(abas[0]).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('sinaliza que são sugestões de demonstração e que feriados não entram', async () => {
+  it('sinaliza que são sugestões de demonstração e que só o calendário nacional entra', async () => {
     await renderRevisao()
 
     expect(screen.getByRole('note')).toHaveTextContent(/Sugestões de demonstração/)
-    expect(screen.getByRole('note')).toHaveTextContent(/ignora feriados/)
-    expect(screen.getByText(/não considera feriados nem suspensões/)).toBeInTheDocument()
+    expect(screen.getByRole('note')).toHaveTextContent(/só feriados nacionais e o recesso/)
+    expect(
+      screen.getByText(/só feriados nacionais e o recesso; confira feriados locais e suspensões/)
+    ).toBeInTheDocument()
   })
 
   it('destaca o trecho que gerou o prazo e mostra tipo, prazo, vencimento e confiança', async () => {
@@ -105,7 +107,7 @@ describe('RevisaoView — leitura (variação A)', () => {
     const ia = screen.getByRole('region', { name: 'Sugestão da IA' })
     expect(within(ia).getByText('Contestação')).toBeInTheDocument()
     expect(within(ia).getByText('15 dias úteis')).toBeInTheDocument()
-    expect(within(ia).getByText('26/11/2026')).toBeInTheDocument() // 5/nov + 15 dias úteis
+    expect(within(ia).getByText('30/11/2026')).toBeInTheDocument() // disponibilizada qui 5/nov → publicação sex 6/nov → 15 dias úteis (20/11 é feriado)
     expect(within(ia).getByText(/confiança \d+%/)).toBeInTheDocument()
   })
 
@@ -135,7 +137,7 @@ describe('RevisaoView — decidir', () => {
       expect.objectContaining({
         tipo: 'Prazo',
         diaInteiro: true,
-        inicio: '2026-11-26T00:00',
+        inicio: '2026-11-30T00:00',
         processoId: 'proc-1',
         titulo: 'Prazo: Contestação — 00001-07.2018.8.06.0100',
       })
@@ -164,7 +166,7 @@ describe('RevisaoView — decidir', () => {
 
     const valores = vi.mocked(agendaApi.createEvento).mock.calls[0]![0]
     expect(valores.descricao).not.toContain('contestar')
-    expect(valores.descricao).toMatch(/Estimativa sem feriados/)
+    expect(valores.descricao).toMatch(/Estimativa pelo calendário nacional/)
   })
 
   it('rejeitar: só muda o status para rejeitada, sem criar prazo na agenda', async () => {
@@ -201,7 +203,7 @@ describe('RevisaoView — decidir', () => {
       )
     )
     expect(agendaApi.createEvento).toHaveBeenCalledWith(
-      expect.objectContaining({ inicio: '2026-11-19T00:00' }) // 5/nov + 10 dias úteis
+      expect.objectContaining({ inicio: '2026-11-23T00:00' }) // publicação sex 6/nov + 10 dias úteis
     )
     expect(notify.success).toHaveBeenCalledWith('Prazo corrigido e salvo')
   })
@@ -288,13 +290,108 @@ describe('RevisaoView — estados', () => {
     expect(await screen.findByText('Nenhuma publicação aguardando revisão')).toBeInTheDocument()
   })
 
-  it('sem mocks não há sugestão da IA: a tela diz isso e não consulta nem inventa prazo', () => {
+  it('com a API real, mostra a sugestão da IA e decide numa chamada só ao servidor', async () => {
     envMock.useMocks = false
+    vi.mocked(publicationsApi.getPublications).mockResolvedValue({
+      items: [
+        pub('9', {
+          suggestion: {
+            actType: 'Réplica',
+            deadlineDays: 15,
+            deadlineKind: 'business',
+            legalBasis: 'CPC, art. 351',
+            confidence: 84,
+            requiresManualReview: false,
+            contentTruncated: false,
+          },
+        }),
+        pub('10'),
+      ],
+      page: 1,
+      pageSize: 100,
+      totalCount: 2,
+      totalPages: 1,
+    })
+    vi.mocked(publicationsApi.reviewPublication).mockResolvedValue({
+      status: 'Approved',
+      vencimento: '2026-12-01',
+      eventId: 'e1',
+      days: 15,
+      notes: [],
+    })
+    const { user } = renderWithProviders(<RevisaoView />)
+
+    expect(await screen.findByText('Réplica', { selector: 'dd' })).toBeInTheDocument()
+    expect(screen.getByText('CPC, art. 351')).toBeInTheDocument()
+    expect(screen.getByText(/1 publicação ainda aguarda a análise da IA/)).toBeInTheDocument()
+    expect(screen.queryByText(/Sugestões de demonstração/)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Aceitar' }))
+
+    await waitFor(() =>
+      expect(publicationsApi.reviewPublication).toHaveBeenCalledWith('9', 'Approved', undefined)
+    )
+    // O navegador NÃO monta evento nem muda status por conta própria: o servidor faz tudo.
+    expect(agendaApi.createEvento).not.toHaveBeenCalled()
+    expect(publicationsApi.changePublicationStatus).not.toHaveBeenCalled()
+  })
+
+  it('com a API real, corrigir envia o prazo do advogado', async () => {
+    envMock.useMocks = false
+    vi.mocked(publicationsApi.getPublications).mockResolvedValue({
+      items: [
+        pub('9', {
+          suggestion: {
+            actType: 'Réplica',
+            deadlineDays: 15,
+            deadlineKind: 'business',
+            legalBasis: null,
+            confidence: 40,
+            requiresManualReview: true,
+            contentTruncated: false,
+          },
+        }),
+      ],
+      page: 1,
+      pageSize: 100,
+      totalCount: 1,
+      totalPages: 1,
+    })
+    vi.mocked(publicationsApi.reviewPublication).mockResolvedValue({
+      status: 'Corrected',
+      vencimento: '2026-11-20',
+      eventId: 'e1',
+      days: 8,
+      notes: [],
+    })
+    const { user } = renderWithProviders(<RevisaoView />)
+
+    expect(await screen.findByText(/Confiança baixa/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Corrigir' }))
+    const campo = screen.getByLabelText('Prazo em dias úteis')
+    await user.clear(campo)
+    await user.type(campo, '8')
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    await waitFor(() =>
+      expect(publicationsApi.reviewPublication).toHaveBeenCalledWith('9', 'Corrected', 8)
+    )
+  })
+
+  it('com a API real e nada analisado, avisa que a IA ainda não passou por lá', async () => {
+    envMock.useMocks = false
+    vi.mocked(publicationsApi.getPublications).mockResolvedValue({
+      items: [pub('1'), pub('2')],
+      page: 1,
+      pageSize: 100,
+      totalCount: 2,
+      totalPages: 1,
+    })
     renderWithProviders(<RevisaoView />)
 
-    expect(screen.getByText('A revisão da IA ainda não está disponível')).toBeInTheDocument()
-    expect(publicationsApi.getPublications).not.toHaveBeenCalled()
-    expect(screen.queryByRole('button', { name: 'Aceitar' })).toBeNull()
-    expect(screen.queryByRole('radiogroup')).toBeNull()
+    expect(
+      await screen.findByText(/2 publicações ainda aguardam a análise da IA/)
+    ).toBeInTheDocument()
+    expect(await screen.findByText('Nenhuma publicação aguardando revisão')).toBeInTheDocument()
   })
 })

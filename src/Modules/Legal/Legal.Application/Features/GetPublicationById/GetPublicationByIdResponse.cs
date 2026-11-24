@@ -23,4 +23,5 @@ public sealed record GetPublicationByIdResponse(
     string Status,
     bool IsRead,
     string? MetadataJson,
-    string? ReviewNotes);
+    string? ReviewNotes,
+    PublicationSuggestionResponse? Suggestion = null);

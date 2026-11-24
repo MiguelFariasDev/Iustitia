@@ -26,4 +26,5 @@ public sealed record PublicationListItem(
     DateTimeOffset CapturedAt,
     string? Type,
     string Status,
-    bool IsRead);
+    bool IsRead,
+    PublicationSuggestionResponse? Suggestion = null);

@@ -15,6 +15,10 @@ public interface IPublicationSuggestionRepository
     Task<PublicationSuggestion?> GetByPublicationIdAsync(
         Guid tenantId, PublicationId publicationId, CancellationToken cancellationToken = default);
 
+    /// <summary>As sugestões das publicações informadas, numa única consulta (para listagens).</summary>
+    Task<IReadOnlyDictionary<Guid, PublicationSuggestion>> ListByPublicationIdsAsync(
+        Guid tenantId, IReadOnlyCollection<Guid> publicationIds, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Publicações PendingReview do escritório que ainda não têm sugestão, as mais antigas
     /// primeiro (o que espera há mais tempo corre mais risco de perder prazo).

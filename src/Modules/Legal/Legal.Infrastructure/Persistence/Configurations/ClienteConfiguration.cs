@@ -80,6 +80,9 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .HasMaxLength(BlindIndexLength)
             .IsRequired();
 
+        builder.Property(cliente => cliente.AnonimizadoEm).HasColumnName("anonimizado_em");
+        builder.Ignore(cliente => cliente.Anonimizado);
+
         builder.OwnsOne(cliente => cliente.Contato, contato =>
         {
             contato.Property(c => c.Email)

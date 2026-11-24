@@ -15,3 +15,6 @@ public sealed record ClienteAtualizadoEvent(Guid ClienteId, Guid TenantId) : Dom
 public sealed record ClienteDesativadoEvent(Guid ClienteId, Guid TenantId) : DomainEvent;
 
 public sealed record ClienteReativadoEvent(Guid ClienteId, Guid TenantId) : DomainEvent;
+
+/// <summary>Os dados pessoais do cliente foram irreversivelmente descaracterizados (LGPD, art. 18, IV e VI).</summary>
+public sealed record ClienteAnonimizadoEvent(Guid ClienteId, Guid TenantId) : DomainEvent;

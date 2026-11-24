@@ -20,7 +20,7 @@ namespace Advocacia.Platform.IntegrationTests.Common;
 /// é por isso que este fixture, embora seja dos testes de Platform, também migra o
 /// LegalDbContext.
 ///
-/// Sem Docker (ex.: CI sem daemon, sandbox), aponte <c>ADVOCACIA_TEST_PG_SERVER</c> para um
+/// Sem Docker (ex.: CI sem daemon, sandbox), aponte <c>ADVOCACIA_TEST_PG</c> para um
 /// servidor PostgreSQL 16 já em pé, com um superusuário — ex.:
 /// <c>Host=127.0.0.1;Port=5544;Username=postgres;Password=postgres</c>. A fixture cria um banco
 /// descartável nesse servidor e o remove no fim; o servidor nunca é tocado além disso.
@@ -32,29 +32,6 @@ public sealed class PostgresFixture : IAsyncLifetime
 {
     private const string AppUserPassword = "integration_tests_app_user";
 
-    private const string ExternalServerVariable = "ADVOCACIA_TEST_PG_SERVER";
-
-    private readonly string? _externalServer = Environment.GetEnvironmentVariable(ExternalServerVariable);
-    private readonly string _externalDatabase = $"advocacia_it_{Guid.NewGuid():N}";
-
-    private readonly PostgreSqlContainer? _container;
-
-    public PostgresFixture()
-    {
-        if (string.IsNullOrWhiteSpace(_externalServer))
-        {
-            _container = new PostgreSqlBuilder()
-                .WithImage("postgres:16-alpine")
-                .WithDatabase("advocacia_db")
-                .WithUsername("postgres")
-                .WithPassword("postgres")
-                .Build();
-        }
-    }
-
-    public string SuperuserConnectionString => _container is not null
-        ? _container.GetConnectionString()
-        : new NpgsqlConnectionStringBuilder(_externalServer!) { Database = _externalDatabase }.ConnectionString;
     // Criado sob demanda: PostgreSqlBuilder.Build() exige Docker já no Build(), o que impediria
     // usar o banco externo (ADVOCACIA_TEST_PG) em ambientes sem Docker.
     private PostgreSqlContainer? _container;
@@ -67,13 +44,9 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        if (_container is not null)
-        {
-            await _container.StartAsync();
-        }
-        else
-        {
-            await CreateExternalDatabaseAsync();
+        // Uma montagem por vez no cluster (roles são globais) — ver ExternalPostgres.AcquireClusterLockAsync.
+        await using var clusterLock = await ExternalPostgres.AcquireClusterLockAsync();
+
         var external = await ExternalPostgres.TryCreateDatabaseAsync();
         if (external is { } externalDatabase)
         {
@@ -121,6 +94,14 @@ public sealed class PostgresFixture : IAsyncLifetime
         await using (var atendimentoContext = new AtendimentoDbContext(atendimentoOptionsBuilder.Options, new AsyncLocalTenantContext()))
         {
             await atendimentoContext.Database.MigrateAsync();
+        }
+
+        // Tabelas dos demais módulos: as migrations SQL (014 em diante) criam índices e policies sobre elas.
+        await MigrateModuleAsync<Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext>(o => new Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext(o, new AsyncLocalTenantContext()));
+        await MigrateModuleAsync<Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext>(o => new Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext(o, new AsyncLocalTenantContext()));
+        await MigrateModuleAsync<Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext>(o => new Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext(o, new AsyncLocalTenantContext()));
+        await MigrateModuleAsync<Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext>(o => new Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext(o, new AsyncLocalTenantContext()));
+
         // ai_usage_logs (módulo Anthropic): 015_ai_usage_logs.sql precisa da tabela existente.
         var anthropicOptionsBuilder = new DbContextOptionsBuilder<AnthropicDbContext>();
         anthropicOptionsBuilder.UseNpgsql(SuperuserConnectionString);
@@ -143,37 +124,6 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (_container is not null)
-        {
-            await _container.DisposeAsync();
-            return;
-        }
-
-        await DropExternalDatabaseAsync();
-    }
-
-    private async Task CreateExternalDatabaseAsync()
-    {
-        await using var connection = new NpgsqlConnection(
-            new NpgsqlConnectionStringBuilder(_externalServer!) { Database = "postgres" }.ConnectionString);
-        await connection.OpenAsync();
-
-        await using var command = connection.CreateCommand();
-        command.CommandText = $"CREATE DATABASE \"{_externalDatabase}\"";
-        await command.ExecuteNonQueryAsync();
-    }
-
-    private async Task DropExternalDatabaseAsync()
-    {
-        NpgsqlConnection.ClearAllPools();
-
-        await using var connection = new NpgsqlConnection(
-            new NpgsqlConnectionStringBuilder(_externalServer!) { Database = "postgres" }.ConnectionString);
-        await connection.OpenAsync();
-
-        await using var command = connection.CreateCommand();
-        command.CommandText = $"DROP DATABASE IF EXISTS \"{_externalDatabase}\" WITH (FORCE)";
-        await command.ExecuteNonQueryAsync();
         if (_externalDatabaseName is not null)
         {
             await ExternalPostgres.DropDatabaseAsync(_externalDatabaseName);
@@ -184,6 +134,17 @@ public sealed class PostgresFixture : IAsyncLifetime
         {
             await _container.DisposeAsync();
         }
+    }
+
+    private async Task MigrateModuleAsync<TContext>(Func<DbContextOptions<TContext>, TContext> factory)
+        where TContext : DbContext
+    {
+        var builder = new DbContextOptionsBuilder<TContext>();
+        builder.UseNpgsql(SuperuserConnectionString);
+        builder.UseSnakeCaseNamingConvention();
+
+        await using var context = factory(builder.Options);
+        await context.Database.MigrateAsync();
     }
 
     private async Task ApplySupabaseSqlMigrationsAsync()

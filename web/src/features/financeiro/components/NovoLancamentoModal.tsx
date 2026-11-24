@@ -37,8 +37,8 @@ import { lancamentoFormDefaults, lancamentoFormSchema, type LancamentoFormValues
 import { tiposLancamento, tipoLancamentoLabels } from '../types'
 
 /**
- * Grava no repositório local (ver repositorio.ts): o lançamento aparece na lista e nos totais e
- * permanece neste navegador. Quando houver servidor, só api.ts muda.
+ * Registra o lançamento no servidor: ele aparece na lista e nos totais para todo o escritório
+ * autorizado (titular, sócios e financeiro).
  */
 export function NovoLancamentoModal() {
   const [open, setOpen] = useState(false)
@@ -76,7 +76,7 @@ export function NovoLancamentoModal() {
         <DialogHeader>
           <DialogTitle>Novo lançamento</DialogTitle>
           <DialogDescription>
-            O lançamento fica salvo neste navegador, na sua conta.
+            O lançamento fica salvo no escritório, visível a quem tem acesso ao financeiro.
           </DialogDescription>
         </DialogHeader>
 

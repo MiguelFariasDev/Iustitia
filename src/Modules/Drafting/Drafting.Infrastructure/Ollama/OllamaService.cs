@@ -61,6 +61,9 @@ public sealed class OllamaService(
 
         while (true)
         {
+            // O leitor pode devolver linhas já bufferizadas sem olhar o token: o cancelamento do chamador
+            // (cancelar a peça) tem de interromper a geração mesmo assim — e fechar a conexão com a GPU.
+            cancellationToken.ThrowIfCancellationRequested();
             var line = await ReadAsync(() => reader.ReadLineAsync(deadline.Token).AsTask(), deadline, cancellationToken);
             if (line is null)
             {

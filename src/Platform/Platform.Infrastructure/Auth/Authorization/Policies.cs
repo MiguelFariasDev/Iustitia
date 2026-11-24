@@ -8,5 +8,6 @@ public static class Policies
     public const string LawyerOrAbove = nameof(LawyerOrAbove);
     public const string AdminOnly = nameof(AdminOnly);
     public const string FinancialOnly = nameof(FinancialOnly);
+    public const string FinanceAccess = nameof(FinanceAccess);
     public const string AnyAuthenticatedUser = nameof(AnyAuthenticatedUser);
 }

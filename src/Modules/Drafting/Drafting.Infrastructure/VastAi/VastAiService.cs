@@ -171,7 +171,11 @@ public sealed class VastAiService(
                 response = await httpClient.SendAsync(build(), ct);
                 if (response.IsSuccessStatusCode)
                 {
-                    return response;
+                    // Quem chama é o dono da resposta: sem zerar, o finally abaixo a descartaria antes da leitura.
+                    var success = response;
+                    response = null;
+
+                    return success;
                 }
 
                 var transient = (int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.TooManyRequests;

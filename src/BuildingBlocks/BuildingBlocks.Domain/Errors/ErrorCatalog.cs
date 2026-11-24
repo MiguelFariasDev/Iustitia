@@ -185,6 +185,10 @@ public static class ErrorCatalog
                 "Telefone inválido. Informe DDD e número (10 ou 11 dígitos).", 400, ErrorType.Validation),
             [ErrorCode.CLIENT_BIRTHDATE_INVALID] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_BIRTHDATE_INVALID),
                 "Data de nascimento inválida: não pode estar no futuro.", 400, ErrorType.Validation),
+            [ErrorCode.CLIENT_HAS_ACTIVE_PROCESSES] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_HAS_ACTIVE_PROCESSES),
+                "Este cliente tem processos em andamento. Encerre ou arquive os processos antes de anonimizar os dados.", 409, ErrorType.Conflict),
+            [ErrorCode.CLIENT_ANONYMIZED] = new(ErrorGroup.Client, nameof(ErrorCode.CLIENT_ANONYMIZED),
+                "Os dados deste cliente foram anonimizados e não podem mais ser alterados.", 409, ErrorType.Conflict),
 
             // PROCESS (módulo Legal)
             [ErrorCode.PROCESS_NOT_FOUND] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_NOT_FOUND),
@@ -339,6 +343,16 @@ public static class ErrorCatalog
 
             [ErrorCode.DRAFTING_NORMA_NOT_FOUND] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_NORMA_NOT_FOUND),
                 "Norma não encontrada no acervo.", 404, ErrorType.NotFound),
+
+            // FINANCE (módulo Financeiro)
+            [ErrorCode.FINANCE_ENTRY_NOT_FOUND] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_NOT_FOUND),
+                "Lançamento não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.FINANCE_ENTRY_DESCRIPTION_INVALID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_DESCRIPTION_INVALID),
+                "Informe a descrição do lançamento (até 200 caracteres).", 400, ErrorType.Validation),
+            [ErrorCode.FINANCE_ENTRY_AMOUNT_INVALID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_AMOUNT_INVALID),
+                "O valor deve ser maior que zero, com no máximo duas casas decimais.", 400, ErrorType.Validation),
+            [ErrorCode.FINANCE_ENTRY_ALREADY_PAID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_ALREADY_PAID),
+                "Este lançamento já foi pago.", 409, ErrorType.Conflict),
 
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),

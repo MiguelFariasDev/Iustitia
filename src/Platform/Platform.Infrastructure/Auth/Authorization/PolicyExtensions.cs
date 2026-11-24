@@ -22,6 +22,9 @@ public static class PolicyExtensions
                 UserRole.Owner.ToString(), UserRole.Partner.ToString(), UserRole.Lawyer.ToString()))
             .AddPolicy(Policies.AdminOnly, policy => policy.RequireRole(UserRole.Admin.ToString()))
             .AddPolicy(Policies.FinancialOnly, policy => policy.RequireRole(UserRole.Financial.ToString()))
+            // Caixa do escritório: titular, sócios e o papel financeiro — nunca advogado ou estagiário.
+            .AddPolicy(Policies.FinanceAccess, policy => policy.RequireRole(
+                UserRole.Owner.ToString(), UserRole.Partner.ToString(), UserRole.Financial.ToString()))
             .AddPolicy(Policies.AnyAuthenticatedUser, policy => policy.RequireAuthenticatedUser());
 
         return services;

@@ -37,6 +37,12 @@ public sealed class CalendarEvent : AggregateRoot<CalendarEventId>, IAuditable, 
 
     public Guid? AssignedUserId { get; private set; }
 
+    /// <summary>
+    /// Publicação (módulo Legal) cuja decisão gerou este prazo. Única por escritório: é a chave de
+    /// idempotência que impede um segundo prazo para a mesma publicação.
+    /// </summary>
+    public Guid? SourcePublicationId { get; private set; }
+
     public DateTimeOffset? OneDayReminderSentAt { get; private set; }
 
     public DateTimeOffset? OneHourReminderSentAt { get; private set; }
@@ -87,6 +93,36 @@ public sealed class CalendarEvent : AggregateRoot<CalendarEventId>, IAuditable, 
         var applied = calendarEvent.Apply(title, description, type, startAt, endAt, allDay, location, processId, assignedUserId);
 
         return applied.IsFailure ? Result.Failure<CalendarEvent>(applied.Error) : Result.Success(calendarEvent);
+    }
+
+    /// <summary>
+    /// Prazo de dia inteiro nascido da decisão do advogado sobre uma publicação. O dia começa à meia-noite de
+    /// Brasília (03:00 UTC): é o instante que a agenda exibe como "dia X" para o escritório.
+    /// </summary>
+    public static Result<CalendarEvent> CreateDeadlineFromPublication(
+        Guid tenantId,
+        Guid publicationId,
+        string? title,
+        string? description,
+        DateOnly dueDate,
+        Guid? processId,
+        Guid? assignedUserId)
+    {
+        if (publicationId == Guid.Empty)
+        {
+            return Result.Failure<CalendarEvent>(ErrorFactory.From(ErrorCode.VALIDATION_REQUIRED_FIELD, nameof(SourcePublicationId)));
+        }
+
+        var startAt = new DateTimeOffset(dueDate.Year, dueDate.Month, dueDate.Day, 0, 0, 0, TimeSpan.FromHours(-3)).ToUniversalTime();
+        var created = Create(tenantId, title, description, CalendarEventType.Prazo, startAt, null, true, null, processId, assignedUserId);
+        if (created.IsFailure)
+        {
+            return created;
+        }
+
+        created.Value.SourcePublicationId = publicationId;
+
+        return created;
     }
 
     public Result Update(

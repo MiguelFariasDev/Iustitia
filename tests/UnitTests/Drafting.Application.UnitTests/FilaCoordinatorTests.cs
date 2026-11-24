@@ -158,7 +158,7 @@ public class FilaCoordinatorTests
 
             Coordinator = new FilaCoordinator(
                 provider.GetRequiredService<IServiceScopeFactory>(),
-                Options.Create(options ?? new FilaOptions { LoteMax = 5, MaxTentativas = 3, BackoffBaseSeconds = 30, ExpiraAposMinutos = 60 }),
+                Options.Create(options ?? new FilaOptions { LoteMax = 5, MaxTentativas = 3, BackoffBaseSegundos = 30, ExpiraAposMinutos = 60 }),
                 Clock,
                 NullLogger<FilaCoordinator>.Instance);
         }
