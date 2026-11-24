@@ -73,11 +73,19 @@ jobs:
             (echo "::error::Dump corrompido ou vazio" && exit 1)
           rm "$DUMP_FILE"
 
+      # Criptografia por CHAVE PÚBLICA (age -r), não por senha. `age -p` só lê a senha de um terminal
+      # (/dev/tty) e falha no GitHub Actions ("standard input is not a terminal"), então com senha o
+      # backup cifrado nunca era gerado. Com chave pública o CI só guarda o DESTINATÁRIO: quem invade
+      # o pipeline não consegue ler os backups. A identidade (chave privada) fica fora do CI e só
+      # entra na restauração — ver docs/runbooks/restauracao-de-backup.md.
       - name: Criptografar
         env:
-          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
         run: |
-          echo "$BACKUP_ENCRYPTION_KEY" | age -p -o "$DUMP_FILE.gz.age" "$DUMP_FILE.gz"
+          if [ -z "$BACKUP_AGE_RECIPIENT" ]; then
+            echo "::error::Secret BACKUP_AGE_RECIPIENT ausente (chave pública age1...)"; exit 1
+          fi
+          age -r "$BACKUP_AGE_RECIPIENT" -o "$DUMP_FILE.gz.age" "$DUMP_FILE.gz"
           rm "$DUMP_FILE.gz"
 
       - name: Upload para Azure Blob Storage

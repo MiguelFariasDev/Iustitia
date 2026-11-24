@@ -2,6 +2,8 @@ using Advocacia.BuildingBlocks.Infrastructure.Observability;
 using Advocacia.Modules.CRM.Api;
 using Advocacia.Modules.CRM.Infrastructure;
 using Advocacia.Modules.Drafting.Api;
+using Advocacia.Modules.Financeiro.Api;
+using Advocacia.Modules.Financeiro.Infrastructure;
 using Advocacia.Modules.Drafting.Infrastructure;
 using Advocacia.Modules.Integrations.CNJ.Infrastructure;
 using Advocacia.Modules.Legal.Api;
@@ -65,6 +67,7 @@ builder.Services.AddCrmInfrastructure(builder.Configuration);
 builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 builder.Services.AddAtendimentoInfrastructure(builder.Configuration);
 builder.Services.AddDraftingInfrastructure(builder.Configuration);
+builder.Services.AddFinanceiroInfrastructure(builder.Configuration);
 
 // Esquema de autenticação por chave de API do Bot (opt-in nos endpoints /bot/atendimentos).
 // Depois de AddPlatformAuth: o JWT do Supabase continua sendo o esquema padrão.
@@ -115,6 +118,11 @@ app.UseRateLimiter();
 //    resolvido).
 app.UseMiddleware<TenantContextMiddleware>();
 
+// 6b. MFA — exige o segundo fator (JWT aal2) dos papéis configurados em Security:Mfa. Depois de
+//     Authentication (precisa das claims) e antes de Authorization/endpoint, para barrar a
+//     requisição inteira, não só as rotas que lembrarem de checar.
+app.UseMiddleware<MfaEnforcementMiddleware>();
+
 // 7. Authorization — nativo do ASP.NET Core.
 app.UseAuthorization();
 
@@ -128,9 +136,11 @@ app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
 app.MapPublicationsEndpoints();
+app.MapPrazosEndpoints();
 app.MapContactsEndpoints();
 app.MapCalendarEndpoints();
 app.MapTaskAndTagEndpoints();
+app.MapFinanceiroEndpoints();
 app.MapAtendimentosEndpoints();
 app.MapBotEndpoints();
 app.MapPecasEndpoints();

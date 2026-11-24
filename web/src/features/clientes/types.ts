@@ -15,6 +15,8 @@ export interface Cliente {
   observacoes: string | null
   isActive: boolean
   createdAt: string
+  /** Quando os dados pessoais foram anonimizados (LGPD); null enquanto não. */
+  anonimizadoEm: string | null
   endereco: EnderecoCliente
 }
 

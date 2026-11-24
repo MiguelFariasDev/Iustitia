@@ -1,4 +1,4 @@
--- Desfaz 019_drafting_casos.sql (as tabelas são da migration do EF Core; use dotnet ef database update para removê-las).
+-- Desfaz 020_drafting_casos.sql (as tabelas são da migration do EF Core; use dotnet ef database update para removê-las).
 DROP INDEX IF EXISTS ix_normas_juridicas_numero;
 DROP INDEX IF EXISTS ix_norma_chunks_artigo;
 REVOKE ALL ON public.casos FROM app_user;

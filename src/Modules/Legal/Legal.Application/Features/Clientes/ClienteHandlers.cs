@@ -2,6 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Application.Messaging;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
+using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Domain.Clientes;
 
@@ -142,6 +143,111 @@ public sealed class DeactivateClienteHandler(
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
+    }
+}
+
+/// <summary>
+/// Anonimização a pedido do titular. Só quando NÃO há processo em andamento: enquanto o caso corre,
+/// o escritório tem obrigação legal e dever profissional de manter os dados das partes. Depois que
+/// todos os processos estiverem encerrados ou arquivados, anonimizar é permitido e irreversível.
+/// </summary>
+public sealed class AnonimizarClienteHandler(
+    IClienteRepository clienteRepository,
+    IProcessoRepository processoRepository,
+    ILegalUnitOfWork unitOfWork,
+    ICurrentUser currentUser,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<AnonimizarClienteCommand>
+{
+    public async Task<Result> Handle(AnonimizarClienteCommand request, CancellationToken cancellationToken)
+    {
+        if (currentUser.TenantId is not { } tenantId)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.AUTHORIZATION_TENANT_MISMATCH));
+        }
+
+        var cliente = await clienteRepository.GetByIdAsync(ClienteId.From(request.ClienteId), cancellationToken);
+        if (cliente is null)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.CLIENT_NOT_FOUND));
+        }
+
+        var processos = await processoRepository.ListDoClienteAsync(tenantId, request.ClienteId, cancellationToken);
+        if (processos.Any(processo => processo.GeraCaptura))
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.CLIENT_HAS_ACTIVE_PROCESSES));
+        }
+
+        var resultado = cliente.Anonimizar(dateTimeProvider.UtcNow);
+        if (resultado.IsFailure)
+        {
+            return resultado;
+        }
+
+        clienteRepository.Update(cliente);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
+}
+
+/// <summary>
+/// Entrega ao titular (via o escritório) uma cópia legível dos dados que o sistema guarda dele.
+/// Documento, e-mail e telefone saem COMPLETOS: é o próprio titular quem os receberá, e uma cópia
+/// mascarada não cumpriria o direito de acesso.
+/// </summary>
+public sealed class ExportarDadosClienteHandler(
+    IClienteRepository clienteRepository,
+    IProcessoRepository processoRepository,
+    ICurrentUser currentUser,
+    IDateTimeProvider dateTimeProvider) : IQueryHandler<ExportarDadosClienteQuery, ExportacaoClienteResponse>
+{
+    public async Task<Result<ExportacaoClienteResponse>> Handle(ExportarDadosClienteQuery request, CancellationToken cancellationToken)
+    {
+        if (currentUser.TenantId is not { } tenantId)
+        {
+            return Result.Failure<ExportacaoClienteResponse>(ErrorFactory.From(ErrorCode.AUTHORIZATION_TENANT_MISMATCH));
+        }
+
+        var cliente = await clienteRepository.GetByIdAsync(ClienteId.From(request.ClienteId), cancellationToken);
+        if (cliente is null)
+        {
+            return Result.Failure<ExportacaoClienteResponse>(ErrorFactory.From(ErrorCode.CLIENT_NOT_FOUND));
+        }
+
+        var processos = await processoRepository.ListDoClienteAsync(tenantId, request.ClienteId, cancellationToken);
+
+        return Result.Success(new ExportacaoClienteResponse(
+            dateTimeProvider.UtcNow,
+            "Cópia dos dados pessoais do titular mantidos pelo escritório (LGPD, art. 18, II e V).",
+            new ExportacaoTitularResponse(
+                cliente.Id.Value,
+                cliente.Tipo.ToString(),
+                cliente.Nome.Value,
+                cliente.Documento.Value,
+                cliente.Contato.Email,
+                cliente.Contato.Telefone,
+                cliente.Endereco.Logradouro,
+                cliente.Endereco.Numero,
+                cliente.Endereco.Complemento,
+                cliente.Endereco.Bairro,
+                cliente.Endereco.Cidade,
+                cliente.Endereco.Uf,
+                cliente.Endereco.Cep,
+                cliente.DataNascimento,
+                cliente.Observacoes,
+                cliente.IsActive,
+                cliente.CreatedAt),
+            processos.Select(processo => new ExportacaoProcessoItem(
+                processo.Id.Value,
+                processo.CnjNumber.Value,
+                processo.Area.ToString(),
+                processo.Status.ToString(),
+                processo.Foro.Tribunal,
+                processo.Assunto,
+                processo.ParteContraria,
+                processo.ValorCausa,
+                processo.DataDistribuicao,
+                processo.CreatedAt)).ToList()));
     }
 }
 

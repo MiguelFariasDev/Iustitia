@@ -1,4 +1,8 @@
-import type { Publication, PublicationKind } from '@/features/publicacoes/types'
+import type {
+  Publication,
+  PublicationKind,
+  PublicationSuggestion,
+} from '@/features/publicacoes/types'
 
 /**
  * SUGESTÃO DE DEMONSTRAÇÃO. A API não expõe, por publicação, o que a IA sugeriu (tipo, prazo,
@@ -17,6 +21,27 @@ export interface Sugestao {
   confianca: number
   /** Trecho do texto que gerou o prazo (destacado na tela); `null` se não foi localizado. */
   trecho: { inicio: number; fim: number } | null
+  /** Prazo em dias corridos (o padrão é dias úteis). */
+  corridos?: boolean
+  /** A IA não identificou prazo: aceitar aprova a publicação sem colocar nada na agenda. */
+  semPrazo?: boolean
+  /** Confiança baixa: conferir com atenção antes de aceitar. */
+  revisaoManual?: boolean
+}
+
+/** Converte a sugestão REAL da IA (vinda da API) para o modelo da tela de revisão. */
+export function sugestaoDaApi(suggestion: PublicationSuggestion): Sugestao {
+  return {
+    tipo: suggestion.actType,
+    dias: suggestion.deadlineDays ?? 0,
+    fundamento: suggestion.legalBasis ?? 'Fundamento não informado pela IA',
+    confianca: suggestion.confidence,
+    // A API não devolve o trecho do texto que originou o prazo (só o resultado validado).
+    trecho: null,
+    corridos: suggestion.deadlineKind === 'calendar',
+    semPrazo: suggestion.deadlineDays === null,
+    revisaoManual: suggestion.requiresManualReview,
+  }
 }
 
 const porTipo: Record<PublicationKind, { tipo: string; dias: number; fundamento: string }> = {

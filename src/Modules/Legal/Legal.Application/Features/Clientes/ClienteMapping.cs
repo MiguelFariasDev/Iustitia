@@ -26,7 +26,8 @@ internal static class ClienteMapping
         cliente.DataNascimento,
         cliente.Observacoes,
         cliente.IsActive,
-        cliente.CreatedAt);
+        cliente.CreatedAt,
+        cliente.AnonimizadoEm);
 
     internal static ClienteListItem ToListItem(this Cliente cliente) => new(
         cliente.Id.Value,

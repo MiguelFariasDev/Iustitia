@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { downloadCsv } from '@/lib/csv'
 import { notify } from '@/lib/notify'
 import { lancamentosToCsv } from '../export'
-import { filtrarLancamentos } from '../repositorio'
+import { filtrarLancamentos } from '../filtros'
 import {
   periodoFinanceiroLabels,
   statusLancamento,

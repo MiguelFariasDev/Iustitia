@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Domain.Publications;
+using Advocacia.Modules.Legal.Application.Features;
 using MapsterMapper;
 
 namespace Advocacia.Modules.Legal.Application.Features.GetPublicationById;
@@ -14,7 +15,10 @@ namespace Advocacia.Modules.Legal.Application.Features.GetPublicationById;
 /// de dados de outro escritório).
 /// </summary>
 public sealed class GetPublicationByIdHandler(
-    IPublicationRepository publicationRepository, IClienteRepository clienteRepository, IMapper mapper)
+    IPublicationRepository publicationRepository,
+    IClienteRepository clienteRepository,
+    IPublicationSuggestionRepository suggestionRepository,
+    IMapper mapper)
     : IQueryHandler<GetPublicationByIdQuery, GetPublicationByIdResponse>
 {
     public async Task<Result<GetPublicationByIdResponse>> Handle(
@@ -35,6 +39,12 @@ public sealed class GetPublicationByIdHandler(
             clienteNome = nomes.GetValueOrDefault(clienteId);
         }
 
-        return Result.Success(mapper.Map<GetPublicationByIdResponse>(publication) with { ClienteNome = clienteNome });
+        var sugestao = await suggestionRepository.GetByPublicationIdAsync(publication.TenantId, publication.Id, cancellationToken);
+
+        return Result.Success(mapper.Map<GetPublicationByIdResponse>(publication) with
+        {
+            ClienteNome = clienteNome,
+            Suggestion = sugestao?.ToSummary(),
+        });
     }
 }

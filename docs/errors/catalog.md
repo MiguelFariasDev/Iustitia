@@ -130,6 +130,22 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `INTEGRATION_RATE_LIMITED` | Limite de requisições ao serviço externo '{0}' excedido. Tente novamente mais tarde. | 500 | Failure | Reservado (ver acima). | Tentar novamente mais tarde. |
 | `INTEGRATION_INVALID_RESPONSE` | Resposta inesperada do serviço externo '{0}'. | 500 | Failure | Reservado (ver acima). | Reportar ao suporte. |
 
+## Client (1100–1199)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CLIENT_NOT_FOUND` | Cliente não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `CLIENT_DOCUMENT_DUPLICATED` | Já existe um cliente cadastrado com este CPF/CNPJ. | 409 | Conflict | CPF/CNPJ já cadastrado no escritório. | Usar o cliente existente. |
+| `CLIENT_DOCUMENT_INVALID` | CPF ou CNPJ inválido. | 400 | Validation | CPF/CNPJ com dígitos verificadores errados ou tipo divergente. | Corrigir o documento. |
+| `CLIENT_NAME_REQUIRED` | O nome do cliente é obrigatório. | 400 | Validation | Nome vazio. | Informar o nome. |
+| `CLIENT_ALREADY_ACTIVE` | Este cliente já está ativo. | 409 | Conflict | Reativar quem já está ativo. | Nenhuma ação. |
+| `CLIENT_ALREADY_INACTIVE` | Este cliente já está inativo. | 409 | Conflict | Desativar quem já está inativo. | Nenhuma ação. |
+| `CLIENT_EMAIL_INVALID` | E-mail do cliente inválido. | 400 | Validation | Formato de e-mail incorreto. | Corrigir o e-mail. |
+| `CLIENT_PHONE_INVALID` | Telefone inválido. Informe DDD e número (10 ou 11 dígitos). | 400 | Validation | Telefone fora do formato. | Corrigir o telefone. |
+| `CLIENT_BIRTHDATE_INVALID` | Data de nascimento inválida: não pode estar no futuro. | 400 | Validation | Data futura ou informada para pessoa jurídica. | Corrigir a data. |
+| `CLIENT_HAS_ACTIVE_PROCESSES` | Este cliente tem processos em andamento. Encerre ou arquive os processos antes de anonimizar os dados. | 409 | Conflict | Anonimização pedida com processo ativo ou suspenso (LGPD: o escritório precisa manter os dados do caso em curso). | Encerrar/arquivar os processos e repetir. |
+| `CLIENT_ANONYMIZED` | Os dados deste cliente foram anonimizados e não podem mais ser alterados. | 409 | Conflict | Editar, reativar ou anonimizar de novo um cliente já anonimizado. | Nenhuma: a anonimização é irreversível. |
+
 ## Publication (1300–1399)
 
 Módulo Legal — ver `docs/modules/legal/publications.md`.
@@ -257,6 +273,15 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `DRAFTING_INPUT_TOO_LARGE_FOR_MODEL` | Fatos, pedidos e instruções somam texto demais para o modelo: não sobra espaço para documentos e fundamentos. Reduza em cerca de {0} caracteres. | 400 | Validation | A entrada não cabe na janela do modelo com espaço mínimo de contexto. | Resumir, ou aumentar `Ollama:NumCtx`. |
 | `DRAFTING_DOCUMENT_NOT_IN_CASE` | Um dos documentos selecionados não pertence a este caso ou não está disponível para você. | 400 | Validation | `documentosIds` com anexo de outro caso ou restrito. | Conferir a lista. |
 | `DRAFTING_STORAGE_UNAVAILABLE` | O armazenamento de documentos está indisponível no momento. Tente novamente. | 500 | Failure | Object storage não respondeu. | Tentar de novo; conferir `Ingestao:Storage`. |
+
+## Finance (2700–2799)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `FINANCE_ENTRY_NOT_FOUND` | Lançamento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `FINANCE_ENTRY_DESCRIPTION_INVALID` | Informe a descrição do lançamento (até 200 caracteres). | 400 | Validation | Descrição vazia ou acima de 200 caracteres. | Corrigir a descrição. |
+| `FINANCE_ENTRY_AMOUNT_INVALID` | O valor deve ser maior que zero, com no máximo duas casas decimais. | 400 | Validation | Valor zero, negativo, absurdo ou com mais de duas casas. | Corrigir o valor. |
+| `FINANCE_ENTRY_ALREADY_PAID` | Este lançamento já foi pago. | 409 | Conflict | Marcar como pago um lançamento já pago. | Nenhuma ação. |
 
 ## Internal (9000–9999)
 

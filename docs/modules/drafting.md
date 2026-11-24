@@ -254,15 +254,15 @@ docker compose -f infra/docker/docker-compose.yml up -d
 docker compose -f infra/docker/docker-compose.ai.yml up -d qdrant
 export ADVOCACIA_DB_CONNECTION="Host=localhost;Port=5434;Database=advocacia_db;Username=postgres;Password=postgres"
 dotnet ef database update --project src/Modules/Drafting/Drafting.Infrastructure --context DraftingDbContext
-for f in 016_drafting 017_normas_juridicas 019_drafting_casos; do
+for f in 016_drafting 017_normas_juridicas 020_drafting_casos; do
   psql "postgresql://postgres:postgres@localhost:5434/advocacia_db" -v ON_ERROR_STOP=1 -f infra/supabase/migrations/$f.sql
 done
 export Ingestao__DiretorioLocal=/caminho/para/leis Ingestao__WorkerHabilitado=true
 dotnet run --project src/Hosts/Worker    # e, em outro terminal, src/Hosts/Api
 ```
 
-No Supabase, `scripts/migrations/apply-supabase.sh` já inclui este módulo. Reversão do 019:
-`infra/supabase/rollback/019_drafting_casos.down.sql`.
+No Supabase, `scripts/migrations/apply-supabase.sh` já inclui este módulo. Reversão do 020:
+`infra/supabase/rollback/020_drafting_casos.down.sql`.
 
 ### Serviços sempre ligados (sem GPU)
 

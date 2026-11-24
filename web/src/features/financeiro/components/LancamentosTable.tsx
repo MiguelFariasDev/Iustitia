@@ -1,10 +1,13 @@
 'use client'
 
 import type { ColumnDef } from '@tanstack/react-table'
+import { Check } from 'lucide-react'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import type { Tone } from '@/components/shared/tones'
+import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { useMarcarComoPago } from '../hooks'
 import {
   tipoLancamentoLabels,
   type Lancamento,
@@ -44,6 +47,31 @@ const status: Coluna = {
 
 const descricao: Coluna = { accessorKey: 'descricao', header: 'Descrição' }
 
+function PagarButton({ lancamento }: { lancamento: Lancamento }) {
+  const { mutate, isPending } = useMarcarComoPago()
+  if (lancamento.status === 'Pago') return null
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={isPending}
+      onClick={() => mutate(lancamento.id)}
+      aria-label={`Marcar como pago: ${lancamento.descricao}`}
+    >
+      <Check aria-hidden />
+      Marcar como pago
+    </Button>
+  )
+}
+
+const acoes: Coluna = {
+  id: 'acoes',
+  header: 'Ações',
+  enableSorting: false,
+  cell: ({ row }) => <PagarButton lancamento={row.original} />,
+}
+
 /**
  * Colunas por aba. Em nível de módulo (identidade estável): o DataTable recria a tabela
  * inteira se `columns` mudar de referência a cada render, e perderia ordenação e foco.
@@ -64,6 +92,7 @@ const colunasPorTipo: Record<TipoLancamento | 'Atrasado', Coluna[]> = {
     valor,
     vencimento,
     status,
+    acoes,
   ],
   Honorario: [
     { accessorKey: 'cliente', header: 'Cliente', cell: ({ row }) => traco(row.original.cliente) },
@@ -75,6 +104,7 @@ const colunasPorTipo: Record<TipoLancamento | 'Atrasado', Coluna[]> = {
     valor,
     vencimento,
     status,
+    acoes,
   ],
   ContaPagar: [
     descricao,
@@ -86,6 +116,7 @@ const colunasPorTipo: Record<TipoLancamento | 'Atrasado', Coluna[]> = {
     valor,
     vencimento,
     status,
+    acoes,
   ],
   ContaReceber: [
     descricao,
@@ -93,6 +124,7 @@ const colunasPorTipo: Record<TipoLancamento | 'Atrasado', Coluna[]> = {
     valor,
     vencimento,
     status,
+    acoes,
   ],
 }
 

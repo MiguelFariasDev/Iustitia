@@ -1,7 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render'
 import { lancamentosDeTeste } from '../fixtures'
-import { fluxoDeCaixa } from '../repositorio'
 import { FinanceiroTabs } from './FinanceiroTabs'
 
 const downloadCsv = vi.fn()
@@ -13,10 +12,14 @@ vi.mock('@/lib/csv', async (importOriginal) => ({
 const lancamentos = lancamentosDeTeste()
 const atrasados = lancamentos.filter((l) => l.status === 'Atrasado')
 
+const fluxoDeTeste = ['Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov'].map((mes) => ({
+  mes,
+  entradas: 0,
+  saidas: 0,
+}))
+
 function renderTabs() {
-  return renderWithProviders(
-    <FinanceiroTabs lancamentos={lancamentos} fluxoCaixa={fluxoDeCaixa(lancamentos)} />
-  )
+  return renderWithProviders(<FinanceiroTabs lancamentos={lancamentos} fluxoCaixa={fluxoDeTeste} />)
 }
 
 beforeEach(() => downloadCsv.mockReset())

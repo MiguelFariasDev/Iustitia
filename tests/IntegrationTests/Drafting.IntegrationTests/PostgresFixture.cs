@@ -65,7 +65,7 @@ public sealed class PostgresFixture : IAsyncLifetime
             ALTER ROLE app_user WITH PASSWORD 'it_app_user';
             GRANT USAGE ON SCHEMA public TO app_user;
             """);
-        foreach (var script in new[] { "016_drafting.sql", "017_normas_juridicas.sql", "019_drafting_casos.sql" })
+        foreach (var script in new[] { "016_drafting.sql", "017_normas_juridicas.sql", "020_drafting_casos.sql" })
         {
             await ExecutarAsync(dono, await File.ReadAllTextAsync(Path.Combine(MigracoesSql(), script)));
         }

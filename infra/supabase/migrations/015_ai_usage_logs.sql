@@ -48,4 +48,9 @@ CREATE POLICY tenant_isolation_ai_usage_logs_write ON ai_usage_logs
 
 -- Trilha de auditoria APPEND-ONLY: a aplicação só lê e insere. Retenção/expurgo, quando
 -- existir, será um job com papel próprio.
+-- O REVOKE vem PRIMEIRO e é indispensável: 002_rls.sql configura ALTER DEFAULT PRIVILEGES (e um
+-- GRANT em todas as tabelas existentes) com UPDATE/DELETE para app_user, e um GRANT posterior
+-- não retira o que já foi concedido — sem ele a trilha NÃO seria append-only. Mesmo padrão de
+-- 014_atendimentos.sql.
+REVOKE ALL ON public.ai_usage_logs FROM app_user;
 GRANT SELECT, INSERT ON public.ai_usage_logs TO app_user;

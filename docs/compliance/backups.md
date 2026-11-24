@@ -27,10 +27,27 @@ desapareceu da origem.
 
 ## Criptografia
 
-Todo `pg_dump` é comprimido (`gzip`) e criptografado (`age` ou `gpg`) antes
-do upload para o Azure Blob Storage. A chave de criptografia vive em
-`BACKUP_ENCRYPTION_KEY` (GitHub Secrets) — **nunca** em texto claro no
-repositório ou em log de CI.
+Todo `pg_dump` é comprimido (`gzip`) e criptografado com `age` por **chave
+pública** (`age -r`) antes do upload para o Azure Blob Storage. O CI guarda
+só o destinatário (`BACKUP_AGE_RECIPIENT`, formato `age1…`); a **identidade
+(chave privada)** fica fora do CI e só é usada para restaurar — quem invade o
+pipeline não consegue ler os backups.
+
+> **Correção:** a versão anterior usava `age -p` (senha), que só lê a senha de
+> um terminal e falha no GitHub Actions. Com ela o backup cifrado nunca era
+> gerado. O workflow passou a falhar de forma explícita se o destinatário
+> faltar.
+
+Gerar o par de chaves (uma vez, numa máquina confiável, nunca no CI):
+
+```bash
+age-keygen -o backup-identity.txt   # imprime a chave pública (age1…) no terminal
+```
+
+Guarde `backup-identity.txt` em pelo menos **dois lugares seguros e
+independentes** (cofre de senhas da sociedade + cópia offline). **Perder a
+identidade = perder todos os backups.** O procedimento está em
+`docs/runbooks/restauracao-de-backup.md`.
 
 ## Segredos necessários (GitHub Actions)
 
@@ -40,7 +57,7 @@ repositório ou em log de CI.
 | `SUPABASE_SERVICE_ROLE_KEY` | Acesso ao Supabase Storage (backup de arquivos, usado como secret key S3) |
 | `SUPABASE_S3_ENDPOINT` | Endpoint S3-compatible do Supabase Storage (rclone) |
 | `SUPABASE_S3_ACCESS_KEY_ID` | Access key S3-compatible do Supabase Storage (rclone) |
-| `BACKUP_ENCRYPTION_KEY` | Chave de criptografia dos dumps (`age`) |
+| `BACKUP_AGE_RECIPIENT` | Chave **pública** `age1…` que cifra os dumps (a privada não fica no CI) |
 | `AZURE_STORAGE_CONNECTION_STRING` | Upload para Azure Blob Storage |
 | `SLACK_WEBHOOK_URL` (ou equivalente) | Notificação em caso de falha |
 

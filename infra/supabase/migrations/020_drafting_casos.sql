@@ -1,5 +1,5 @@
 -- ============================================================================
--- 019_drafting_casos.sql — RLS e grants do isolamento por caso, revisão humana e
+-- 020_drafting_casos.sql — RLS e grants do isolamento por caso, revisão humana e
 -- eventos de segurança do módulo Drafting (ADR-074).
 --
 -- Tabelas (criadas pela migration CasosAnexosRevisao do DraftingDbContext):

@@ -165,18 +165,23 @@ public sealed class VastAiService(
 
         for (var attempt = 1; attempt <= max; attempt++)
         {
+            HttpResponseMessage? response = null;
             try
             {
-                var response = await httpClient.SendAsync(build(), ct);
+                response = await httpClient.SendAsync(build(), ct);
                 if (response.IsSuccessStatusCode)
                 {
-                    // Quem chama lê o corpo e descarta: descartar aqui entregaria um conteúdo já fechado.
-                    return response;
+                    // Quem chama é o dono da resposta: sem zerar, o finally abaixo a descartaria antes da leitura.
+                    var success = response;
+                    response = null;
+
+                    return success;
                 }
 
                 var transient = (int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.TooManyRequests;
                 logger.LogWarning("Vast.ai: HTTP {Status} (tentativa {Tentativa}/{Max}).", (int)response.StatusCode, attempt, max);
                 response.Dispose();
+                response = null;
 
                 if (!transient)
                 {
@@ -190,6 +195,10 @@ public sealed class VastAiService(
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 logger.LogWarning("Vast.ai: timeout (tentativa {Tentativa}/{Max}).", attempt, max);
+            }
+            finally
+            {
+                response?.Dispose();
             }
 
             if (attempt < max)

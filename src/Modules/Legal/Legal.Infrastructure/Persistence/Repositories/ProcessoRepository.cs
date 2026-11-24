@@ -36,8 +36,9 @@ public sealed class ProcessoRepository(LegalDbContext dbContext)
         DateOnly? distribuicaoAte,
         int skip,
         int take,
+        Guid? restritoAoUsuario = null,
         CancellationToken cancellationToken = default) =>
-        await ApplyBusca(BaseQuery(tenantId, clienteId, responsavelUserId, area, status, tribunal, distribuicaoDe, distribuicaoAte), busca)
+        await ApplyBusca(BaseQuery(tenantId, clienteId, responsavelUserId, area, status, tribunal, distribuicaoDe, distribuicaoAte, restritoAoUsuario), busca)
             .OrderByDescending(processo => processo.CreatedAt)
             .Skip(skip)
             .Take(take)
@@ -53,8 +54,16 @@ public sealed class ProcessoRepository(LegalDbContext dbContext)
         string? tribunal,
         DateOnly? distribuicaoDe,
         DateOnly? distribuicaoAte,
+        Guid? restritoAoUsuario = null,
         CancellationToken cancellationToken = default) =>
-        ApplyBusca(BaseQuery(tenantId, clienteId, responsavelUserId, area, status, tribunal, distribuicaoDe, distribuicaoAte), busca).CountAsync(cancellationToken);
+        ApplyBusca(BaseQuery(tenantId, clienteId, responsavelUserId, area, status, tribunal, distribuicaoDe, distribuicaoAte, restritoAoUsuario), busca).CountAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Processo>> ListDoClienteAsync(
+        Guid tenantId, Guid clienteId, CancellationToken cancellationToken = default) =>
+        await DbSet
+            .Where(processo => processo.TenantId == tenantId && processo.ClienteId == clienteId)
+            .OrderBy(processo => processo.CreatedAt)
+            .ToListAsync(cancellationToken);
 
     public Task<IReadOnlyList<Processo>> ListParaCapturaAsync(Guid tenantId, CancellationToken cancellationToken = default) =>
         ListAsync(new ProcessosParaCapturaSpecification(tenantId), cancellationToken);
@@ -75,9 +84,10 @@ public sealed class ProcessoRepository(LegalDbContext dbContext)
 
     private IQueryable<Processo> BaseQuery(
         Guid tenantId, Guid? clienteId, Guid? responsavelUserId, AreaDireito? area, StatusProcesso? status,
-        string? tribunal, DateOnly? distribuicaoDe, DateOnly? distribuicaoAte) =>
+        string? tribunal, DateOnly? distribuicaoDe, DateOnly? distribuicaoAte, Guid? restritoAoUsuario) =>
         DbSet.Where(processo =>
             processo.TenantId == tenantId
+            && (restritoAoUsuario == null || !processo.Confidencial || processo.ResponsavelUserId == restritoAoUsuario)
             && (clienteId == null || processo.ClienteId == clienteId)
             && (responsavelUserId == null || processo.ResponsavelUserId == responsavelUserId)
             && (area == null || processo.Area == area)

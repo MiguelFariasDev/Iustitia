@@ -40,4 +40,42 @@ public class ProcessoRepositoryFiltrosTests(LegalPostgresFixture fixture)
             tenantId, null, null, null, null, null, null, null, new DateOnly(2024, 12, 31), 0, 20);
         ateFim2024.Select(p => p.Id).Should().BeEquivalentTo([ce.Id]);
     }
+
+    [Fact]
+    public async Task Listagem_restrita_omite_confidenciais_de_outro_responsavel()
+    {
+        var tenantId = Guid.NewGuid();
+        var advogada = Guid.NewGuid();
+        await using var context = TestLegalDbContextFactory.Create(
+            fixture.SuperuserConnectionString, TestLegalDbContextFactory.TenantContextFor(tenantId));
+        var repository = new ProcessoRepository(context);
+
+        Processo Novo(string cnj, Guid responsavel, bool confidencial)
+        {
+            var processo = Processo.Create(
+                tenantId, CNJNumber.Create(cnj).Value, Guid.NewGuid(), responsavel, AreaDireito.Civel).Value;
+            processo.DefinirConfidencialidade(confidencial);
+
+            return processo;
+        }
+
+        var comum = Novo(TestPublications.CnjNumberA, Guid.NewGuid(), confidencial: false);
+        var sigiloDeOutro = Novo(TestPublications.CnjNumberB, Guid.NewGuid(), confidencial: true);
+        var sigiloProprio = Novo(TestPublications.CnjNumberC, advogada, confidencial: true);
+        repository.Add(comum);
+        repository.Add(sigiloDeOutro);
+        repository.Add(sigiloProprio);
+        await context.SaveChangesAsync();
+
+        var daAdvogada = await repository.ListAsync(
+            tenantId, null, null, null, null, null, null, null, null, 0, 20, restritoAoUsuario: advogada);
+        var contagem = await repository.CountAsync(
+            tenantId, null, null, null, null, null, null, null, null, restritoAoUsuario: advogada);
+        var daSociedade = await repository.ListAsync(
+            tenantId, null, null, null, null, null, null, null, null, 0, 20);
+
+        daAdvogada.Select(p => p.Id).Should().BeEquivalentTo([comum.Id, sigiloProprio.Id]);
+        contagem.Should().Be(2);
+        daSociedade.Should().HaveCount(3);
+    }
 }

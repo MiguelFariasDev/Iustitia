@@ -2,8 +2,8 @@ import { daysFromNow } from '@/mocks/dates'
 import type { Lancamento } from './types'
 
 /**
- * Lançamentos de EXEMPLO para os testes. Não é importado pelo app: a tela começa vazia e só
- * mostra o que o usuário lançar (ver repositorio.ts).
+ * Lançamentos de EXEMPLO para os testes. Não é importado pelo app: a tela mostra só o que o
+ * servidor devolve para o escritório.
  */
 type Seed = Omit<Lancamento, 'vencimento' | 'pagoEm'> & { vence: number; pago?: boolean }
 

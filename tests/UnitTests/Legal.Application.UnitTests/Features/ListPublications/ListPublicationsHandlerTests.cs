@@ -26,7 +26,8 @@ public class ListPublicationsHandlerTests
         _clientes
             .GetNomesAsync(_tenantId, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
-        _handler = new ListPublicationsHandler(_repository, _clientes, _currentUser, TestMapper.Create());
+        _handler = new ListPublicationsHandler(
+            _repository, _clientes, Substitute.For<IPublicationSuggestionRepository>(), _currentUser, TestMapper.Create());
     }
 
     [Fact]

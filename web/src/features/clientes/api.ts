@@ -53,6 +53,20 @@ export async function deactivateCliente(id: string): Promise<void> {
   await apiClient.delete(endpoints.clientes.byId(id))
 }
 
+/** Baixa a cópia dos dados do titular (LGPD, art. 18, II e V). */
+export async function exportarDadosCliente(id: string): Promise<{ filename: string; blob: Blob }> {
+  const { data } = await apiClient.get<Blob>(endpoints.clientes.exportacao(id), {
+    responseType: 'blob',
+  })
+
+  return { filename: `dados-do-titular-${id}.json`, blob: data }
+}
+
+/** Elimina de forma irreversível os dados pessoais do cliente (LGPD, art. 18, VI). */
+export async function anonimizarCliente(id: string): Promise<void> {
+  await apiClient.post(endpoints.clientes.anonimizar(id))
+}
+
 export async function reactivateCliente(id: string): Promise<void> {
   await apiClient.post(endpoints.clientes.reactivate(id))
 }

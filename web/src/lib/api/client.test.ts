@@ -79,6 +79,28 @@ describe('apiClient', () => {
     expect(onUnauthorized).toHaveBeenCalledOnce()
   })
 
+  it('401 AUTH_MFA_REQUIRED leva ao segundo fator, sem renovar o token nem encerrar a sessão', async () => {
+    const onMfaRequired = vi.fn()
+    const onUnauthorized = vi.fn()
+    const refreshAccessToken = vi.fn(async () => 'novo')
+    const client = createApiClient({
+      getAccessToken: async () => 'aal1',
+      refreshAccessToken,
+      onUnauthorized,
+      onMfaRequired,
+    })
+    client.defaults.adapter = (config) =>
+      respond(config, 401, { title: 'AUTH_MFA_REQUIRED', errorCode: 'AUTH_MFA_REQUIRED' })
+
+    await expect(client.get('/processos')).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_MFA_REQUIRED',
+    })
+    expect(onMfaRequired).toHaveBeenCalledOnce()
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(onUnauthorized).not.toHaveBeenCalled()
+  })
+
   it('erro de rede vira ApiError status 0 com mensagem amigável', async () => {
     const client = createApiClient({ getAccessToken: async () => null })
     client.defaults.adapter = (config) =>

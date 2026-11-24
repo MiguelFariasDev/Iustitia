@@ -47,6 +47,9 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
             BlindIndexKey = Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i + 50)).ToArray()),
         })));
 
+        // Uma montagem por vez no cluster (roles são globais) — ver ExternalPostgres.AcquireClusterLockAsync.
+        await using var clusterLock = await ExternalPostgres.AcquireClusterLockAsync();
+
         var external = await ExternalPostgres.TryCreateDatabaseAsync();
         if (external is { } externalDatabase)
         {
@@ -73,6 +76,18 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
 
         await MigrateAsync<AnthropicDbContext>(
             options => new AnthropicDbContext(options, new AsyncLocalTenantContext()));
+
+        // As migrations SQL (014 em diante) criam índices e policies sobre as tabelas destes módulos.
+        await MigrateAsync<Advocacia.Modules.Atendimentos.Infrastructure.Persistence.AtendimentoDbContext>(
+            options => new Advocacia.Modules.Atendimentos.Infrastructure.Persistence.AtendimentoDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext>(
+            options => new Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext>(
+            options => new Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext>(
+            options => new Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext>(
+            options => new Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext(options, new AsyncLocalTenantContext()));
 
         await ApplySupabaseSqlMigrationsAsync();
 

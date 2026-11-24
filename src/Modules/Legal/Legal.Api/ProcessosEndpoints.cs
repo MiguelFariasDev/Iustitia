@@ -83,6 +83,12 @@ public static class ProcessosEndpoints
             .WithSummary("Muda a situação do processo. Encerrado e arquivado interrompem a captura.")
             .RequireAuthorization(Policies.LawyerOrAbove);
 
+        group.MapPatch("/{id:guid}/confidencial", async (Guid id, SetConfidencialRequest request, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new SetProcessoConfidencialCommand(id, request.Confidencial), cancellationToken)).ToHttpResult())
+            .WithName("SetProcessoConfidencial")
+            .WithSummary("Marca ou desmarca o sigilo interno: só o responsável e a sociedade enxergam o processo.")
+            .RequireAuthorization(Policies.PartnerOrAbove);
+
         group.MapPost("/{id:guid}/archive", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new ArchiveProcessoCommand(id), cancellationToken)).ToHttpResult())
             .WithName("ArchiveProcesso")
@@ -92,6 +98,8 @@ public static class ProcessosEndpoints
         return app;
     }
 }
+
+public sealed record SetConfidencialRequest(bool Confidencial);
 
 public sealed record ListProcessosRequest(
     [FromQuery] int? Page,

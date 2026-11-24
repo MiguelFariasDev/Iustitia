@@ -25,8 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Drafting.Infrastructure.UnitTests" />
-    <InternalsVisibleTo Include="Drafting.IntegrationTests" />
+    <InternalsVisibleTo Include="Advocacia.Modules.Drafting.Infrastructure.UnitTests" />
+    <InternalsVisibleTo Include="Advocacia.Modules.Drafting.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

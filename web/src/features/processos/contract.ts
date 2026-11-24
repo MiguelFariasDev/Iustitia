@@ -27,6 +27,8 @@ export interface ProcessoDto {
   observacoes: string | null
   geraCaptura: boolean
   createdAt: string
+  /** Sigilo interno: só o responsável e a sociedade enxergam. Ausente em servidores antigos. */
+  confidencial?: boolean
 }
 
 /** ProcessoListItem (Legal.Application.Features.Processos). */

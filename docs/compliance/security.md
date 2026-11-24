@@ -13,9 +13,13 @@
       do Supabase), nunca por segredo compartilhado hardcoded.
 - [x] `OnAuthenticationFailed` loga o tipo/mensagem da falha, **nunca** o
       token em si (ver `JwtValidationExtensions`).
-- [ ] MFA (TOTP) — habilitado no Supabase Auth, mas ainda não exigido/
-      forçado por policy no backend (pendente de decisão de produto sobre
-      quais papéis exigem MFA obrigatório).
+- [x] MFA (TOTP) — exigência implementada em `MfaEnforcementMiddleware`: com
+      `Security:Mfa:Enforce=true`, os papéis de `Security:Mfa:RequiredRoles`
+      (padrão Owner e Partner) só passam se o JWT trouxer `aal=aal2`; senão a
+      API responde 401 `AUTH_MFA_REQUIRED` e o frontend leva a `/mfa` (cadastro
+      do autenticador e desafio). Fica **desligada por padrão**: ligar em
+      produção só depois de os sócios cadastrarem o TOTP (senão ficam sem
+      acesso). Passo a passo em `docs/operacao/mfa.md`.
 - [ ] Rate limiting em `/auth/login` e `/auth/refresh` contra força bruta —
       pendente (Etapa 0.6, Observabilidade/Resiliência, ou delegado ao
       rate limiting nativo do Supabase Auth — a confirmar qual camada

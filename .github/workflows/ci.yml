@@ -1,0 +1,84 @@
+name: ci
+
+# Portão de qualidade: nada entra no master sem compilar (Release = warnings viram erro) e sem testes verdes.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (.NET build e testes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      # Os hosts de teste da API sobem o MassTransit (RabbitMQ) e o cache distribuído (Redis) nas
+      # portas de desenvolvimento do docker-compose; sem eles os testes de integração travam.
+      rabbitmq:
+        image: rabbitmq:3-alpine
+        ports: ['5673:5672']
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping" --health-interval 10s --health-timeout 10s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6380:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Os testes de integração criam um banco descartável neste servidor (sem Testcontainers).
+      ADVOCACIA_TEST_PG: Host=localhost;Port=5432;Username=postgres;Password=postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore Advocacia.sln
+      - name: Build (Release)
+        run: dotnet build Advocacia.sln -c Release --no-restore --nologo
+      - name: Testes de arquitetura e de unidade
+        run: |
+          for d in tests/ArchitectureTests/* tests/UnitTests/* tests/RegressionTests/*; do
+            [ -d "$d" ] || continue
+            dotnet test "$d" -c Release --no-build --nologo
+          done
+      - name: Testes de integração (PostgreSQL)
+        run: |
+          for d in tests/IntegrationTests/*; do
+            [ -d "$d" ] || continue
+            dotnet test "$d" -c Release --no-build --nologo
+          done
+
+  frontend:
+    name: Frontend (lint, tipos e testes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx eslint src
+      - run: npx tsc --noEmit
+      - run: npx vitest run

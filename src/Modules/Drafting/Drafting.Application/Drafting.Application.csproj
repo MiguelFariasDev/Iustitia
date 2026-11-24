@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Drafting.Application.UnitTests" />
+    <InternalsVisibleTo Include="Advocacia.Modules.Drafting.Application.UnitTests" />
   </ItemGroup>
 
   <ItemGroup>
