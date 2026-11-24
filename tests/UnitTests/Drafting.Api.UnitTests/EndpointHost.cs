@@ -302,6 +302,9 @@ internal sealed class EndpointHost : IAsyncDisposable
         builder.Services.AddSingleton(scripted);
         builder.Services.AddSingleton<IEmbeddingService, StubEmbeddings>();
         builder.Services.AddSingleton<IVectorStore>(store);
+        // Acervo normativo: sem Qdrant nem índice de palavra-chave nos testes de API (busca devolve vazio).
+        builder.Services.AddSingleton<Advocacia.Modules.Drafting.Application.Normas.INormaVectorStore, EmptyNormaVectorStore>();
+        builder.Services.AddSingleton<Advocacia.Modules.Drafting.Application.Normas.INormaSearchIndex, EmptyNormaSearchIndex>();
 
         var app = builder.Build();
         app.UseAuthentication();
@@ -361,4 +364,29 @@ internal sealed class EndpointHost : IAsyncDisposable
 
         return await handler.ProcessarAsync(documentId, 1, cancellationToken);
     }
+}
+
+
+internal sealed class EmptyNormaVectorStore : Advocacia.Modules.Drafting.Application.Normas.INormaVectorStore
+{
+    public Task EnsureCollectionsAsync(int dimensions, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task UpsertAsync(string colecao, IReadOnlyList<Advocacia.Modules.Drafting.Application.Normas.NormaVectorPoint> points, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task DeleteAsync(string colecao, Guid normaId, int? manterVersao, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>> SearchAsync(
+        Advocacia.Modules.Drafting.Application.Normas.NormaFiltro filtro, float[] vetor, int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>>([]);
+
+    public Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+}
+
+internal sealed class EmptyNormaSearchIndex : Advocacia.Modules.Drafting.Application.Normas.INormaSearchIndex
+{
+    public Task<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>> BuscarPalavrasChaveAsync(
+        Advocacia.Modules.Drafting.Application.Normas.NormaFiltro filtro, string consulta, int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>>([]);
+
+    public Task<bool> UrnExisteAsync(string urn, CancellationToken cancellationToken = default) => Task.FromResult(false);
 }

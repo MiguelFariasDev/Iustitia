@@ -115,7 +115,8 @@ public sealed class DocumentTextExtractor : IDocumentTextExtractor
 
     private static Result<IReadOnlyList<ExtractedPage>> ExtractText(Stream content)
     {
-        using var reader = new StreamReader(content, new UTF8Encoding(false, throwOnInvalidBytes: true));
+        // leaveOpen: o chamador ainda usa o buffer (tamanho, hash) depois da extração.
+        using var reader = new StreamReader(content, new UTF8Encoding(false, throwOnInvalidBytes: true), true, 1024, leaveOpen: true);
         var text = reader.ReadToEnd();
 
         // Byte nulo = binário disfarçado de .txt.

@@ -25,7 +25,7 @@ public class PecaProcessorTests
 
         public FakeNotificacao Notificacao { get; } = new();
 
-        public FakeVectorStore Store { get; init; } = new([Samples.Hit("pt-1", "Art. 186: ato ilícito.", 0.91)]);
+        public IVectorStore Store { get; init; } = new FakeVectorStore([Samples.Hit("pt-1", "Art. 186: ato ilícito.", 0.91)]);
 
         public FakeLlm Llm { get; init; } = new(
         [
@@ -51,7 +51,7 @@ public class PecaProcessorTests
 
             Processor = new PecaProcessor(
                 Repository, Documents, rag, new PromptBuilder(), Llm, audit, Notificacao,
-                Options.Create(new FilaOptions { MaxTentativas = MaxTentativas, ParcialIntervaloMs = 0 }), Clock,
+                Options.Create(new FilaOptions { MaxTentativas = MaxTentativas, ParcialIntervaloMs = 0 }),
                 NullLogger<PecaProcessor>.Instance);
 
             return this;
@@ -104,8 +104,8 @@ public class PecaProcessorTests
         mensagens.Select(m => m.Role).Should().Equal("system", "user");
         mensagens[0].Content.Should().Be(SystemPrompt.Texto);
         mensagens[1].Content.Should().Contain("[contrato.pdf, p. 3]").And.Contain("Art. 186: ato ilícito.");
-        h.Store.LastQuery!.TenantId.Should().Be(Ids.Tenant);
-        h.Store.LastQuery.UsuarioId.Should().Be(Ids.User);
+        ((FakeVectorStore)h.Store).LastQuery!.TenantId.Should().Be(Ids.Tenant);
+        ((FakeVectorStore)h.Store).LastQuery!.UsuarioId.Should().Be(Ids.User);
     }
 
     [Fact]
@@ -161,8 +161,11 @@ public class PecaProcessorTests
 
         await h.Processor.ProcessarAsync(request.Id.Value, 1);
 
-        request.AvisosJson.Should().Contain("inventado.pdf, p. 9").And.Contain("art. 927").And.Contain("Súmula 297");
-        request.AvisosJson.Should().Contain("não cita nenhuma das fontes");
+        // O JSON escapa acentos (\u00FA): compara o texto já desserializado.
+        var avisos = string.Join('\n', System.Text.Json.JsonSerializer.Deserialize<string[]>(request.AvisosJson!)!);
+        avisos.Should().Contain("inventado.pdf, p. 9").And.Contain("art. 927").And.Contain("Súmula 297");
+        avisos.Should().Contain("não cita nenhuma das fontes");
+        avisos.Should().Contain("EXPORTAÇÃO BLOQUEADA");
         h.Repository.Sources.Single().UtilizadaNaGeracao.Should().BeFalse();
     }
 

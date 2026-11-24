@@ -403,7 +403,7 @@ public class NormaChunkerTests
         var porFrase = _chunker.Dividir(Meta(), $"**Art. 21.** {semEstrutura}").Where(c => c.Artigo == "21").ToList();
 
         porInciso.Should().HaveCountGreaterThan(1);
-        porInciso.Should().Contain(c => c.Inciso is "I" or "II" or "III" or "IV" or "V");
+        porInciso.Select(c => c.Inciso).Intersect(new[] { "I", "II", "III", "IV", "V" }).Should().NotBeEmpty();
         porFrase.Should().HaveCountGreaterThan(1);
         porFrase.Should().OnlyContain(c => c.Tokens <= 900);
     }

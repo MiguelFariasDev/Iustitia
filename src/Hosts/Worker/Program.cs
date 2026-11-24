@@ -8,7 +8,6 @@ using Advocacia.Modules.Legal.Infrastructure.Jobs;
 using Advocacia.Modules.Drafting.Infrastructure;
 using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
-using Advocacia.Modules.Workflow.Infrastructure;
 using Advocacia.Modules.Workflow.Infrastructure.Jobs;
 using Advocacia.Platform.Infrastructure;
 using Advocacia.Platform.Infrastructure.Jobs.Jobs;

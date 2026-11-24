@@ -36,7 +36,6 @@ public sealed class PecaProcessor(
     IDraftingAuditService audit,
     INotificacaoService notificacao,
     IOptions<FilaOptions> filaOptions,
-    IDateTimeProvider clock,
     ILogger<PecaProcessor> logger,
     NormaCitationService? normaCitations = null) : IQueueWorkHandler
 {
