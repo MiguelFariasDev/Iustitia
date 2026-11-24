@@ -128,6 +128,7 @@ app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
 app.MapPublicationsEndpoints();
+app.MapPrazosEndpoints();
 app.MapContactsEndpoints();
 app.MapCalendarEndpoints();
 app.MapTaskAndTagEndpoints();

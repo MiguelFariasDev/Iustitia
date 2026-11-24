@@ -159,7 +159,7 @@ function Vencimento({ item }: { item: ItemRevisao }) {
         {formatDate(data)}
       </time>
       <span className="block text-xs font-normal text-muted-foreground">
-        estimativa — não considera feriados nem suspensões
+        estimativa — considera só feriados nacionais e o recesso; confira feriados locais e suspensões
       </span>
     </>
   )
@@ -361,7 +361,7 @@ export function RevisaoView() {
           >
             <strong className="font-medium text-foreground">Sugestões de demonstração.</strong> A
             API ainda não informa a sugestão da IA por publicação: o prazo abaixo é calculado a
-            partir do texto e ignora feriados. As decisões gravam o status da publicação e o prazo
+            partir do texto e considera só feriados nacionais e o recesso. As decisões gravam o status da publicação e o prazo
             na agenda.
           </p>
 

@@ -93,6 +93,11 @@ public sealed class PostgresFixture : IAsyncLifetime
             await atendimentoContext.Database.MigrateAsync();
         }
 
+        // Tabelas dos demais módulos: as migrations SQL (014 em diante) criam índices e policies sobre elas.
+        await MigrateModuleAsync<Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext>(o => new Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext(o, new AsyncLocalTenantContext()));
+        await MigrateModuleAsync<Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext>(o => new Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext(o, new AsyncLocalTenantContext()));
+        await MigrateModuleAsync<Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext>(o => new Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext(o, new AsyncLocalTenantContext()));
+
         // ai_usage_logs (módulo Anthropic): 015_ai_usage_logs.sql precisa da tabela existente.
         var anthropicOptionsBuilder = new DbContextOptionsBuilder<AnthropicDbContext>();
         anthropicOptionsBuilder.UseNpgsql(SuperuserConnectionString);
@@ -125,6 +130,17 @@ public sealed class PostgresFixture : IAsyncLifetime
         {
             await _container.DisposeAsync();
         }
+    }
+
+    private async Task MigrateModuleAsync<TContext>(Func<DbContextOptions<TContext>, TContext> factory)
+        where TContext : DbContext
+    {
+        var builder = new DbContextOptionsBuilder<TContext>();
+        builder.UseNpgsql(SuperuserConnectionString);
+        builder.UseSnakeCaseNamingConvention();
+
+        await using var context = factory(builder.Options);
+        await context.Database.MigrateAsync();
     }
 
     private async Task ApplySupabaseSqlMigrationsAsync()

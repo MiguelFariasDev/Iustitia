@@ -90,12 +90,12 @@ describe('RevisaoView — leitura (variação A)', () => {
     expect(abas[0]).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('sinaliza que são sugestões de demonstração e que feriados não entram', async () => {
+  it('sinaliza que são sugestões de demonstração e que só o calendário nacional entra', async () => {
     await renderRevisao()
 
     expect(screen.getByRole('note')).toHaveTextContent(/Sugestões de demonstração/)
-    expect(screen.getByRole('note')).toHaveTextContent(/ignora feriados/)
-    expect(screen.getByText(/não considera feriados nem suspensões/)).toBeInTheDocument()
+    expect(screen.getByRole('note')).toHaveTextContent(/só feriados nacionais e o recesso/)
+    expect(screen.getByText(/só feriados nacionais e o recesso; confira feriados locais e suspensões/)).toBeInTheDocument()
   })
 
   it('destaca o trecho que gerou o prazo e mostra tipo, prazo, vencimento e confiança', async () => {
@@ -105,7 +105,7 @@ describe('RevisaoView — leitura (variação A)', () => {
     const ia = screen.getByRole('region', { name: 'Sugestão da IA' })
     expect(within(ia).getByText('Contestação')).toBeInTheDocument()
     expect(within(ia).getByText('15 dias úteis')).toBeInTheDocument()
-    expect(within(ia).getByText('26/11/2026')).toBeInTheDocument() // 5/nov + 15 dias úteis
+    expect(within(ia).getByText('27/11/2026')).toBeInTheDocument() // 5/nov + 15 dias úteis (20/11 é feriado nacional)
     expect(within(ia).getByText(/confiança \d+%/)).toBeInTheDocument()
   })
 
@@ -135,7 +135,7 @@ describe('RevisaoView — decidir', () => {
       expect.objectContaining({
         tipo: 'Prazo',
         diaInteiro: true,
-        inicio: '2026-11-26T00:00',
+        inicio: '2026-11-27T00:00',
         processoId: 'proc-1',
         titulo: 'Prazo: Contestação — 00001-07.2018.8.06.0100',
       })
@@ -164,7 +164,7 @@ describe('RevisaoView — decidir', () => {
 
     const valores = vi.mocked(agendaApi.createEvento).mock.calls[0]![0]
     expect(valores.descricao).not.toContain('contestar')
-    expect(valores.descricao).toMatch(/Estimativa sem feriados/)
+    expect(valores.descricao).toMatch(/Estimativa pelo calendário nacional/)
   })
 
   it('rejeitar: só muda o status para rejeitada, sem criar prazo na agenda', async () => {

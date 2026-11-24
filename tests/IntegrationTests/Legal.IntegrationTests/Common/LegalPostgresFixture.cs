@@ -74,6 +74,16 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
         await MigrateAsync<AnthropicDbContext>(
             options => new AnthropicDbContext(options, new AsyncLocalTenantContext()));
 
+        // As migrations SQL (014 em diante) criam índices e policies sobre as tabelas destes módulos.
+        await MigrateAsync<Advocacia.Modules.Atendimentos.Infrastructure.Persistence.AtendimentoDbContext>(
+            options => new Advocacia.Modules.Atendimentos.Infrastructure.Persistence.AtendimentoDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext>(
+            options => new Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext>(
+            options => new Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext>(
+            options => new Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext(options, new AsyncLocalTenantContext()));
+
         await ApplySupabaseSqlMigrationsAsync();
 
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(SuperuserConnectionString)

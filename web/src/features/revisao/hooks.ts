@@ -72,7 +72,7 @@ export function useDecidirRevisao(onDecidido?: (id: string) => void) {
           titulo: `Prazo: ${sugestao.tipo}${numero}`,
           processoId: publication.processId ?? undefined,
           // Só a referência: o inteiro teor da publicação não vai para a descrição do evento.
-          descricao: `${dias} dias úteis a partir da publicação de ${isoDia(new Date(publication.publishedAt))}. Estimativa sem feriados: confira antes de contar com a data.`,
+          descricao: `${dias} dias úteis a partir da publicação de ${isoDia(new Date(publication.publishedAt))}. Estimativa pelo calendário nacional (sem feriados locais): confira antes de contar com a data.`,
         }),
       })
 
