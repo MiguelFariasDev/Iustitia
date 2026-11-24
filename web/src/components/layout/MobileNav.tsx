@@ -23,7 +23,7 @@ export function MobileNav() {
       >
         <SheetHeader className="h-16 justify-center border-b border-sidebar-border px-4">
           <SheetTitle>
-            <Logo variant="inverted" />
+            <Logo size={24} />
           </SheetTitle>
           <SheetDescription className="sr-only">Menu de navegação</SheetDescription>
         </SheetHeader>

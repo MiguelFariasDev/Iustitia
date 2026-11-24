@@ -59,7 +59,7 @@ export function DashboardView() {
           <p className="min-h-4 text-xs font-medium text-muted-foreground">
             {now ? dataPorExtenso(now) : ''}
           </p>
-          <h1 className="text-[33px] leading-tight font-semibold">
+          <h1 className="display-m text-foreground">
             {now ? saudacao(now) : 'Olá'}
             {nome ? `, ${nome}.` : '.'}
           </h1>
