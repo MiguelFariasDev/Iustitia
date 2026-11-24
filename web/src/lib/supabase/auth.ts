@@ -124,13 +124,19 @@ export const supabaseAuthService: AuthService = {
     for (const factor of factors?.all ?? []) {
       if (factor.status === 'unverified') await mfa.unenroll({ factorId: factor.id })
     }
-    const { data, error } = await mfa.enroll({ factorType: 'totp', friendlyName: 'Aplicativo autenticador' })
+    const { data, error } = await mfa.enroll({
+      factorType: 'totp',
+      friendlyName: 'Aplicativo autenticador',
+    })
     if (error) throw toAuthError(error)
     return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret }
   },
 
   async mfaVerify(factorId, code) {
-    const { error } = await getSupabaseBrowserClient().auth.mfa.challengeAndVerify({ factorId, code })
+    const { error } = await getSupabaseBrowserClient().auth.mfa.challengeAndVerify({
+      factorId,
+      code,
+    })
     if (error) throw toAuthError(error)
   },
 }

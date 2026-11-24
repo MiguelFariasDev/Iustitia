@@ -104,7 +104,11 @@ export function createApiClient(options: ApiClientOptions = {}): AxiosInstance {
 
       // Renovar o token não resolve: o nível de garantia só sobe com o desafio do TOTP.
       const errorData: unknown = error.response?.data
-      if (status === 401 && isProblemDetails(errorData) && errorData.errorCode === 'AUTH_MFA_REQUIRED') {
+      if (
+        status === 401 &&
+        isProblemDetails(errorData) &&
+        errorData.errorCode === 'AUTH_MFA_REQUIRED'
+      ) {
         onMfaRequired()
         throw new ApiError(status, errorData)
       }

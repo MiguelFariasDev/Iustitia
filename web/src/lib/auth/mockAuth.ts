@@ -132,7 +132,10 @@ export const mockAuthService: AuthService = {
   async mfaVerify(_factorId, code) {
     await delay(200)
     if (code !== MOCK_MFA_CODE) {
-      throw new AuthError('Código inválido ou expirado. Confira o aplicativo e tente de novo.', 'mfa_verification_failed')
+      throw new AuthError(
+        'Código inválido ou expirado. Confira o aplicativo e tente de novo.',
+        'mfa_verification_failed'
+      )
     }
     mockMfaEnrolled = true
   },

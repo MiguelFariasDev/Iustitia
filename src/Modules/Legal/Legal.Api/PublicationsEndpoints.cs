@@ -1,4 +1,5 @@
 using Advocacia.Modules.Legal.Application.Features.ChangePublicationStatus;
+using Advocacia.Modules.Legal.Application.Features.ReviewPublication;
 using Advocacia.Modules.Legal.Application.Features.GetPublicationById;
 using Advocacia.Modules.Legal.Application.Features.GetPublicationsSummary;
 using Advocacia.Modules.Legal.Application.Features.ListPublications;
@@ -78,9 +79,22 @@ public static class PublicationsEndpoints
             .WithSummary("Revisão humana: PendingReview → Approved/Corrected/Rejected/Archived. Transições inválidas dão 409 PUBLICATION_INVALID_STATUS_TRANSITION.")
             .RequireAuthorization(Policies.LawyerOrAbove);
 
+        // A decisão completa numa chamada só: status + cálculo do prazo + agenda. Substitui o encadeamento
+        // "criar evento, depois mudar status" que a tela fazia no navegador.
+        group.MapPost("/{id:guid}/review", async (
+                Guid id, ReviewPublicationRequest body, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new ReviewPublicationCommand(id, body.Decision, body.DeadlineDays, body.Notes), cancellationToken)).ToHttpResult())
+            .WithName("ReviewPublication")
+            .WithSummary("Revisão humana com prazo: aceita, corrige ou rejeita a sugestão da IA; o prazo é calculado no servidor e agendado de forma idempotente.")
+            .RequireAuthorization(Policies.LawyerOrAbove);
+
         return app;
     }
 }
+
+/// <param name="Decision">Approved, Corrected ou Rejected.</param>
+/// <param name="DeadlineDays">Prazo em dias definido pelo advogado (só em Corrected).</param>
+public sealed record ReviewPublicationRequest(string Decision, int? DeadlineDays = null, string? Notes = null);
 
 /// <summary>Filtros da listagem, ligados na query string via [AsParameters].</summary>
 public sealed record ListPublicationsRequest(

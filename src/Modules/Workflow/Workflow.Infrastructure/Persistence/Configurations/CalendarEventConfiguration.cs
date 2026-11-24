@@ -38,6 +38,12 @@ public sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Calend
             .HasFilter("is_deleted = false AND process_id IS NOT NULL")
             .HasDatabaseName("ix_calendar_events_tenant_process");
 
+        // Um prazo por publicação: sem isto, um retry ou um duplo clique em "aceitar" criaria dois prazos.
+        builder.HasIndex(calendarEvent => new { calendarEvent.TenantId, calendarEvent.SourcePublicationId })
+            .IsUnique()
+            .HasFilter("is_deleted = false AND source_publication_id IS NOT NULL")
+            .HasDatabaseName("ux_calendar_events_tenant_source_publication");
+
         // Varredura do job de lembretes: só eventos com algum aviso ainda pendente.
         builder.HasIndex(calendarEvent => calendarEvent.StartAt)
             .HasFilter("is_deleted = false AND assigned_user_id IS NOT NULL AND (one_day_reminder_sent_at IS NULL OR one_hour_reminder_sent_at IS NULL)")

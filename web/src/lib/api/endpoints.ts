@@ -113,6 +113,8 @@ export const endpoints = {
     read: (id: string) => `/publications/${id}/read`,
     /** PATCH { status, notes } — revisão humana (ADR-012). */
     status: (id: string) => `/publications/${id}/status`,
+    /** POST { decision, deadlineDays?, notes? } — decisão completa: status + prazo calculado no servidor + agenda. */
+    review: (id: string) => `/publications/${id}/review`,
   },
   /** Inbox do advogado (JWT). O Bot usa /bot/atendimentos com chave de API — nunca daqui. */
   atendimentos: {

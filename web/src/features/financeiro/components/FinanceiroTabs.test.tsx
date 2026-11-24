@@ -12,12 +12,14 @@ vi.mock('@/lib/csv', async (importOriginal) => ({
 const lancamentos = lancamentosDeTeste()
 const atrasados = lancamentos.filter((l) => l.status === 'Atrasado')
 
-const fluxoDeTeste = ['Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov'].map((mes) => ({ mes, entradas: 0, saidas: 0 }))
+const fluxoDeTeste = ['Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov'].map((mes) => ({
+  mes,
+  entradas: 0,
+  saidas: 0,
+}))
 
 function renderTabs() {
-  return renderWithProviders(
-    <FinanceiroTabs lancamentos={lancamentos} fluxoCaixa={fluxoDeTeste} />
-  )
+  return renderWithProviders(<FinanceiroTabs lancamentos={lancamentos} fluxoCaixa={fluxoDeTeste} />)
 }
 
 beforeEach(() => downloadCsv.mockReset())

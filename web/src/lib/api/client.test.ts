@@ -92,7 +92,10 @@ describe('apiClient', () => {
     client.defaults.adapter = (config) =>
       respond(config, 401, { title: 'AUTH_MFA_REQUIRED', errorCode: 'AUTH_MFA_REQUIRED' })
 
-    await expect(client.get('/processos')).rejects.toMatchObject({ status: 401, code: 'AUTH_MFA_REQUIRED' })
+    await expect(client.get('/processos')).rejects.toMatchObject({
+      status: 401,
+      code: 'AUTH_MFA_REQUIRED',
+    })
     expect(onMfaRequired).toHaveBeenCalledOnce()
     expect(refreshAccessToken).not.toHaveBeenCalled()
     expect(onUnauthorized).not.toHaveBeenCalled()

@@ -118,7 +118,9 @@ export function MfaForm() {
             <p className="text-center text-xs text-muted-foreground">
               Sem câmera? Digite esta chave no aplicativo:
               <br />
-              <code className="font-mono text-foreground select-all">{stage.enrollment.secret}</code>
+              <code className="font-mono text-foreground select-all">
+                {stage.enrollment.secret}
+              </code>
             </p>
           </div>
         ) : null}

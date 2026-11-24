@@ -50,12 +50,16 @@ export interface FluxoCaixaDto {
 const statusConhecidos: readonly StatusLancamento[] = ['Pendente', 'Pago', 'Atrasado']
 
 function toTipo(tipo: string): TipoLancamento {
-  return (tiposLancamento as readonly string[]).includes(tipo) ? (tipo as TipoLancamento) : 'Honorario'
+  return (tiposLancamento as readonly string[]).includes(tipo)
+    ? (tipo as TipoLancamento)
+    : 'Honorario'
 }
 
 /** Status desconhecido cai em 'Pendente': o seguro é tratar como em aberto, nunca como quitado. */
 function toStatus(status: string): StatusLancamento {
-  return (statusConhecidos as readonly string[]).includes(status) ? (status as StatusLancamento) : 'Pendente'
+  return (statusConhecidos as readonly string[]).includes(status)
+    ? (status as StatusLancamento)
+    : 'Pendente'
 }
 
 export function toLancamento(dto: LancamentoDto): Lancamento {

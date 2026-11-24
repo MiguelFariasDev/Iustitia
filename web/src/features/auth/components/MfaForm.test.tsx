@@ -11,7 +11,11 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/auth/authService', () => ({
-  authService: { mfaStatus: mocks.mfaStatus, mfaEnroll: mocks.mfaEnroll, mfaVerify: mocks.mfaVerify },
+  authService: {
+    mfaStatus: mocks.mfaStatus,
+    mfaEnroll: mocks.mfaEnroll,
+    mfaVerify: mocks.mfaVerify,
+  },
 }))
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -32,7 +36,11 @@ describe('MfaForm', () => {
 
   it('sem autenticador cadastrado, mostra o QR code e a chave', async () => {
     mocks.mfaStatus.mockResolvedValue({ enrolled: false, factorId: null })
-    mocks.mfaEnroll.mockResolvedValue({ factorId: 'f1', qrCode: 'data:image/svg+xml;utf-8,<svg/>', secret: 'ABC123' })
+    mocks.mfaEnroll.mockResolvedValue({
+      factorId: 'f1',
+      qrCode: 'data:image/svg+xml;utf-8,<svg/>',
+      secret: 'ABC123',
+    })
 
     render(<MfaForm />)
 
@@ -57,7 +65,9 @@ describe('MfaForm', () => {
 
   it('mostra o erro e limpa o campo quando o código está errado', async () => {
     mocks.mfaStatus.mockResolvedValue({ enrolled: true, factorId: 'f9' })
-    mocks.mfaVerify.mockRejectedValue(new AuthError('Código inválido ou expirado.', 'mfa_verification_failed'))
+    mocks.mfaVerify.mockRejectedValue(
+      new AuthError('Código inválido ou expirado.', 'mfa_verification_failed')
+    )
     const user = userEvent.setup()
 
     render(<MfaForm />)

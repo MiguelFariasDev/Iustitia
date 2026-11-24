@@ -87,7 +87,7 @@ function Decisao({ item, resultado, pending, onDecidir, layout }: DecisaoProps) 
       {corrigindo ? (
         <div className="flex items-center gap-2">
           <label htmlFor="prazo-corrigido" className="text-sm font-medium">
-            Prazo em dias úteis
+            {item.sugestao.corridos ? 'Prazo em dias corridos' : 'Prazo em dias úteis'}
           </label>
           <Input
             id="prazo-corrigido"
@@ -105,7 +105,9 @@ function Decisao({ item, resultado, pending, onDecidir, layout }: DecisaoProps) 
             <span className="text-xs text-destructive-foreground">
               Use um número inteiro de 0 a 365.
             </span>
-          ) : null}
+          ) : (
+            <span className="text-xs text-muted-foreground">0 = sem prazo na agenda</span>
+          )}
         </div>
       ) : null}
 
@@ -143,7 +145,7 @@ function Decisao({ item, resultado, pending, onDecidir, layout }: DecisaoProps) 
           disabled={pending || corrigindo}
           onClick={() => onDecidir('accepted', item.sugestao.dias)}
         >
-          Aceitar
+          {item.sugestao.semPrazo ? 'Aprovar sem prazo' : 'Aceitar'}
         </ToneOutlineButton>
       </div>
     </div>
@@ -151,6 +153,15 @@ function Decisao({ item, resultado, pending, onDecidir, layout }: DecisaoProps) 
 }
 
 function Vencimento({ item }: { item: ItemRevisao }) {
+  if (item.sugestao.semPrazo) {
+    return <span className="text-muted-foreground">Nenhum prazo identificado</span>
+  }
+
+  // Dias corridos: o cálculo exato é feito no servidor ao decidir (feriados e recesso à parte).
+  if (item.sugestao.corridos) {
+    return <span className="text-muted-foreground">calculado ao salvar, em dias corridos</span>
+  }
+
   const data = addBusinessDays(new Date(item.publication.publishedAt), item.sugestao.dias)
 
   return (
@@ -159,7 +170,8 @@ function Vencimento({ item }: { item: ItemRevisao }) {
         {formatDate(data)}
       </time>
       <span className="block text-xs font-normal text-muted-foreground">
-        estimativa — considera só feriados nacionais e o recesso; confira feriados locais e suspensões
+        estimativa — considera só feriados nacionais e o recesso; confira feriados locais e
+        suspensões
       </span>
     </>
   )
@@ -216,11 +228,25 @@ function PainelA({ item, resultado, pending, onDecidir }: Omit<DecisaoProps, 'la
           </p>
         )}
 
+        {sugestao.revisaoManual ? (
+          <p
+            role="alert"
+            className="bg-warning-soft rounded-lg border border-warning/40 p-3 text-sm text-warning-foreground"
+          >
+            Confiança baixa: a IA não tem certeza desta sugestão. Confira o texto da publicação
+            antes de decidir.
+          </p>
+        ) : null}
+
         <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-3 text-sm">
           <dt className="text-muted-foreground">Tipo</dt>
           <dd className="font-medium">{sugestao.tipo}</dd>
           <dt className="text-muted-foreground">Prazo</dt>
-          <dd className="font-medium">{sugestao.dias} dias úteis</dd>
+          <dd className="font-medium">
+            {sugestao.semPrazo
+              ? 'Sem prazo identificado'
+              : `${sugestao.dias} dias ${sugestao.corridos ? 'corridos' : 'úteis'}`}
+          </dd>
           <dt className="text-muted-foreground">Vencimento</dt>
           <dd className="font-medium">
             <Vencimento item={item} />
@@ -248,7 +274,10 @@ function PainelB({ item, resultado, pending, onDecidir }: Omit<DecisaoProps, 'la
   const { publication, sugestao } = item
   const metricas = [
     ['Tipo sugerido', sugestao.tipo],
-    ['Prazo em dias úteis', `${sugestao.dias}`],
+    [
+      sugestao.corridos ? 'Prazo em dias corridos' : 'Prazo em dias úteis',
+      sugestao.semPrazo ? '—' : `${sugestao.dias}`,
+    ],
     ['Vence em', null],
     ['Confiança', `${sugestao.confianca}%`],
   ] as const
@@ -295,30 +324,11 @@ function PainelB({ item, resultado, pending, onDecidir }: Omit<DecisaoProps, 'la
   )
 }
 
-/** Sem mocks não há sugestão da IA por publicação: a tela diz isso em vez de inventar um prazo. */
-function SemSugestoes() {
-  return (
-    <EmptyState
-      icon={Sparkles}
-      title="A revisão da IA ainda não está disponível"
-      description="A API não informa, por publicação, o que a IA sugeriu (tipo, prazo e fundamento). Enquanto isso, trate as publicações pela lista."
-      action={
-        <Link
-          href={routes.publications}
-          className="text-sm font-medium underline underline-offset-4"
-        >
-          Ir para as publicações
-        </Link>
-      }
-    />
-  )
-}
-
 export function RevisaoView() {
   const demo = env.useMocks
   const variant = useUiStore((s) => s.reviewVariant)
   const setVariant = useUiStore((s) => s.setReviewVariant)
-  const { itens, isPending, isError, refetch } = useFilaRevisao(demo)
+  const { itens, aguardandoIa, isPending, isError, refetch } = useFilaRevisao(true)
   const decisoes = useRevisaoStore((s) => s.decisoes)
   const [escolhido, setEscolhido] = useState<string | null>(null)
 
@@ -337,117 +347,128 @@ export function RevisaoView() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
-            Revisão humana obrigatória{demo ? ` · ${pendentes} pendentes` : ''}
+            Revisão humana obrigatória · {pendentes} pendentes
           </p>
           <h1 className="text-[33px] leading-tight font-semibold">Revisão da IA</h1>
         </div>
-        {demo ? (
-          <SegmentedControl
-            value={variant}
-            onChange={setVariant}
-            options={variantes}
-            label="Variação da tela de revisão"
-          />
-        ) : null}
+        <SegmentedControl
+          value={variant}
+          onChange={setVariant}
+          options={variantes}
+          label="Variação da tela de revisão"
+        />
       </header>
 
-      {!demo ? (
-        <SemSugestoes />
-      ) : (
-        <>
-          <p
-            role="note"
-            className="rounded-lg border border-dashed px-4 py-2 text-sm text-muted-foreground"
-          >
-            <strong className="font-medium text-foreground">Sugestões de demonstração.</strong> A
-            API ainda não informa a sugestão da IA por publicação: o prazo abaixo é calculado a
-            partir do texto e considera só feriados nacionais e o recesso. As decisões gravam o status da publicação e o prazo
-            na agenda.
-          </p>
+      {demo ? (
+        <p
+          role="note"
+          className="rounded-lg border border-dashed px-4 py-2 text-sm text-muted-foreground"
+        >
+          <strong className="font-medium text-foreground">Sugestões de demonstração.</strong> Em
+          demonstração o prazo é calculado a partir do texto e considera só feriados nacionais e o
+          recesso.
+        </p>
+      ) : null}
 
-          {isError ? (
-            <ErrorState
-              error={new Error('Falha ao carregar as publicações.')}
-              title="Não foi possível carregar a fila de revisão"
-              onRetry={() => void refetch()}
-            />
-          ) : isPending ? (
-            <div className="space-y-3" role="status" aria-label="Carregando a revisão">
-              <Skeleton className="h-10 w-2/3" />
-              <Skeleton className="h-64" style={{ animationDelay: '0.15s' }} />
+      {aguardandoIa > 0 ? (
+        <p
+          role="note"
+          className="border-ia-border rounded-lg border bg-ia-soft px-4 py-2 text-sm text-ia-text"
+        >
+          {aguardandoIa === 1
+            ? '1 publicação ainda aguarda a análise da IA'
+            : `${aguardandoIa} publicações ainda aguardam a análise da IA`}
+          . Elas aparecem aqui assim que forem analisadas; para tratá-las agora, use a{' '}
+          <Link href={routes.publications} className="font-medium underline underline-offset-4">
+            lista de publicações
+          </Link>
+          .
+        </p>
+      ) : null}
+
+      <>
+        {isError ? (
+          <ErrorState
+            error={new Error('Falha ao carregar as publicações.')}
+            title="Não foi possível carregar a fila de revisão"
+            onRetry={() => void refetch()}
+          />
+        ) : isPending ? (
+          <div className="space-y-3" role="status" aria-label="Carregando a revisão">
+            <Skeleton className="h-10 w-2/3" />
+            <Skeleton className="h-64" style={{ animationDelay: '0.15s' }} />
+          </div>
+        ) : itens.length === 0 ? (
+          <EmptyState
+            icon={CheckCircle2}
+            title="Nenhuma publicação aguardando revisão"
+            description="Quando a IA analisar novas publicações, elas aparecem aqui para a sua decisão."
+          />
+        ) : (
+          <>
+            <div
+              role="tablist"
+              aria-label="Publicações a revisar"
+              className="flex gap-2 overflow-x-auto pb-1"
+            >
+              {itens.map((item, indice) => {
+                const id = item.publication.id
+                const decidida = Boolean(decisoes[id])
+                const selecionada = ativo?.publication.id === id
+
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    id={`aba-${id}`}
+                    aria-selected={selecionada}
+                    aria-controls="painel-revisao"
+                    tabIndex={selecionada ? 0 : -1}
+                    onClick={() => setEscolhido(id)}
+                    className={cn(
+                      'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      selecionada
+                        ? 'border-ia bg-ia-soft text-ia-text'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    )}
+                  >
+                    <span className="font-mono text-xs">{nn(indice)}</span> {item.sugestao.tipo}
+                    {decidida ? (
+                      <>
+                        {' '}
+                        <span aria-hidden>✓</span>
+                        <span className="sr-only">(decidida)</span>
+                      </>
+                    ) : null}
+                  </button>
+                )
+              })}
             </div>
-          ) : itens.length === 0 ? (
-            <EmptyState
-              icon={CheckCircle2}
-              title="Nenhuma publicação aguardando revisão"
-              description="Quando houver publicações com processo vinculado, elas aparecem aqui."
-            />
-          ) : (
-            <>
+
+            {ativo ? (
               <div
-                role="tablist"
-                aria-label="Publicações a revisar"
-                className="flex gap-2 overflow-x-auto pb-1"
+                id="painel-revisao"
+                role="tabpanel"
+                aria-labelledby={`aba-${ativo.publication.id}`}
               >
-                {itens.map((item, indice) => {
-                  const id = item.publication.id
-                  const decidida = Boolean(decisoes[id])
-                  const selecionada = ativo?.publication.id === id
-
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      role="tab"
-                      id={`aba-${id}`}
-                      aria-selected={selecionada}
-                      aria-controls="painel-revisao"
-                      tabIndex={selecionada ? 0 : -1}
-                      onClick={() => setEscolhido(id)}
-                      className={cn(
-                        'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        selecionada
-                          ? 'border-ia bg-ia-soft text-ia-text'
-                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                      )}
-                    >
-                      <span className="font-mono text-xs">{nn(indice)}</span> {item.sugestao.tipo}
-                      {decidida ? (
-                        <>
-                          {' '}
-                          <span aria-hidden>✓</span>
-                          <span className="sr-only">(decidida)</span>
-                        </>
-                      ) : null}
-                    </button>
-                  )
-                })}
+                <Painel
+                  item={ativo}
+                  resultado={decisoes[ativo.publication.id]}
+                  pending={decidir.isPending}
+                  onDecidir={(decisao, dias) => decidir.mutate({ item: ativo, decisao, dias })}
+                />
               </div>
+            ) : null}
 
-              {ativo ? (
-                <div
-                  id="painel-revisao"
-                  role="tabpanel"
-                  aria-labelledby={`aba-${ativo.publication.id}`}
-                >
-                  <Painel
-                    item={ativo}
-                    resultado={decisoes[ativo.publication.id]}
-                    pending={decidir.isPending}
-                    onDecidir={(decisao, dias) => decidir.mutate({ item: ativo, decisao, dias })}
-                  />
-                </div>
-              ) : null}
-
-              {variant === 'A' ? (
-                <p className="text-center text-sm text-muted-foreground">
-                  Responsabilidade final do advogado — nada é salvo sem sua decisão.
-                </p>
-              ) : null}
-            </>
-          )}
-        </>
-      )}
+            {variant === 'A' ? (
+              <p className="text-center text-sm text-muted-foreground">
+                Responsabilidade final do advogado — nada é salvo sem sua decisão.
+              </p>
+            ) : null}
+          </>
+        )}
+      </>
     </div>
   )
 }

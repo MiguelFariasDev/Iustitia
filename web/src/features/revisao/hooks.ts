@@ -5,13 +5,20 @@ import { useMemo } from 'react'
 import { createEvento } from '@/features/agenda/api'
 import { toDateTimeLocal } from '@/features/agenda/dates'
 import { eventoFormDefaults } from '@/features/agenda/schemas'
-import { changePublicationStatus } from '@/features/publicacoes/api'
+import { env } from '@/config/env'
+import { changePublicationStatus, reviewPublication } from '@/features/publicacoes/api'
 import { publicationsQuery } from '@/features/publicacoes/queries'
 import { handleApiError } from '@/lib/api/toastHandler'
 import { notify } from '@/lib/notify'
 import { queryKeys } from '@/lib/query/queryKeys'
 import { addBusinessDays } from './diasUteis'
-import { montarFila, rotuloDecisao, type Decisao, type ItemRevisao } from './fila'
+import {
+  contarAguardandoIa,
+  montarFila,
+  rotuloDecisao,
+  type Decisao,
+  type ItemRevisao,
+} from './fila'
 import { useRevisaoStore } from './store'
 
 /** Publicações aguardando revisão, com a sugestão de demonstração. Só roda com `enabled`. */
@@ -20,10 +27,15 @@ export function useFilaRevisao(enabled: boolean) {
     ...publicationsQuery({ status: 'untreated', pageSize: 100 }),
     enabled,
   })
-  const itens = useMemo(() => montarFila(query.data?.items ?? []), [query.data])
+  const itens = useMemo(() => montarFila(query.data?.items ?? [], env.useMocks), [query.data])
+  const aguardandoIa = useMemo(
+    () => (env.useMocks ? 0 : contarAguardandoIa(query.data?.items ?? [])),
+    [query.data]
+  )
 
   return {
     itens,
+    aguardandoIa,
     isPending: enabled && query.isPending,
     isError: query.isError,
     refetch: query.refetch,
@@ -52,6 +64,21 @@ export function useDecidirRevisao(onDecidido?: (id: string) => void) {
   return useMutation({
     mutationFn: async ({ item, decisao, dias }: DecidirInput) => {
       const { publication, sugestao } = item
+
+      // API real: UMA chamada. O servidor calcula o vencimento (calendário forense), agenda o prazo de forma
+      // idempotente e grava a decisão — nada depende de a ordem de duas chamadas do navegador dar certo.
+      if (!env.useMocks) {
+        const nome =
+          decisao === 'rejected' ? 'Rejected' : decisao === 'corrected' ? 'Corrected' : 'Approved'
+        // Corrigir para 0 dia significa "sem prazo": o servidor aprova a correção sem agendar nada.
+        const resultado = await reviewPublication(
+          publication.id,
+          nome,
+          decisao === 'corrected' && dias > 0 ? dias : undefined
+        )
+
+        return { vencimento: resultado.vencimento }
+      }
 
       if (decisao === 'rejected') {
         await changePublicationStatus(

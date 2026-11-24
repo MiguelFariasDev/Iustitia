@@ -4,6 +4,7 @@ import type {
   PublicationKind,
   PublicationMetadata,
   PublicationStatus,
+  PublicationSuggestion,
   PublicationsSummary,
 } from './types'
 
@@ -33,7 +34,12 @@ export interface PublicationListItemDto {
   type: string | null
   status: string
   isRead: boolean
+  /** Sugestão da IA (PublicationSuggestionResponse); nula enquanto a análise não rodou. */
+  suggestion?: PublicationSuggestionDto | null
 }
+
+/** PublicationSuggestionResponse (Legal.Application.Features). */
+export type PublicationSuggestionDto = PublicationSuggestion
 
 /** Detalhe devolvido por GET /publications/{id} (GetPublicationByIdResponse). */
 export interface PublicationDetailDto extends Omit<PublicationListItemDto, 'contentPreview'> {
@@ -112,6 +118,7 @@ export function toPublication(
     content,
     reviewNotes: null,
     metadata: null,
+    suggestion: dto.suggestion ?? null,
   }
 }
 

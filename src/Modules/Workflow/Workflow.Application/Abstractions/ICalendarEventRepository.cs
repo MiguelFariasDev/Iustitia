@@ -15,6 +15,9 @@ public interface ICalendarEventRepository : IRepository<CalendarEvent, CalendarE
         Guid? processId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>O prazo já criado para a publicação, se existir (idempotência de IPrazoAgendador).</summary>
+    Task<CalendarEvent?> GetBySourcePublicationAsync(Guid tenantId, Guid publicationId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Eventos futuros com lembrete devido em <paramref name="now"/>, de TODOS os escritórios
     /// (usado só pelo job, que roda fora de requisição — ignora o filtro de tenant).

@@ -49,10 +49,14 @@ describe('LancamentosTable — marcar como pago', () => {
   it('só os lançamentos em aberto têm o botão; o que já foi pago não', () => {
     renderWithProviders(<LancamentosTable tipo="Honorario" lancamentos={lancamentosDeTeste()} />)
 
-    const emAberto = lancamentosDeTeste().filter((l) => l.tipo === 'Honorario' && l.status !== 'Pago')
+    const emAberto = lancamentosDeTeste().filter(
+      (l) => l.tipo === 'Honorario' && l.status !== 'Pago'
+    )
     const pagos = lancamentosDeTeste().filter((l) => l.tipo === 'Honorario' && l.status === 'Pago')
 
-    expect(screen.getAllByRole('button', { name: /marcar como pago/i })).toHaveLength(emAberto.length)
+    expect(screen.getAllByRole('button', { name: /marcar como pago/i })).toHaveLength(
+      emAberto.length
+    )
     expect(pagos.length).toBeGreaterThan(0)
   })
 })
