@@ -38,10 +38,10 @@ export function Sidebar() {
           href={routes.dashboard}
           className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
-          <Logo variant="inverted" showWordmark={!collapsed} />
+          <Logo size={24} showWordmark={!collapsed} />
         </Link>
         {tenantName && !collapsed ? (
-          <p className="truncate pl-8 text-xs text-sidebar-muted">{tenantName}</p>
+          <p className="truncate pl-0.5 text-xs text-sidebar-muted">{tenantName}</p>
         ) : null}
       </div>
       <div className="flex-1 overflow-y-auto">

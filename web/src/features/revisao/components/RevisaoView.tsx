@@ -202,7 +202,7 @@ function PainelA({ item, resultado, pending, onDecidir }: Omit<DecisaoProps, 'la
 
       <section
         aria-label="Sugestão da IA"
-        className="space-y-4 rounded-[10px] border border-t-2 border-t-ia bg-card p-5 shadow-sm"
+        className="space-y-4 rounded-lg border border-ia-border bg-ia-soft p-5"
       >
         <p className="flex items-center gap-2 text-sm font-medium text-ia-text">
           <Sparkles className="size-4" aria-hidden />

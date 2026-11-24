@@ -167,7 +167,7 @@ export function DataTable<TData>({
         ) : null}
         <Table>
           <caption className="sr-only">{caption}</caption>
-          <TableHeader className="bg-muted/50">
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {

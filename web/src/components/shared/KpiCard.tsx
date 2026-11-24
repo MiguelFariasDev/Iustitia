@@ -4,20 +4,11 @@ import { cn } from '@/lib/utils'
 
 export type KpiTone = 'danger' | 'warning' | 'ia' | 'brand' | 'neutral'
 
-/** Borda superior de 2px na cor do indicador — é o que diferencia os cartões do v4. */
-const topBorder: Record<KpiTone, string> = {
-  danger: 'border-t-destructive',
-  warning: 'border-t-warning',
-  ia: 'border-t-ia',
-  brand: 'border-t-brand',
-  neutral: 'border-t-line-strong',
-}
-
 const valueColor: Record<KpiTone, string> = {
   danger: 'text-destructive-foreground',
   warning: 'text-warning-foreground',
   ia: 'text-ia-text',
-  brand: 'text-foreground',
+  brand: 'text-primary',
   neutral: 'text-foreground',
 }
 
@@ -47,17 +38,16 @@ export function KpiCard({
 }: KpiCardProps) {
   const conteudo = (
     <>
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p className="iu-label text-muted-foreground">{label}</p>
       <p
         className={cn(
-          'font-medium tracking-tight',
-          compact ? 'text-[31px] leading-9' : 'text-[45px] leading-[1.1]',
+          compact ? 'text-[31px] leading-9 font-bold tracking-tight tabular' : 'iu-metric',
           value === null ? 'text-muted-foreground' : valueColor[tone]
         )}
       >
         {value === null ? '—' : value}
       </p>
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {hint ? <p className="text-[13px] leading-[19px] text-muted-foreground">{hint}</p> : null}
     </>
   )
 
@@ -80,8 +70,7 @@ export function KpiCard({
   }
 
   const caixa = cn(
-    'block space-y-1.5 rounded-[10px] border border-t-2 bg-card p-4 shadow-sm',
-    topBorder[tone],
+    'block space-y-2 rounded-lg border bg-card p-5 shadow-sm',
     href && 'iu-lift outline-none focus-visible:ring-2 focus-visible:ring-ring',
     className
   )

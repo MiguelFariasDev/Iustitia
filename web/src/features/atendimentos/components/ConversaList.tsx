@@ -130,7 +130,7 @@ export function ConversaList({
       >
         <TabsList aria-label="Filtrar por status" className="h-auto w-full flex-wrap justify-start">
           {atendimentoTabs.map((value) => (
-            <TabsTrigger key={value} value={value} className="px-2 text-xs">
+            <TabsTrigger key={value} value={value} className="h-8 flex-none px-3 text-[13px]">
               {tabLabels[value]}
             </TabsTrigger>
           ))}

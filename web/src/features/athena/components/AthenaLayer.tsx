@@ -91,7 +91,7 @@ function AthenaPanel({ aberto }: { aberto: boolean }) {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-white/10 py-3 pr-12 pl-4">
+      <header className="border-b border-border py-3 pr-12 pl-4">
         <SheetTitle className="flex items-center gap-2 text-athena-foreground">
           <Sparkles className="size-4 text-ia-soft" aria-hidden /> Athena
         </SheetTitle>
@@ -120,7 +120,7 @@ function AthenaPanel({ aberto }: { aberto: boolean }) {
         <div ref={fim} />
       </div>
 
-      <div className="space-y-2 border-t border-white/10 p-3">
+      <div className="space-y-2 border-t border-border p-3">
         <div className="flex flex-wrap gap-2">
           {CHIPS.map((chip) => (
             <button
@@ -128,7 +128,7 @@ function AthenaPanel({ aberto }: { aberto: boolean }) {
               type="button"
               disabled={chip === 'Prazos de hoje' && !agenda.data}
               onClick={() => perguntar(chip)}
-              className="rounded-full border border-white/15 px-3 py-1 text-xs text-athena-foreground hover:bg-athena-field focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
+              className="rounded-full border border-border px-3 py-1 text-xs text-athena-foreground hover:bg-athena-field focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
             >
               {chip}
             </button>
