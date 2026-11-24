@@ -14,7 +14,7 @@ import { routes } from '@/config/routes'
 import { formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/stores/uiStore'
-import { addBusinessDays } from '../diasUteis'
+import { vencimentoPorDisponibilizacao } from '../diasUteis'
 import { proximoNaoDecidido, rotuloDecisao, type ItemRevisao, type Resultado } from '../fila'
 import { useDecidirRevisao, useFilaRevisao } from '../hooks'
 import { useRevisaoStore } from '../store'
@@ -162,7 +162,7 @@ function Vencimento({ item }: { item: ItemRevisao }) {
     return <span className="text-muted-foreground">calculado ao salvar, em dias corridos</span>
   }
 
-  const data = addBusinessDays(new Date(item.publication.publishedAt), item.sugestao.dias)
+  const data = vencimentoPorDisponibilizacao(item.publication.publishedAt, item.sugestao.dias)
 
   return (
     <>

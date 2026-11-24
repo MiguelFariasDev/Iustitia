@@ -81,3 +81,32 @@ export function addBusinessDays(inicio: Date, dias: number): Date {
 
   return data
 }
+
+/** Próximo dia ÚTIL depois de `dia` (o próprio dia não conta). Espelha `CalendarioForense.ProximoDiaUtil`. */
+export function proximoDiaUtil(dia: Date): Date {
+  const data = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate())
+  do {
+    data.setDate(data.getDate() + 1)
+  } while (!isDiaUtil(data))
+
+  return data
+}
+
+/** A data do calendário de Brasília (UTC−3, sem horário de verão) em que um instante ISO cai. */
+export function dataEmBrasilia(iso: string): Date {
+  const deslocada = new Date(new Date(iso).getTime() - 3 * 3_600_000)
+
+  return new Date(deslocada.getUTCFullYear(), deslocada.getUTCMonth(), deslocada.getUTCDate())
+}
+
+/**
+ * Vencimento de um prazo contado a partir da DISPONIBILIZAÇÃO no Diário Eletrônico — o caso das publicações.
+ * A publicação é o 1º dia útil seguinte à disponibilização (Lei 11.419/2006, art. 4º, §3º) e a contagem começa no
+ * 1º dia útil depois dela (CPC art. 224, §3º). Espelha `CalculadoraPrazo` com `ReferenciaDoPrazo.Disponibilizacao`,
+ * que é o que o servidor usa ao gravar a decisão: a data mostrada na tela precisa ser a que será salva.
+ */
+export function vencimentoPorDisponibilizacao(disponibilizadaEm: string, dias: number): Date {
+  const publicacao = proximoDiaUtil(dataEmBrasilia(disponibilizadaEm))
+
+  return addBusinessDays(publicacao, dias)
+}

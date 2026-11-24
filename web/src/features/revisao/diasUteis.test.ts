@@ -1,4 +1,11 @@
-import { addBusinessDays, isDiaUtil, isFeriadoNacional, isRecesso, pascoa } from './diasUteis'
+import {
+  addBusinessDays,
+  isDiaUtil,
+  isFeriadoNacional,
+  isRecesso,
+  pascoa,
+  vencimentoPorDisponibilizacao,
+} from './diasUteis'
 
 const data = (a: number, m: number, d: number) => new Date(a, m - 1, d)
 const iso = (d: Date) =>
@@ -74,5 +81,26 @@ describe('calendário forense nacional', () => {
     expect(isRecesso(data(2027, 1, 21))).toBe(false)
     expect(isDiaUtil(data(2026, 11, 23))).toBe(true)
     expect(isDiaUtil(data(2026, 11, 21))).toBe(false)
+  })
+})
+
+describe('vencimentoPorDisponibilizacao (mesma regra do servidor)', () => {
+  it('disponibilização em feriado (20/11/2026, sexta): publica na segunda 23/11 e 15 dias úteis vencem em 14/12', () => {
+    const data = vencimentoPorDisponibilizacao('2026-11-20T15:00:00Z', 15)
+
+    expect([data.getFullYear(), data.getMonth() + 1, data.getDate()]).toEqual([2026, 12, 14])
+  })
+
+  it('5 dias úteis da mesma publicação vencem em 30/11', () => {
+    const data = vencimentoPorDisponibilizacao('2026-11-20T15:00:00Z', 5)
+
+    expect([data.getMonth() + 1, data.getDate()]).toEqual([11, 30])
+  })
+
+  it('usa a data de Brasília: 01/12 01:30 UTC ainda é 30/11 à noite', () => {
+    // 30/11 (segunda) → publicação 01/12 (terça) → 1 dia útil: 02/12.
+    const data = vencimentoPorDisponibilizacao('2026-12-01T01:30:00Z', 1)
+
+    expect([data.getMonth() + 1, data.getDate()]).toEqual([12, 2])
   })
 })

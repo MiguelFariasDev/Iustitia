@@ -107,7 +107,7 @@ describe('RevisaoView — leitura (variação A)', () => {
     const ia = screen.getByRole('region', { name: 'Sugestão da IA' })
     expect(within(ia).getByText('Contestação')).toBeInTheDocument()
     expect(within(ia).getByText('15 dias úteis')).toBeInTheDocument()
-    expect(within(ia).getByText('27/11/2026')).toBeInTheDocument() // 5/nov + 15 dias úteis (20/11 é feriado nacional)
+    expect(within(ia).getByText('30/11/2026')).toBeInTheDocument() // disponibilizada qui 5/nov → publicação sex 6/nov → 15 dias úteis (20/11 é feriado)
     expect(within(ia).getByText(/confiança \d+%/)).toBeInTheDocument()
   })
 
@@ -137,7 +137,7 @@ describe('RevisaoView — decidir', () => {
       expect.objectContaining({
         tipo: 'Prazo',
         diaInteiro: true,
-        inicio: '2026-11-27T00:00',
+        inicio: '2026-11-30T00:00',
         processoId: 'proc-1',
         titulo: 'Prazo: Contestação — 00001-07.2018.8.06.0100',
       })
@@ -203,7 +203,7 @@ describe('RevisaoView — decidir', () => {
       )
     )
     expect(agendaApi.createEvento).toHaveBeenCalledWith(
-      expect.objectContaining({ inicio: '2026-11-19T00:00' }) // 5/nov + 10 dias úteis
+      expect.objectContaining({ inicio: '2026-11-23T00:00' }) // publicação sex 6/nov + 10 dias úteis
     )
     expect(notify.success).toHaveBeenCalledWith('Prazo corrigido e salvo')
   })

@@ -11,7 +11,7 @@ import { publicationsQuery } from '@/features/publicacoes/queries'
 import { handleApiError } from '@/lib/api/toastHandler'
 import { notify } from '@/lib/notify'
 import { queryKeys } from '@/lib/query/queryKeys'
-import { addBusinessDays } from './diasUteis'
+import { vencimentoPorDisponibilizacao } from './diasUteis'
 import {
   contarAguardandoIa,
   montarFila,
@@ -89,7 +89,7 @@ export function useDecidirRevisao(onDecidido?: (id: string) => void) {
         return { vencimento: null as string | null }
       }
 
-      const vencimento = addBusinessDays(new Date(publication.publishedAt), dias)
+      const vencimento = vencimentoPorDisponibilizacao(publication.publishedAt, dias)
       const numero = publication.processNumber ? ` — ${publication.processNumber}` : ''
 
       await createEvento({
