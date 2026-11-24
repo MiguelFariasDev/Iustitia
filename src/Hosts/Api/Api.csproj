@@ -28,6 +28,8 @@
     <ProjectReference Include="..\..\Modules\Workflow\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Atendimento\Atendimento.Api\Atendimento.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Atendimento\Atendimento.Infrastructure\Atendimento.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Financeiro\Financeiro.Api\Financeiro.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Financeiro\Financeiro.Infrastructure\Financeiro.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Drafting\Drafting.Api\Drafting.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Drafting\Drafting.Infrastructure\Drafting.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Integrations\Integrations.CNJ\Integrations.CNJ.Infrastructure\Integrations.CNJ.Infrastructure.csproj" />

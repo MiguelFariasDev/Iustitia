@@ -262,6 +262,15 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `DRAFTING_NORMA_NOT_FOUND` | Norma não encontrada no acervo. | 404 | NotFound | Id inexistente ou norma removida do acervo normativo público. | Conferir o identificador (o `normaId` vem das fontes da peça). |
 | `DRAFTING_VECTOR_STORE_UNAVAILABLE` | O acervo de documentos está indisponível no momento. Tente novamente. | 500 | Failure | O Qdrant não respondeu ao remover um documento. | Tentar de novo; conferir o Qdrant. |
 
+## Finance (2700–2799)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `FINANCE_ENTRY_NOT_FOUND` | Lançamento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `FINANCE_ENTRY_DESCRIPTION_INVALID` | Informe a descrição do lançamento (até 200 caracteres). | 400 | Validation | Descrição vazia ou acima de 200 caracteres. | Corrigir a descrição. |
+| `FINANCE_ENTRY_AMOUNT_INVALID` | O valor deve ser maior que zero, com no máximo duas casas decimais. | 400 | Validation | Valor zero, negativo, absurdo ou com mais de duas casas. | Corrigir o valor. |
+| `FINANCE_ENTRY_ALREADY_PAID` | Este lançamento já foi pago. | 409 | Conflict | Marcar como pago um lançamento já pago. | Nenhuma ação. |
+
 ## Internal (9000–9999)
 
 | Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |

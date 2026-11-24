@@ -15,15 +15,6 @@ export function FinanceiroView() {
 
   return (
     <div className="space-y-6">
-      <p
-        role="note"
-        className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground"
-      >
-        <strong>Lançamentos salvos neste navegador.</strong> O financeiro ainda não tem servidor: o
-        que você lança fica só aqui, na sua conta, e não aparece em outros aparelhos nem para outras
-        pessoas do escritório.
-      </p>
-
       {erro ? (
         <ErrorState
           error={erro}

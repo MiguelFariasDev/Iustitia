@@ -27,6 +27,7 @@ public enum ErrorGroup
     Cnj,
     Atendimento,
     Drafting,
+    Finance,
     Ai,
     Internal,
 }

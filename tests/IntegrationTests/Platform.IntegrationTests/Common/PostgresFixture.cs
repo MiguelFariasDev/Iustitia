@@ -97,6 +97,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         await MigrateModuleAsync<Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext>(o => new Advocacia.Modules.CRM.Infrastructure.Persistence.CrmDbContext(o, new AsyncLocalTenantContext()));
         await MigrateModuleAsync<Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext>(o => new Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext(o, new AsyncLocalTenantContext()));
         await MigrateModuleAsync<Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext>(o => new Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext(o, new AsyncLocalTenantContext()));
+        await MigrateModuleAsync<Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext>(o => new Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext(o, new AsyncLocalTenantContext()));
 
         // ai_usage_logs (módulo Anthropic): 015_ai_usage_logs.sql precisa da tabela existente.
         var anthropicOptionsBuilder = new DbContextOptionsBuilder<AnthropicDbContext>();

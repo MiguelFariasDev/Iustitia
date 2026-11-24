@@ -83,6 +83,8 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
             options => new Advocacia.Modules.Workflow.Infrastructure.Persistence.WorkflowDbContext(options, new AsyncLocalTenantContext()));
         await MigrateAsync<Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext>(
             options => new Advocacia.Modules.Drafting.Infrastructure.Persistence.DraftingDbContext(options, new AsyncLocalTenantContext()));
+        await MigrateAsync<Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext>(
+            options => new Advocacia.Modules.Financeiro.Infrastructure.Persistence.FinanceiroDbContext(options, new AsyncLocalTenantContext()));
 
         await ApplySupabaseSqlMigrationsAsync();
 

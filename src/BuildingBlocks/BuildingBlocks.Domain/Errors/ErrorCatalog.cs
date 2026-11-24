@@ -344,6 +344,16 @@ public static class ErrorCatalog
             [ErrorCode.DRAFTING_NORMA_NOT_FOUND] = new(ErrorGroup.Drafting, nameof(ErrorCode.DRAFTING_NORMA_NOT_FOUND),
                 "Norma não encontrada no acervo.", 404, ErrorType.NotFound),
 
+            // FINANCE (módulo Financeiro)
+            [ErrorCode.FINANCE_ENTRY_NOT_FOUND] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_NOT_FOUND),
+                "Lançamento não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.FINANCE_ENTRY_DESCRIPTION_INVALID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_DESCRIPTION_INVALID),
+                "Informe a descrição do lançamento (até 200 caracteres).", 400, ErrorType.Validation),
+            [ErrorCode.FINANCE_ENTRY_AMOUNT_INVALID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_AMOUNT_INVALID),
+                "O valor deve ser maior que zero, com no máximo duas casas decimais.", 400, ErrorType.Validation),
+            [ErrorCode.FINANCE_ENTRY_ALREADY_PAID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_ALREADY_PAID),
+                "Este lançamento já foi pago.", 409, ErrorType.Conflict),
+
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),
                 "O serviço de publicações do CNJ está indisponível no momento.", 500, ErrorType.Failure),

@@ -83,6 +83,13 @@ export const endpoints = {
     /** LGPD: POST elimina de forma irreversível os dados pessoais do cliente. */
     anonimizar: (id: string) => `/clientes/${id}/anonimizar`,
   },
+  financeiro: {
+    lancamentos: '/financeiro/lancamentos',
+    pagar: (id: string) => `/financeiro/lancamentos/${id}/pagar`,
+    excluir: (id: string) => `/financeiro/lancamentos/${id}`,
+    resumo: '/financeiro/resumo',
+    fluxoCaixa: '/financeiro/fluxo-caixa',
+  },
   processos: {
     list: '/processos',
     byId: (id: string) => `/processos/${id}`,

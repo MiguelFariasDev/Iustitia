@@ -45,10 +45,11 @@ public sealed record DeactivateClienteCommand(Guid ClienteId) : ICommand;
 /// Anonimiza os dados pessoais do cliente (direito do titular à eliminação — LGPD art. 18, VI).
 /// Irreversível; recusada enquanto houver processo em andamento do cliente.
 /// </summary>
-[Audited("Anonymized", "Cliente")]
+[Audited("Anonymized", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record AnonimizarClienteCommand(Guid ClienteId) : ICommand;
 
 /// <summary>Cópia de todos os dados do titular (direito de acesso e portabilidade — LGPD art. 18, II e V).</summary>
+[Audited("Exported", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record ExportarDadosClienteQuery(Guid ClienteId) : IQuery<ExportacaoClienteResponse>;
 
 public sealed record ExportacaoClienteResponse(
