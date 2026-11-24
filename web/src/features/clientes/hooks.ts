@@ -6,7 +6,15 @@ import { routes } from '@/config/routes'
 import { handleApiError } from '@/lib/api/toastHandler'
 import { notify } from '@/lib/notify'
 import { queryKeys } from '@/lib/query/queryKeys'
-import { createCliente, deactivateCliente, reactivateCliente, updateCliente } from './api'
+import {
+  anonimizarCliente,
+  createCliente,
+  deactivateCliente,
+  exportarDadosCliente,
+  reactivateCliente,
+  updateCliente,
+} from './api'
+import { downloadBlob } from '@/lib/download'
 import type { ClienteFormValues } from './schemas'
 
 /**
@@ -44,6 +52,35 @@ export function useUpdateCliente(id: string) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.clientes.all })
       notify.success('Cliente atualizado.')
       router.push(`${routes.clients}/${id}`)
+    },
+    onError: (error) => handleApiError(error),
+  })
+}
+
+export function useExportarDadosCliente() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { filename, blob } = await exportarDadosCliente(id)
+      downloadBlob(filename, blob)
+    },
+    onSuccess: () =>
+      notify.success('Cópia dos dados gerada.', {
+        description: 'O arquivo contém dados pessoais: guarde e envie ao titular com segurança.',
+      }),
+    onError: (error) => handleApiError(error),
+  })
+}
+
+export function useAnonimizarCliente() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => anonimizarCliente(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.clientes.all })
+      notify.success('Dados anonimizados.', {
+        description: 'Os processos continuam no histórico, sem identificar o titular.',
+      })
     },
     onError: (error) => handleApiError(error),
   })

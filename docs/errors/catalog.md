@@ -130,6 +130,22 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `INTEGRATION_RATE_LIMITED` | Limite de requisições ao serviço externo '{0}' excedido. Tente novamente mais tarde. | 500 | Failure | Reservado (ver acima). | Tentar novamente mais tarde. |
 | `INTEGRATION_INVALID_RESPONSE` | Resposta inesperada do serviço externo '{0}'. | 500 | Failure | Reservado (ver acima). | Reportar ao suporte. |
 
+## Client (1100–1199)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CLIENT_NOT_FOUND` | Cliente não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `CLIENT_DOCUMENT_DUPLICATED` | Já existe um cliente cadastrado com este CPF/CNPJ. | 409 | Conflict | CPF/CNPJ já cadastrado no escritório. | Usar o cliente existente. |
+| `CLIENT_DOCUMENT_INVALID` | CPF ou CNPJ inválido. | 400 | Validation | CPF/CNPJ com dígitos verificadores errados ou tipo divergente. | Corrigir o documento. |
+| `CLIENT_NAME_REQUIRED` | O nome do cliente é obrigatório. | 400 | Validation | Nome vazio. | Informar o nome. |
+| `CLIENT_ALREADY_ACTIVE` | Este cliente já está ativo. | 409 | Conflict | Reativar quem já está ativo. | Nenhuma ação. |
+| `CLIENT_ALREADY_INACTIVE` | Este cliente já está inativo. | 409 | Conflict | Desativar quem já está inativo. | Nenhuma ação. |
+| `CLIENT_EMAIL_INVALID` | E-mail do cliente inválido. | 400 | Validation | Formato de e-mail incorreto. | Corrigir o e-mail. |
+| `CLIENT_PHONE_INVALID` | Telefone inválido. Informe DDD e número (10 ou 11 dígitos). | 400 | Validation | Telefone fora do formato. | Corrigir o telefone. |
+| `CLIENT_BIRTHDATE_INVALID` | Data de nascimento inválida: não pode estar no futuro. | 400 | Validation | Data futura ou informada para pessoa jurídica. | Corrigir a data. |
+| `CLIENT_HAS_ACTIVE_PROCESSES` | Este cliente tem processos em andamento. Encerre ou arquive os processos antes de anonimizar os dados. | 409 | Conflict | Anonimização pedida com processo ativo ou suspenso (LGPD: o escritório precisa manter os dados do caso em curso). | Encerrar/arquivar os processos e repetir. |
+| `CLIENT_ANONYMIZED` | Os dados deste cliente foram anonimizados e não podem mais ser alterados. | 409 | Conflict | Editar, reativar ou anonimizar de novo um cliente já anonimizado. | Nenhuma: a anonimização é irreversível. |
+
 ## Publication (1300–1399)
 
 Módulo Legal — ver `docs/modules/legal/publications.md`.

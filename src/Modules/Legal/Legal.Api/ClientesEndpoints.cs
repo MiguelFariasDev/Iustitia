@@ -63,6 +63,27 @@ public static class ClientesEndpoints
             .WithSummary("Desativa o cliente. Não exclui — o histórico permanece consultável.")
             .RequireAuthorization(Policies.PartnerOrAbove);
 
+        group.MapGet("/{id:guid}/exportacao", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
+            {
+                var result = await sender.Send(new ExportarDadosClienteQuery(id), cancellationToken);
+
+                // Arquivo para baixar: é a cópia que o escritório entrega ao titular.
+                return result.ToHttpResult(dados => Results.File(
+                    System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
+                        dados, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true }),
+                    "application/json",
+                    $"dados-do-titular-{id:N}.json"));
+            })
+            .WithName("ExportarDadosCliente")
+            .WithSummary("LGPD: baixa uma cópia de todos os dados pessoais do cliente (acesso e portabilidade).")
+            .RequireAuthorization(Policies.PartnerOrAbove);
+
+        group.MapPost("/{id:guid}/anonimizar", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new AnonimizarClienteCommand(id), cancellationToken)).ToHttpResult())
+            .WithName("AnonimizarCliente")
+            .WithSummary("LGPD: elimina de forma irreversível os dados pessoais do cliente. Recusada com processo em andamento.")
+            .RequireAuthorization(Policies.PartnerOrAbove);
+
         group.MapPost("/{id:guid}/reactivate", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new ReactivateClienteCommand(id), cancellationToken)).ToHttpResult())
             .WithName("ReactivateCliente")

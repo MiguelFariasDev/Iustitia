@@ -41,6 +41,53 @@ public sealed record UpdateClienteCommand(
 [Audited("Deactivated", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record DeactivateClienteCommand(Guid ClienteId) : ICommand;
 
+/// <summary>
+/// Anonimiza os dados pessoais do cliente (direito do titular à eliminação — LGPD art. 18, VI).
+/// Irreversível; recusada enquanto houver processo em andamento do cliente.
+/// </summary>
+[Audited("Anonymized", "Cliente")]
+public sealed record AnonimizarClienteCommand(Guid ClienteId) : ICommand;
+
+/// <summary>Cópia de todos os dados do titular (direito de acesso e portabilidade — LGPD art. 18, II e V).</summary>
+public sealed record ExportarDadosClienteQuery(Guid ClienteId) : IQuery<ExportacaoClienteResponse>;
+
+public sealed record ExportacaoClienteResponse(
+    DateTimeOffset GeradoEm,
+    string Base,
+    ExportacaoTitularResponse Titular,
+    IReadOnlyList<ExportacaoProcessoItem> Processos);
+
+public sealed record ExportacaoTitularResponse(
+    Guid Id,
+    string Tipo,
+    string Nome,
+    string Documento,
+    string? Email,
+    string? Telefone,
+    string? Logradouro,
+    string? Numero,
+    string? Complemento,
+    string? Bairro,
+    string? Cidade,
+    string? Uf,
+    string? Cep,
+    DateOnly? DataNascimento,
+    string? Observacoes,
+    bool Ativo,
+    DateTimeOffset CadastradoEm);
+
+public sealed record ExportacaoProcessoItem(
+    Guid Id,
+    string NumeroCnj,
+    string Area,
+    string Situacao,
+    string? Tribunal,
+    string? Assunto,
+    string? ParteContraria,
+    decimal? ValorCausa,
+    DateOnly? DataDistribuicao,
+    DateTimeOffset CadastradoEm);
+
 [Audited("Activated", "Cliente", EntityIdProperty = nameof(ClienteId))]
 public sealed record ReactivateClienteCommand(Guid ClienteId) : ICommand;
 
@@ -75,7 +122,8 @@ public sealed record ClienteResponse(
     DateOnly? DataNascimento,
     string? Observacoes,
     bool IsActive,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? AnonimizadoEm = null);
 
 /// <summary>Item de listagem — sem endereço nem observações, que só interessam no detalhe.</summary>
 public sealed record ClienteListItem(

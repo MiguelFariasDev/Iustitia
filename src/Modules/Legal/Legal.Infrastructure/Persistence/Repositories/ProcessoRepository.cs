@@ -58,6 +58,13 @@ public sealed class ProcessoRepository(LegalDbContext dbContext)
         CancellationToken cancellationToken = default) =>
         ApplyBusca(BaseQuery(tenantId, clienteId, responsavelUserId, area, status, tribunal, distribuicaoDe, distribuicaoAte, restritoAoUsuario), busca).CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Processo>> ListDoClienteAsync(
+        Guid tenantId, Guid clienteId, CancellationToken cancellationToken = default) =>
+        await DbSet
+            .Where(processo => processo.TenantId == tenantId && processo.ClienteId == clienteId)
+            .OrderBy(processo => processo.CreatedAt)
+            .ToListAsync(cancellationToken);
+
     public Task<IReadOnlyList<Processo>> ListParaCapturaAsync(Guid tenantId, CancellationToken cancellationToken = default) =>
         ListAsync(new ProcessosParaCapturaSpecification(tenantId), cancellationToken);
 

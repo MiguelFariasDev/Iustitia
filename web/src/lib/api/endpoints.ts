@@ -78,6 +78,10 @@ export const endpoints = {
     list: '/clientes',
     byId: (id: string) => `/clientes/${id}`,
     reactivate: (id: string) => `/clientes/${id}/reactivate`,
+    /** LGPD: GET devolve um JSON com todos os dados do titular (acesso e portabilidade). */
+    exportacao: (id: string) => `/clientes/${id}/exportacao`,
+    /** LGPD: POST elimina de forma irreversível os dados pessoais do cliente. */
+    anonimizar: (id: string) => `/clientes/${id}/anonimizar`,
   },
   processos: {
     list: '/processos',

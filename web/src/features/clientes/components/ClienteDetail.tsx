@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, RotateCcw, UserX } from 'lucide-react'
+import { Download, Eraser, Pencil, RotateCcw, ShieldCheck, UserX } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -11,7 +11,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { routes } from '@/config/routes'
 import { formatDate } from '@/lib/format'
-import { useDeactivateCliente, useReactivateCliente } from '../hooks'
+import { useAuthStore } from '@/stores/authStore'
+import {
+  useAnonimizarCliente,
+  useDeactivateCliente,
+  useExportarDadosCliente,
+  useReactivateCliente,
+} from '../hooks'
 import { clienteQuery } from '../queries'
 import { ClienteProcessosList } from './ClienteProcessosList'
 import { tipoClienteLabels, type Cliente } from '../types'
@@ -21,7 +27,13 @@ export function ClienteDetail({ clienteId }: { clienteId: string }) {
   const { data: cliente, isPending } = useQuery(clienteQuery(clienteId))
   const deactivate = useDeactivateCliente()
   const reactivate = useReactivateCliente()
+  const exportar = useExportarDadosCliente()
+  const anonimizar = useAnonimizarCliente()
+  const role = useAuthStore((s) => s.user?.role ?? null)
+  // Conveniência de interface: a API (Partner ou acima) é quem autoriza.
+  const podeGerirPrivacidade = role === 'Owner' || role === 'Partner'
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [anonimizarOpen, setAnonimizarOpen] = useState(false)
 
   if (isPending || !cliente) {
     return (
@@ -138,6 +150,51 @@ export function ClienteDetail({ clienteId }: { clienteId: string }) {
         ) : null}
       </div>
 
+      {podeGerirPrivacidade ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck className="size-4 text-brand" aria-hidden />
+              Privacidade (LGPD)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Atenda o pedido do titular dos dados: baixe uma cópia de tudo o que está registrado
+              sobre ele ou, quando não houver mais processo em andamento, elimine os dados pessoais.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportar.mutate(cliente.id)}
+                disabled={exportar.isPending}
+              >
+                <Download aria-hidden />
+                Baixar cópia dos dados
+              </Button>
+              {cliente.anonimizadoEm ? null : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAnonimizarOpen(true)}
+                  disabled={anonimizar.isPending}
+                >
+                  <Eraser aria-hidden />
+                  Anonimizar dados
+                </Button>
+              )}
+            </div>
+            {cliente.anonimizadoEm ? (
+              <p className="text-sm text-muted-foreground">
+                Dados anonimizados em {formatDate(cliente.anonimizadoEm)}. Esta ação não pode ser
+                desfeita.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <section aria-labelledby="processos-heading" className="space-y-3">
         <h2 id="processos-heading" className="text-base font-semibold">
           Processos
@@ -152,6 +209,17 @@ export function ClienteDetail({ clienteId }: { clienteId: string }) {
         description="Ele deixa de aparecer nas buscas de novos processos. O histórico e os processos já cadastrados continuam disponíveis, e você pode reativá-lo depois."
         confirmLabel="Desativar"
         onConfirm={() => deactivate.mutate(cliente.id, { onSuccess: refetchDetail })}
+      />
+
+      <ConfirmDialog
+        open={anonimizarOpen}
+        onOpenChange={setAnonimizarOpen}
+        title="Anonimizar os dados deste cliente?"
+        description="Nome, documento, contato, endereço, nascimento e observações serão eliminados de forma irreversível. Os processos permanecem no histórico, sem identificar o titular. Só é possível quando não há processo em andamento."
+        confirmLabel="Anonimizar definitivamente"
+        destructive
+        isPending={anonimizar.isPending}
+        onConfirm={() => anonimizar.mutate(cliente.id, { onSuccess: refetchDetail })}
       />
     </div>
   )

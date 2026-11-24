@@ -39,6 +39,9 @@ public interface IProcessoRepository : IRepository<Processo, ProcessoId>
         Guid? restritoAoUsuario = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Todos os processos do cliente, em qualquer situação (exportação e anonimização — LGPD).</summary>
+    Task<IReadOnlyList<Processo>> ListDoClienteAsync(Guid tenantId, Guid clienteId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Processos que o job deve consultar no DJEN: ativos e suspensos do escritório.
     /// É a consulta que substitui a lista fixa de números no appsettings — a captura passa a

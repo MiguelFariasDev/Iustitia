@@ -61,6 +61,30 @@ public sealed class Documento : ValueObject
     /// <summary>Reconstrói a partir do banco, sem revalidar (ver RawContent.FromPersistence).</summary>
     public static Documento FromPersistence(string value, TipoCliente tipo) => new(value, tipo);
 
+    /// <summary>
+    /// Documento substituto de um cliente anonimizado: dígitos derivados do id do cliente e com os
+    /// verificadores ERRADOS de propósito. Assim (1) nunca coincide com o CPF/CNPJ real de outro
+    /// cliente do escritório, que sempre tem verificadores corretos, (2) é único por cliente, o que
+    /// preserva o índice de unicidade, e (3) continua mascarável como qualquer documento.
+    /// </summary>
+    public static Documento Anonimo(Guid clienteId, TipoCliente tipo)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(clienteId.ToByteArray());
+        var length = tipo == TipoCliente.PessoaFisica ? 9 : 12;
+        var digits = new string(hash.Take(length).Select(b => (char)('0' + (b % 10))).ToArray());
+
+        var multipliers = tipo == TipoCliente.PessoaFisica
+            ? Enumerable.Range(0, 9).Select(i => 10 - i).ToArray()
+            : CnpjFirstMultipliers;
+        var correctFirst = CalculateCheckDigit(digits, multipliers);
+        var wrongFirst = (correctFirst + 1) % 10;
+
+        // O segundo verificador é qualquer dígito: com o primeiro errado o documento já é inválido.
+        var rest = $"{wrongFirst}0";
+
+        return new Documento(digits + rest, tipo);
+    }
+
     /// <summary>Forma mascarada para exibição: 000.000.000-00 ou 00.000.000/0000-00.</summary>
     public string ToMasked() => Tipo == TipoCliente.PessoaFisica
         ? $"{Value[..3]}.{Value.Substring(3, 3)}.{Value.Substring(6, 3)}-{Value.Substring(9, 2)}"
