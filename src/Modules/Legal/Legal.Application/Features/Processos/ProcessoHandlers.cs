@@ -100,7 +100,7 @@ public sealed class UpdateProcessoHandler(
         }
 
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null)
+        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -146,12 +146,13 @@ public sealed class UpdateProcessoHandler(
 /// </summary>
 public sealed class ChangeProcessoStatusHandler(
     IProcessoRepository processoRepository,
-    ILegalUnitOfWork unitOfWork) : ICommandHandler<ChangeProcessoStatusCommand>
+    ILegalUnitOfWork unitOfWork,
+    ICurrentUser currentUser) : ICommandHandler<ChangeProcessoStatusCommand>
 {
     public async Task<Result> Handle(ChangeProcessoStatusCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null)
+        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -176,12 +177,13 @@ public sealed class ChangeProcessoStatusHandler(
 
 public sealed class ArchiveProcessoHandler(
     IProcessoRepository processoRepository,
-    ILegalUnitOfWork unitOfWork) : ICommandHandler<ArchiveProcessoCommand>
+    ILegalUnitOfWork unitOfWork,
+    ICurrentUser currentUser) : ICommandHandler<ArchiveProcessoCommand>
 {
     public async Task<Result> Handle(ArchiveProcessoCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null)
+        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -199,14 +201,35 @@ public sealed class ArchiveProcessoHandler(
     }
 }
 
-public sealed class GetProcessoByIdHandler(IProcessoRepository processoRepository)
+public sealed class SetProcessoConfidencialHandler(
+    IProcessoRepository processoRepository,
+    ILegalUnitOfWork unitOfWork,
+    ICurrentUser currentUser) : ICommandHandler<SetProcessoConfidencialCommand>
+{
+    public async Task<Result> Handle(SetProcessoConfidencialCommand request, CancellationToken cancellationToken)
+    {
+        var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
+        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
+        }
+
+        processo.DefinirConfidencialidade(request.Confidencial);
+        processoRepository.Update(processo);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
+}
+
+public sealed class GetProcessoByIdHandler(IProcessoRepository processoRepository, ICurrentUser currentUser)
     : IQueryHandler<GetProcessoByIdQuery, ProcessoResponse>
 {
     public async Task<Result<ProcessoResponse>> Handle(GetProcessoByIdQuery request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
 
-        return processo is null
+        return processo is null || !ProcessoAcesso.PodeVer(processo, currentUser)
             ? Result.Failure<ProcessoResponse>(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND))
             : Result.Success(processo.ToResponse());
     }
@@ -257,9 +280,9 @@ public sealed class ListProcessosHandler(IProcessoRepository processoRepository,
         var skip = (page - 1) * pageSize;
 
         var items = await processoRepository.ListAsync(
-            tenantId, request.ClienteId, request.ResponsavelUserId, area, status, request.Busca, tribunal, request.DistribuicaoDe, request.DistribuicaoAte, skip, pageSize, cancellationToken);
+            tenantId, request.ClienteId, request.ResponsavelUserId, area, status, request.Busca, tribunal, request.DistribuicaoDe, request.DistribuicaoAte, skip, pageSize, ProcessoAcesso.RestricaoDeListagem(currentUser), cancellationToken);
         var totalCount = await processoRepository.CountAsync(
-            tenantId, request.ClienteId, request.ResponsavelUserId, area, status, request.Busca, tribunal, request.DistribuicaoDe, request.DistribuicaoAte, cancellationToken);
+            tenantId, request.ClienteId, request.ResponsavelUserId, area, status, request.Busca, tribunal, request.DistribuicaoDe, request.DistribuicaoAte, ProcessoAcesso.RestricaoDeListagem(currentUser), cancellationToken);
 
         return Result.Success(new ListProcessosResponse(
             items.Select(processo => processo.ToListItem()).ToList(),

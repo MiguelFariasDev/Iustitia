@@ -7,6 +7,10 @@ public interface IProcessoRepository : IRepository<Processo, ProcessoId>
 {
     Task<Processo?> GetByCnjAsync(Guid tenantId, string cnjDigits, CancellationToken cancellationToken = default);
 
+    /// <param name="restritoAoUsuario">
+    /// Quando informado, omite os processos confidenciais de que este usuário não é o responsável
+    /// (Owner/Partner passam null e veem tudo — ver ProcessoAcesso).
+    /// </param>
     Task<IReadOnlyList<Processo>> ListAsync(
         Guid tenantId,
         Guid? clienteId,
@@ -19,6 +23,7 @@ public interface IProcessoRepository : IRepository<Processo, ProcessoId>
         DateOnly? distribuicaoAte,
         int skip,
         int take,
+        Guid? restritoAoUsuario = null,
         CancellationToken cancellationToken = default);
 
     Task<int> CountAsync(
@@ -31,6 +36,7 @@ public interface IProcessoRepository : IRepository<Processo, ProcessoId>
         string? tribunal,
         DateOnly? distribuicaoDe,
         DateOnly? distribuicaoAte,
+        Guid? restritoAoUsuario = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -84,6 +84,8 @@ export const endpoints = {
     byId: (id: string) => `/processos/${id}`,
     status: (id: string) => `/processos/${id}/status`,
     archive: (id: string) => `/processos/${id}/archive`,
+    /** PATCH { confidencial } — sigilo interno; só Partner ou acima. */
+    confidencial: (id: string) => `/processos/${id}/confidencial`,
     /**
      * Consulta de metadados no tribunal (DataJud, via backend) para auto-preencher o
      * cadastro. Limitada a 10 consultas/min por usuário — ver ADR-064.

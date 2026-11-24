@@ -64,6 +64,10 @@ export async function changeProcessoStatus(id: string, status: StatusProcesso): 
   await apiClient.patch(endpoints.processos.status(id), { status })
 }
 
+export async function setProcessoConfidencial(id: string, confidencial: boolean): Promise<void> {
+  await apiClient.patch(endpoints.processos.confidencial(id), { confidencial })
+}
+
 export async function archiveProcesso(id: string): Promise<void> {
   await apiClient.post(endpoints.processos.archive(id))
 }

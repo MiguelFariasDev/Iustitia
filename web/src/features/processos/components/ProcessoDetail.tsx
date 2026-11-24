@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ListChecks, Pencil } from 'lucide-react'
+import { Archive, ListChecks, Lock, LockOpen, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -24,7 +24,8 @@ import { queryKeys } from '@/lib/query/queryKeys'
 import { clienteQuery } from '@/features/clientes/queries'
 import { routes } from '@/config/routes'
 import { formatCurrency, formatDate } from '@/lib/format'
-import { useArchiveProcesso, useChangeProcessoStatus } from '../hooks'
+import { useAuthStore } from '@/stores/authStore'
+import { useArchiveProcesso, useChangeProcessoStatus, useSetProcessoConfidencial } from '../hooks'
 import { processoQuery } from '../queries'
 import { ProcessoAbas } from './ProcessoAbas'
 import {
@@ -39,6 +40,10 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
   const { data: processo, isPending } = useQuery(processoQuery(processoId))
   const changeStatus = useChangeProcessoStatus(processoId)
   const archive = useArchiveProcesso(processoId)
+  const setConfidencial = useSetProcessoConfidencial(processoId)
+  const role = useAuthStore((s) => s.user?.role ?? null)
+  // Conveniência de interface: a API (Partner ou acima) é quem autoriza.
+  const podeDefinirSigilo = role === 'Owner' || role === 'Partner'
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [tarefaAberta, setTarefaAberta] = useState(false)
   const { data: usuarios } = useQuery({ queryKey: queryKeys.users.list(), queryFn: listUsers })
@@ -69,6 +74,11 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
+        {processo.confidencial ? (
+          <StatusBadge tone="warning">
+            <Lock className="size-3" aria-hidden /> Confidencial
+          </StatusBadge>
+        ) : null}
         <span className="text-sm text-muted-foreground">{meta.descricao}</span>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -94,6 +104,20 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
               </SelectContent>
             </Select>
           )}
+
+          {podeDefinirSigilo ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setConfidencial.mutate(!processo.confidencial, { onSuccess: refetchDetail })
+              }
+              disabled={setConfidencial.isPending}
+            >
+              {processo.confidencial ? <LockOpen aria-hidden /> : <Lock aria-hidden />}
+              {processo.confidencial ? 'Remover sigilo' : 'Marcar como confidencial'}
+            </Button>
+          ) : null}
 
           <AgendarNoProcessoButton processoId={processo.id} />
 
