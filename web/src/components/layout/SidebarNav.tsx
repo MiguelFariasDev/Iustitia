@@ -31,7 +31,7 @@ function CountBadge({ count, collapsed }: { count: number; collapsed: boolean })
   return (
     <span
       className={cn(
-        'ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-700 px-1.5 py-px font-mono text-[10px] font-semibold text-white',
+        'ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-warning-soft px-1.5 py-px font-mono text-[10px] font-semibold text-warning',
         collapsed && 'absolute top-1 right-1 ml-0 min-w-0 px-1 py-0 text-[9px] leading-tight'
       )}
     >

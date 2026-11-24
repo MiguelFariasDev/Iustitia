@@ -3,6 +3,9 @@ import { isGuestOnlyPath, isPublicPath, safeRedirectPath } from './routes'
 describe('rotas', () => {
   it('classifica rotas públicas e só-visitante', () => {
     expect(isGuestOnlyPath('/login')).toBe(true)
+    expect(isGuestOnlyPath('/')).toBe(true)
+    expect(isGuestOnlyPath('/painel')).toBe(false)
+    expect(isPublicPath('/')).toBe(true)
     expect(isPublicPath('/convite/abc')).toBe(true)
     expect(isPublicPath('/redefinir-senha')).toBe(true)
     expect(isPublicPath('/painel')).toBe(false)
