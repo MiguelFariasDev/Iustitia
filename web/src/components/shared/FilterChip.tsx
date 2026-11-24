@@ -17,10 +17,10 @@ export function FilterChip({ active, onClick, children }: FilterChipProps) {
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+        'h-8 rounded-full border px-3 text-[13px] font-medium transition-colors',
         active
-          ? 'border-secondary bg-secondary text-secondary-foreground'
-          : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+          ? 'border-primary bg-brand-soft font-semibold text-primary'
+          : 'border-input bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
       )}
     >
       {children}

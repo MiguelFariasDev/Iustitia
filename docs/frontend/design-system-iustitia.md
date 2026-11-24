@@ -36,3 +36,14 @@ Sem símbolo oficial: o `Logo` é o wordmark (nome em serifa 600 + ponto em `bra
 `web/src/features/landing` (conteúdo em `content.ts`). Hero, Como funciona, Recursos, Athena IA, Segurança, Para quem,
 Perguntas e CTA, nessa ordem. Sem gradiente, sem foto de banco de imagens, sem número, depoimento ou garantia de resultado.
 O mockup do hero usa dados fictícios e diz isso na legenda.
+
+## Componentes compartilhados (padrão das telas internas)
+
+- `PageHeader`: título de página em `heading-l` (22/30, 700), descrição em 15px.
+- `KpiCard`, `MetricCard`, resumo do financeiro: rótulo em `iu-label` (caixa alta), número em `iu-metric` (34px, tabular),
+  cor do número pelo estado (âmbar = pendente, azul = feito, vermelho = fatal, verde-azulado = IA). Sem borda colorida no topo.
+- `StatusBadge`: 24px, `rounded-sm`, caixa alta, fundo suave do tom, sempre com palavra.
+- `FilterChip`: pílula de 32px; ativo = `brand-soft` + borda e texto `primary`.
+- Tabelas (`TableHead`, `DataTable`): cabeçalho em `iu-label` sobre `muted`.
+- Painéis da IA (peças, revisão): `ia-soft` + borda `ia-border`, nunca um cartão branco com faixa colorida.
+- `Button`: secundário = fundo de card + texto `primary` + borda de controle; destrutivo = contorno em `destructive`.

@@ -14,7 +14,7 @@ export function StatusBadge({ tone = 'neutral', children, hideDot, className }: 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+        'iu-label inline-flex h-6 items-center gap-1.5 rounded-sm border px-2 whitespace-nowrap',
         classes.badge,
         className
       )}
