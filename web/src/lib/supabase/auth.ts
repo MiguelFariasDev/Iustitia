@@ -40,6 +40,8 @@ const errorMessages: Record<string, string> = {
   over_request_rate_limit: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
   over_email_send_rate_limit: 'Muitos e-mails enviados. Aguarde alguns minutos.',
   same_password: 'A nova senha deve ser diferente da atual.',
+  mfa_verification_failed: 'Código inválido ou expirado. Confira o aplicativo e tente de novo.',
+  mfa_challenge_expired: 'O desafio expirou. Tente novamente.',
 }
 
 function toAuthError(error: SupabaseAuthError): AuthError {
@@ -105,6 +107,30 @@ export const supabaseAuthService: AuthService = {
 
   async updatePassword(password) {
     const { error } = await getSupabaseBrowserClient().auth.updateUser({ password })
+    if (error) throw toAuthError(error)
+  },
+
+  async mfaStatus() {
+    const { data, error } = await getSupabaseBrowserClient().auth.mfa.listFactors()
+    if (error) throw toAuthError(error)
+    const verified = data.totp[0] ?? null
+    return { enrolled: verified !== null, factorId: verified?.id ?? null }
+  },
+
+  async mfaEnroll() {
+    const mfa = getSupabaseBrowserClient().auth.mfa
+    // Um cadastro abandonado deixa um fator "não verificado" que bloqueia o próximo (nome repetido).
+    const { data: factors } = await mfa.listFactors()
+    for (const factor of factors?.all ?? []) {
+      if (factor.status === 'unverified') await mfa.unenroll({ factorId: factor.id })
+    }
+    const { data, error } = await mfa.enroll({ factorType: 'totp', friendlyName: 'Aplicativo autenticador' })
+    if (error) throw toAuthError(error)
+    return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret }
+  },
+
+  async mfaVerify(factorId, code) {
+    const { error } = await getSupabaseBrowserClient().auth.mfa.challengeAndVerify({ factorId, code })
     if (error) throw toAuthError(error)
   },
 }

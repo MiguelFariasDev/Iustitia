@@ -26,7 +26,7 @@ public sealed class TestJwtTokenFactory : IDisposable
     /// do Supabase, "tenant_id" e "user_role" (nunca "role", reservado — ver ADR-029)
     /// injetados pelo hook.
     /// </summary>
-    public string CreateAccessToken(Guid userId, string email, Guid? tenantId, string? role, TimeSpan? lifetime = null)
+    public string CreateAccessToken(Guid userId, string email, Guid? tenantId, string? role, TimeSpan? lifetime = null, string? assuranceLevel = null)
     {
         var claims = new List<Claim>
         {
@@ -43,6 +43,12 @@ public sealed class TestJwtTokenFactory : IDisposable
         if (role is not null)
         {
             claims.Add(new Claim("user_role", role));
+        }
+
+        // "aal" é o nível de garantia da sessão no Supabase: aal1 (senha) ou aal2 (senha + MFA).
+        if (assuranceLevel is not null)
+        {
+            claims.Add(new Claim("aal", assuranceLevel));
         }
 
         var token = new JwtSecurityToken(

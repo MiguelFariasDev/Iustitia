@@ -115,6 +115,11 @@ app.UseRateLimiter();
 //    resolvido).
 app.UseMiddleware<TenantContextMiddleware>();
 
+// 6b. MFA — exige o segundo fator (JWT aal2) dos papéis configurados em Security:Mfa. Depois de
+//     Authentication (precisa das claims) e antes de Authorization/endpoint, para barrar a
+//     requisição inteira, não só as rotas que lembrarem de checar.
+app.UseMiddleware<MfaEnforcementMiddleware>();
+
 // 7. Authorization — nativo do ASP.NET Core.
 app.UseAuthorization();
 

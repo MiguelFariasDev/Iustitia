@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Application.Messaging;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Legal.Application.Abstractions;
+using Advocacia.Modules.Legal.Application.Authorization;
 using Advocacia.Modules.Legal.Domain.Clientes;
 using Advocacia.Modules.Legal.Domain.Processos;
 using Advocacia.Modules.Legal.Domain.Shared;

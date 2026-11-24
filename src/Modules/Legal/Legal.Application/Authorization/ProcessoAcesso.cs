@@ -1,7 +1,7 @@
 using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.Modules.Legal.Domain.Processos;
 
-namespace Advocacia.Modules.Legal.Application.Features.Processos;
+namespace Advocacia.Modules.Legal.Application.Authorization;
 
 /// <summary>
 /// Regra de visibilidade de processo dentro do escritório. Processo comum é visível a quem tem

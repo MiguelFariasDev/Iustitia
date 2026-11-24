@@ -6,6 +6,7 @@ export const routes = {
   forgotPassword: '/esqueci-senha',
   resetPassword: '/redefinir-senha',
   onboarding: '/onboarding',
+  mfa: '/mfa',
   dashboard: '/painel',
   publications: '/publicacoes',
   alerts: '/alertas',
