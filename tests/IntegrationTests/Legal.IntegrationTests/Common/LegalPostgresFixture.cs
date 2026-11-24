@@ -47,6 +47,9 @@ public sealed class LegalPostgresFixture : IAsyncLifetime
             BlindIndexKey = Convert.ToBase64String(new byte[32].Select((_, i) => (byte)(i + 50)).ToArray()),
         })));
 
+        // Uma montagem por vez no cluster (roles são globais) — ver ExternalPostgres.AcquireClusterLockAsync.
+        await using var clusterLock = await ExternalPostgres.AcquireClusterLockAsync();
+
         var external = await ExternalPostgres.TryCreateDatabaseAsync();
         if (external is { } externalDatabase)
         {

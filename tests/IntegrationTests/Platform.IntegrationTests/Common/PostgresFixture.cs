@@ -44,6 +44,9 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        // Uma montagem por vez no cluster (roles são globais) — ver ExternalPostgres.AcquireClusterLockAsync.
+        await using var clusterLock = await ExternalPostgres.AcquireClusterLockAsync();
+
         var external = await ExternalPostgres.TryCreateDatabaseAsync();
         if (external is { } externalDatabase)
         {
