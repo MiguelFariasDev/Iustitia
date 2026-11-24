@@ -38,7 +38,10 @@ describe('NotificationsDropdown (sino)', () => {
 
     await waitFor(() => expect(mockAlertasSummary().unread).toBe(3))
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Notificações (3 não lidas)' })).toBeInTheDocument()
+      // Com a gaveta (modal) aberta o resto da página fica aria-hidden: o sino só é achado como oculto.
+      expect(
+        screen.getByRole('button', { name: 'Notificações (3 não lidas)', hidden: true })
+      ).toBeInTheDocument()
     )
   })
 
@@ -49,7 +52,7 @@ describe('NotificationsDropdown (sino)', () => {
     await user.click(await screen.findByRole('button', { name: 'Marcar todas como lidas' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Notificações' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Notificações', hidden: true })).toBeInTheDocument()
     )
     expect(mockAlertasSummary().unread).toBe(0)
   })
@@ -87,5 +90,30 @@ describe('NotificationsDropdown (sino)', () => {
     renderWithProviders(<NotificationsDropdown />)
 
     expect(await screen.findByText('9+')).toBeInTheDocument()
+  })
+
+  it('é uma gaveta modal à direita: diálogo com título, que fecha com Esc', async () => {
+    const { user } = renderWithProviders(<NotificationsDropdown />)
+    await user.click(await screen.findByRole('button', { name: 'Notificações (4 não lidas)' }))
+
+    const gaveta = await screen.findByRole('dialog', { name: 'Notificações' })
+    expect(gaveta).toHaveAttribute('data-slot', 'sheet-content')
+    expect(gaveta.className).toMatch(/sm:max-w-\[400px\]/)
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('o botão de fechar da gaveta fecha e devolve o foco ao sino', async () => {
+    const { user } = renderWithProviders(<NotificationsDropdown />)
+    const sino = await screen.findByRole('button', { name: 'Notificações (4 não lidas)' })
+    await user.click(sino)
+    await screen.findByRole('dialog', { name: 'Notificações' })
+
+    await user.click(screen.getByRole('button', { name: /fechar|close/i }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(sino).toHaveFocus()
   })
 })

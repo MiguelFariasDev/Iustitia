@@ -55,9 +55,9 @@ describe('PublicacoesView', () => {
     expect(screen.getByText(/página/i)).toHaveTextContent('Página 1 de 2')
 
     const cards = await screen.findByRole('region', { name: 'Resumo das publicações' })
-    expect(within(cards).getByText('Não tratadas de hoje')).toBeInTheDocument()
-    expect(within(cards).getByText('Não tratadas', { exact: true })).toBeInTheDocument()
-    expect(within(cards).getByText('Tratadas esta semana')).toBeInTheDocument()
+    expect(within(cards).getByText('Não tratadas hoje')).toBeInTheDocument()
+    expect(within(cards).getByText('Aguardando revisão')).toBeInTheDocument()
+    expect(within(cards).getByText('Tratadas na semana')).toBeInTheDocument()
   })
 
   it('o filtro vem da URL: ?isRead=false lista só as não lidas', async () => {
@@ -66,17 +66,14 @@ describe('PublicacoesView', () => {
 
     const expected = mockListPublications({ isRead: false, pageSize: 100 }).totalCount
     expect(rowCheckboxes()).toHaveLength(expected)
-    expect(screen.getByRole('button', { name: 'Não lidas' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    )
+    expect(screen.getByRole('radio', { name: 'Não lidas' })).toBeChecked()
   })
 
   it('trocar um filtro navega por replace, mantém o histórico limpo e volta à página 1', async () => {
     const { user } = renderView('page=2')
     await waitForRows()
 
-    await user.click(screen.getByRole('button', { name: 'Tratada' }))
+    await user.click(screen.getByRole('radio', { name: 'Tratadas' }))
 
     expect(routerMock.replace).toHaveBeenCalledTimes(1)
     const target = String(routerMock.replace.mock.calls[0]![0])

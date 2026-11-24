@@ -120,7 +120,7 @@ export function PublicacaoList({
         header: 'Cliente',
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="block max-w-48 truncate" title={row.original.clienteNome ?? undefined}>
+          <span className="block max-w-36 truncate" title={row.original.clienteNome ?? undefined}>
             {row.original.clienteNome ?? '—'}
           </span>
         ),
@@ -129,7 +129,7 @@ export function PublicacaoList({
         id: 'status',
         header: 'Status',
         enableSorting: false,
-        cell: ({ row }) => <PublicacaoStatusBadge status={row.original.status} />,
+        cell: ({ row }) => <PublicacaoStatusBadge publication={row.original} />,
       },
     ],
     []

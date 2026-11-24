@@ -4,6 +4,7 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Domain.Publications;
+using Advocacia.Modules.Legal.Application.Features;
 using MapsterMapper;
 
 namespace Advocacia.Modules.Legal.Application.Features.ListPublications;
@@ -11,6 +12,7 @@ namespace Advocacia.Modules.Legal.Application.Features.ListPublications;
 public sealed class ListPublicationsHandler(
     IPublicationRepository publicationRepository,
     IClienteRepository clienteRepository,
+    IPublicationSuggestionRepository suggestionRepository,
     ICurrentUser currentUser,
     IMapper mapper) : IQueryHandler<ListPublicationsQuery, ListPublicationsResponse>
 {
@@ -55,10 +57,14 @@ public sealed class ListPublicationsHandler(
         var clienteIds = publications.Where(p => p.ClienteId is not null).Select(p => p.ClienteId!.Value).Distinct().ToList();
         var nomes = await clienteRepository.GetNomesAsync(tenantId, clienteIds, cancellationToken);
 
+        var sugestoes = await suggestionRepository.ListByPublicationIdsAsync(
+            tenantId, publications.Select(p => p.Id.Value).ToList(), cancellationToken);
+
         var items = publications
             .Select(publication => mapper.Map<PublicationListItem>(publication) with
             {
                 ClienteNome = publication.ClienteId is { } id && nomes.TryGetValue(id, out var nome) ? nome : null,
+                Suggestion = sugestoes.TryGetValue(publication.Id.Value, out var sugestao) ? sugestao.ToSummary() : null,
             })
             .ToList();
 

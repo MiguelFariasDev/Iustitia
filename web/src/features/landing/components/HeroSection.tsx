@@ -1,47 +1,69 @@
-import { ArrowRight, CalendarClock, FileCheck2, ShieldCheck } from 'lucide-react'
+import { ArrowRight, CircleCheck, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { env } from '@/config/env'
 import { routes } from '@/config/routes'
 
+/** Três benefícios, só o que o produto faz hoje (sem prometer portal, resultado ou número). */
+const benefits = [
+  {
+    title: 'Tudo em um só lugar:',
+    text: 'processos, prazos, agenda e clientes no mesmo painel, sem planilha paralela.',
+  },
+  {
+    title: 'Triagem com a Athena:',
+    text: 'a IA sugere a classificação e o prazo de cada publicação; você revisa e confirma.',
+  },
+  {
+    title: 'Revisão humana sempre:',
+    text: 'nada vira prazo, tarefa ou peça sem o seu clique.',
+  },
+] as const
+
+/**
+ * Primeira dobra (Hero do design system): selo da Athena, título em serifa, benefícios, dois CTAs
+ * e um mockup do produto recriado com os mesmos componentes. Sem gradiente, foto de banco de
+ * imagens, balança ou martelo.
+ */
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-primary text-white dark:bg-sidebar">
-      <div aria-hidden className="pointer-events-none absolute -top-40 right-0 size-[28rem] rounded-full bg-secondary/25 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -bottom-48 -left-24 size-[28rem] rounded-full bg-gold/15 blur-3xl" />
-      <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:items-center lg:py-24">
-        <div className="space-y-7">
-          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200">
-            <span className="size-1.5 rounded-full bg-gold" aria-hidden />
-            Gestão para escritórios de advocacia
+    <section aria-labelledby="hero-titulo" className="overflow-hidden bg-card">
+      <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:py-16">
+        <div>
+          <p className="mb-4">
+            <span className="iu-label inline-flex h-6 items-center gap-1 rounded-sm bg-ia-soft px-2 text-ia-text">
+              <Sparkles className="size-3.5" aria-hidden />
+              Com a Athena, IA com revisão humana
+            </span>
           </p>
-          <h1 className="font-serif text-4xl leading-tight font-semibold text-balance sm:text-5xl">
-            Prazos sob controle. Peças mais rápidas. A decisão é sempre sua.
+          <h1 id="hero-titulo" className="display-xl mb-8 text-foreground">
+            Você advoga. A&nbsp;{env.appName} organiza.
           </h1>
-          <p className="max-w-xl text-lg text-slate-200 text-pretty">
-            O {env.appName} reúne publicações, processos, agenda e atendimento num só lugar, e usa
-            inteligência artificial como apoio, com revisão humana em cada etapa.
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
+          <ul className="mb-8 grid gap-5">
+            {benefits.map((benefit) => (
+              <li key={benefit.title} className="grid grid-cols-[24px_1fr] gap-3 text-[17px] leading-[27px] text-muted-foreground">
+                <CircleCheck className="mt-[3px] size-[22px] text-primary" aria-hidden />
+                <span>
+                  <strong className="font-semibold text-foreground">{benefit.title}</strong>{' '}
+                  {benefit.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild size="lg" className="h-[52px] px-8 text-base">
               <Link href={routes.onboarding}>
                 Cadastre seu escritório <ArrowRight aria-hidden />
               </Link>
             </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-            >
-              <Link href={routes.login}>Já tenho conta</Link>
+            <Button asChild size="lg" variant="secondary" className="h-[52px] px-8 text-base">
+              <a href="#como-funciona">Ver como funciona</a>
             </Button>
           </div>
-          {env.soloSignupEnabled ? (
-            <p className="text-sm text-slate-300">
-              Advogado autônomo? O cadastro também atende quem trabalha sozinho.
-            </p>
-          ) : null}
+          <p className="mt-4 text-[13px] text-muted-foreground">
+            Seus dados ficam isolados por escritório.
+            {env.soloSignupEnabled ? ' O cadastro também atende advogado autônomo.' : ''}
+          </p>
         </div>
         <ProductPreview />
       </div>
@@ -49,67 +71,101 @@ export function HeroSection() {
   )
 }
 
-/** Ilustração do produto — dados fictícios, só para dar ideia da tela. */
+/** Mockup com dados FICTÍCIOS (a legenda abaixo diz isso). Decorativo para leitores de tela. */
 function ProductPreview() {
   return (
-    <figure aria-label="Ilustração da tela do produto, com dados fictícios" className="relative">
-      <div className="space-y-3 rounded-2xl border border-white/15 bg-white/10 p-4 shadow-2xl backdrop-blur">
-        <div className="flex items-center gap-2 text-xs text-slate-300" aria-hidden>
-          <span className="size-2.5 rounded-full bg-red-400/80" />
-          <span className="size-2.5 rounded-full bg-amber-300/80" />
-          <span className="size-2.5 rounded-full bg-emerald-400/80" />
-          <span className="ml-2">Painel · exemplo</span>
+    <figure className="relative m-0">
+      <div
+        aria-hidden
+        className="relative rounded-2xl bg-muted px-4 py-10 sm:px-8 sm:py-12 lg:min-h-[440px]"
+      >
+        <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+          <div className="flex h-8 items-center gap-2 border-b bg-background px-3">
+            <span className="size-2 rounded-full bg-input" />
+            <span className="size-2 rounded-full bg-input" />
+            <span className="size-2 rounded-full bg-input" />
+          </div>
+          <div className="grid gap-3 p-4">
+            <div className="grid grid-cols-[auto_1fr] items-start gap-3 rounded-lg border border-ia-border bg-ia-soft p-3">
+              <span className="grid size-8 place-items-center rounded-md bg-card text-ia-text">
+                <Sparkles className="size-[18px]" />
+              </span>
+              <div>
+                <p className="iu-label mb-0.5 text-ia-text">Sugestão da Athena</p>
+                <p className="text-sm leading-[21px] text-foreground">
+                  Intimação para contrarrazões. Prazo sugerido: 15 dias úteis.
+                </p>
+              </div>
+            </div>
+            <table className="w-full border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr>
+                  {['Divulgado', 'Tipo', 'Status'].map((head) => (
+                    <th
+                      key={head}
+                      className="iu-label border-b bg-muted px-4 py-2 text-left text-muted-foreground"
+                    >
+                      {head}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <Row data="13/11" tipo="Intimação" status="Não tratada" tom="pendente" />
+                <Row data="12/11" tipo="Despacho" status="Tratada" tom="feito" />
+                <Row data="12/11" tipo="Sentença" status="Prazo fatal" tom="fatal" ultima />
+              </tbody>
+            </table>
+          </div>
         </div>
-        <PreviewCard
-          icon={<CalendarClock className="size-4 text-gold" aria-hidden />}
-          title="Prazo em 2 dias"
-          text="Contestação · processo de exemplo"
-          tag="Urgente"
-          tagClass="bg-red-500/20 text-red-100"
-        />
-        <PreviewCard
-          icon={<ShieldCheck className="size-4 text-gold" aria-hidden />}
-          title="Publicação classificada"
-          text="Sugestão da IA aguardando a sua confirmação"
-          tag="Revisar"
-          tagClass="bg-amber-400/20 text-amber-100"
-        />
-        <PreviewCard
-          icon={<FileCheck2 className="size-4 text-gold" aria-hidden />}
-          title="Minuta em revisão"
-          text="Citações com fonte · exportação após conferência"
-          tag="Rascunho"
-          tagClass="bg-sky-400/20 text-sky-100"
-        />
+        <div className="absolute top-5 left-2 hidden min-w-[168px] rounded-lg border bg-card px-5 py-4 shadow-lg sm:block lg:-left-7">
+          <p className="iu-label text-muted-foreground">Não tratadas hoje</p>
+          <p className="iu-metric text-warning">4</p>
+        </div>
+        <div className="absolute right-2 -bottom-6 hidden min-w-[168px] rounded-lg border bg-card px-5 py-4 shadow-lg sm:block lg:-right-5">
+          <p className="iu-label text-muted-foreground">Prazos da semana</p>
+          <p className="iu-metric text-primary">9</p>
+        </div>
       </div>
-      <figcaption className="mt-3 text-center text-xs text-slate-300">
+      <figcaption className="mt-8 text-center text-xs text-muted-foreground">
         Ilustração com dados fictícios.
       </figcaption>
     </figure>
   )
 }
 
-function PreviewCard({
-  icon,
-  title,
-  text,
-  tag,
-  tagClass,
+const tons = {
+  pendente: 'bg-warning-soft text-warning',
+  feito: 'bg-success-soft text-success',
+  fatal: 'bg-destructive-soft text-destructive',
+} as const
+
+function Row({
+  data,
+  tipo,
+  status,
+  tom,
+  ultima = false,
 }: {
-  icon: React.ReactNode
-  title: string
-  text: string
-  tag: string
-  tagClass: string
+  data: string
+  tipo: string
+  status: string
+  tom: keyof typeof tons
+  ultima?: boolean
 }) {
+  const cell = ultima ? 'px-4 py-3' : 'border-b px-4 py-3'
+
   return (
-    <div className="flex items-start gap-3 rounded-xl bg-white/10 p-3">
-      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/10">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{title}</p>
-        <p className="text-xs text-slate-300">{text}</p>
-      </div>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${tagClass}`}>{tag}</span>
-    </div>
+    <tr>
+      <td className={`${cell} tabular-nums`}>{data}</td>
+      <td className={cell}>{tipo}</td>
+      <td className={cell}>
+        <span
+          className={`iu-label inline-flex h-6 items-center rounded-sm px-2 whitespace-nowrap ${tons[tom]}`}
+        >
+          {status}
+        </span>
+      </td>
+    </tr>
   )
 }

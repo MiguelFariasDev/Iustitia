@@ -20,7 +20,10 @@ interface AlertaTabsProps {
 export function AlertaTabs({ value, onChange, summary, children }: AlertaTabsProps) {
   return (
     <Tabs value={value} onValueChange={(next) => onChange(next as AlertaTab)}>
-      <TabsList aria-label="Categorias de alertas" className="h-auto flex-wrap">
+      <TabsList
+        aria-label="Categorias de alertas"
+        className="max-w-full justify-start overflow-x-auto"
+      >
         {alertaTabs.map((tab) => {
           const count = tabCount(tab, summary)
           return (
@@ -37,7 +40,7 @@ export function AlertaTabs({ value, onChange, summary, children }: AlertaTabsPro
         ids referenciados pelas abas não existiriam e o leitor de tela perderia a relação.
       */}
       {alertaTabs.map((tab) => (
-        <TabsContent key={tab} value={tab} className="pt-2">
+        <TabsContent key={tab} value={tab} className="animate-iu-in pt-2">
           {children}
         </TabsContent>
       ))}

@@ -24,44 +24,25 @@ namespace Advocacia.Modules.Integrations.CNJ.Infrastructure.Resilience;
 /// </summary>
 public sealed class CnjRateLimitingHandler : DelegatingHandler
 {
-    private readonly SlidingWindowRateLimiter _rateLimiter;
-    private readonly TimeSpan _queueTimeout;
+    private readonly CnjRateLimiter _shared;
     private readonly ILogger<CnjRateLimitingHandler> _logger;
 
-    public CnjRateLimitingHandler(IOptions<CnjOptions> options, ILogger<CnjRateLimitingHandler> logger)
+    public CnjRateLimitingHandler(CnjRateLimiter shared, ILogger<CnjRateLimitingHandler> logger)
     {
-        var cnjOptions = options.Value;
+        _shared = shared;
         _logger = logger;
-        _queueTimeout = TimeSpan.FromSeconds(cnjOptions.RateLimitQueueTimeoutSeconds);
-
-        _rateLimiter = new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
-        {
-            PermitLimit = cnjOptions.RateLimitPermitsPerWindow,
-            Window = TimeSpan.FromSeconds(cnjOptions.RateLimitWindowSeconds),
-
-            // Janela dividida em segmentos: o orçamento é liberado gradualmente em vez de
-            // de uma vez no virar da janela, o que evitaria uma rajada sincronizada logo
-            // após cada reset — exatamente o padrão que dispara o 429 do outro lado.
-            SegmentsPerWindow = cnjOptions.RateLimitWindowSeconds,
-
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-
-            // Fila grande: numa varredura de 200 páginas queremos que as requisições
-            // ESPEREM, não que sejam rejeitadas.
-            QueueLimit = int.MaxValue,
-        });
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutSource.CancelAfter(_queueTimeout);
+        timeoutSource.CancelAfter(_shared.QueueTimeout);
 
         RateLimitLease lease;
         try
         {
-            lease = await _rateLimiter.AcquireAsync(permitCount: 1, timeoutSource.Token);
+            lease = await _shared.Limiter.AcquireAsync(permitCount: 1, timeoutSource.Token);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -70,7 +51,7 @@ public sealed class CnjRateLimitingHandler : DelegatingHandler
             // resiliência tratar como transiente, que é exatamente o que é.
             _logger.LogWarning(
                 "CNJ: requisição descartada após aguardar {TimeoutSeconds}s no limitador de taxa local.",
-                _queueTimeout.TotalSeconds);
+                _shared.QueueTimeout.TotalSeconds);
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.TooManyRequests);
         }
@@ -79,15 +60,5 @@ public sealed class CnjRateLimitingHandler : DelegatingHandler
         {
             return await base.SendAsync(request, cancellationToken);
         }
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _rateLimiter.Dispose();
-        }
-
-        base.Dispose(disposing);
     }
 }

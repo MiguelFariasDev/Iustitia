@@ -132,3 +132,34 @@ export async function getPublicationsByProcess(processId: string): Promise<Publi
 
   return page.items
 }
+
+export type ReviewDecision = 'Approved' | 'Corrected' | 'Rejected'
+
+/** Resultado da decisão no servidor. `vencimento` é AAAA-MM-DD, ou `null` quando não houve prazo. */
+export interface ReviewOutcome {
+  status: string
+  vencimento: string | null
+  eventId: string | null
+  days: number | null
+  notes: string[]
+}
+
+/**
+ * Decisão do advogado numa chamada só: o servidor calcula o vencimento (calendário forense), coloca o prazo
+ * na agenda de forma idempotente e grava o status. Substitui o encadeamento "criar evento + mudar status"
+ * que a tela fazia no navegador. Só vale fora dos mocks.
+ */
+export async function reviewPublication(
+  id: string,
+  decision: ReviewDecision,
+  deadlineDays?: number,
+  notes?: string
+): Promise<ReviewOutcome> {
+  const { data } = await apiClient.post<ReviewOutcome>(endpoints.publications.review(id), {
+    decision,
+    deadlineDays: deadlineDays ?? null,
+    notes: notes ?? null,
+  })
+
+  return data
+}

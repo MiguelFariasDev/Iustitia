@@ -63,6 +63,14 @@ public sealed class Cliente : AggregateRoot<ClienteId>, IAuditable, ISoftDeletab
     /// </summary>
     public bool IsActive { get; private set; }
 
+    /// <summary>
+    /// Quando os dados pessoais foram anonimizados (direito do titular — LGPD, art. 18). Nulo para
+    /// cliente normal. Depois de preenchido o cadastro é imutável: não há como "desanonimizar".
+    /// </summary>
+    public DateTimeOffset? AnonimizadoEm { get; private set; }
+
+    public bool Anonimizado => AnonimizadoEm is not null;
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public string? CreatedBy { get; set; }
@@ -154,6 +162,11 @@ public sealed class Cliente : AggregateRoot<ClienteId>, IAuditable, ISoftDeletab
     public Result Update(
         NomeCliente nome, Contato contato, Endereco endereco, DateOnly? dataNascimento, string? observacoes)
     {
+        if (Anonimizado)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.CLIENT_ANONYMIZED));
+        }
+
         if (nome is null)
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.CLIENT_NAME_REQUIRED));
@@ -192,6 +205,11 @@ public sealed class Cliente : AggregateRoot<ClienteId>, IAuditable, ISoftDeletab
 
     public Result Reactivate()
     {
+        if (Anonimizado)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.CLIENT_ANONYMIZED));
+        }
+
         if (IsActive)
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.CLIENT_ALREADY_ACTIVE));
@@ -199,6 +217,36 @@ public sealed class Cliente : AggregateRoot<ClienteId>, IAuditable, ISoftDeletab
 
         IsActive = true;
         RaiseDomainEvent(new ClienteReativadoEvent(Id.Value, TenantId));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Elimina os dados pessoais do cliente de forma IRREVERSÍVEL (nome, documento, contato,
+    /// endereço, nascimento e observações), mantendo o registro e o vínculo com os processos — o
+    /// escritório precisa guardar o histórico do caso (obrigação legal e exercício regular de
+    /// direitos, LGPD art. 16, I, e art. 7º, VI). Quem decide se pode anonimizar (p.ex. não haver
+    /// processo em andamento) é a camada de aplicação; este método só executa a descaracterização.
+    /// </summary>
+    public Result Anonimizar(DateTimeOffset agora)
+    {
+        if (Anonimizado)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.CLIENT_ANONYMIZED));
+        }
+
+        Nome = NomeCliente.FromPersistence("Titular anonimizado");
+        NomeBusca = Nome.Value.ToLowerInvariant();
+        Documento = Documento.Anonimo(Id.Value, Tipo);
+        DocumentoBusca = Documento.Value;
+        Contato = Contato.Vazio;
+        Endereco = Endereco.Vazio;
+        DataNascimento = null;
+        Observacoes = null;
+        IsActive = false;
+        AnonimizadoEm = agora;
+
+        RaiseDomainEvent(new ClienteAnonimizadoEvent(Id.Value, TenantId));
 
         return Result.Success();
     }

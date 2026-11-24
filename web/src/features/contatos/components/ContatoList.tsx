@@ -10,13 +10,15 @@ import { env } from '@/config/env'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
-import { FilterChip } from '@/components/shared/FilterChip'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import type { Tone } from '@/components/shared/tones'
 import { Button } from '@/components/ui/button'
 import { routes } from '@/config/routes'
 import { useContatos, useDeleteContato } from '../hooks'
 import { tiposContato, tipoContatoLabels, type Contato, type TipoContato } from '../types'
+
+const TODOS = '__todos__'
 
 const tomPorTipo: Record<TipoContato, Tone> = {
   ParteContraria: 'danger',
@@ -101,7 +103,7 @@ export function ContatoList() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="animate-iu-in space-y-4">
       {env.useMocks ? <DemoNotice modulo="Contatos" /> : null}
 
       <DataTable
@@ -112,17 +114,15 @@ export function ContatoList() {
         getRowId={(c) => c.id}
         searchPlaceholder="Buscar por nome, documento ou e-mail"
         toolbar={
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por tipo">
-            {tiposContato.map((valor) => (
-              <FilterChip
-                key={valor}
-                active={tipo === valor}
-                onClick={() => setTipo(tipo === valor ? null : valor)}
-              >
-                {tipoContatoLabels[valor]}
-              </FilterChip>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Filtrar por tipo"
+            value={tipo ?? TODOS}
+            onChange={(valor) => setTipo(valor === TODOS ? null : (valor as TipoContato))}
+            options={[
+              { value: TODOS, label: 'Todos' },
+              ...tiposContato.map((valor) => ({ value: valor, label: tipoContatoLabels[valor] })),
+            ]}
+          />
         }
         emptyNode={
           <EmptyState

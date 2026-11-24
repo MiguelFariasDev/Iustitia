@@ -25,9 +25,12 @@ describe('AlertasView', () => {
       'aria-selected',
       'true'
     )
-    expect(screen.getByRole('tab', { name: 'Todos (6)' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Publicações não tratadas (2)' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Outros (3)' })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      'Importantes (4)',
+      'Publicações (3)',
+      'Prazos (1)',
+      'Todos (6)',
+    ])
 
     const list = await screen.findByRole('list', { name: 'Importantes' })
     expect(within(list).getAllByRole('article')).toHaveLength(4)
@@ -45,14 +48,14 @@ describe('AlertasView', () => {
     await user.click(screen.getByRole('tab', { name: /^Todos/ }))
     await waitFor(() => expect(articlesIn('Todos')()).toHaveLength(6))
 
-    await user.click(screen.getByRole('tab', { name: /^Publicações não tratadas/ }))
-    await waitFor(() => expect(articlesIn('Publicações não tratadas')()).toHaveLength(2))
+    await user.click(screen.getByRole('tab', { name: /^Publicações/ }))
+    await waitFor(() => expect(articlesIn('Publicações')()).toHaveLength(3))
 
-    await user.click(screen.getByRole('tab', { name: /^Outros/ }))
-    await waitFor(() => expect(articlesIn('Outros')()).toHaveLength(3))
+    await user.click(screen.getByRole('tab', { name: /^Prazos/ }))
+    await waitFor(() => expect(articlesIn('Prazos')()).toHaveLength(1))
     expect(
-      within(screen.getByRole('list', { name: 'Outros' })).queryByText('Nova publicação: intimação')
-    ).not.toBeInTheDocument()
+      within(screen.getByRole('list', { name: 'Prazos' })).getByText('Tarefa vence amanhã')
+    ).toBeInTheDocument()
   })
 
   it('troca de aba pelo teclado (setas)', async () => {
@@ -62,13 +65,16 @@ describe('AlertasView', () => {
     tab.focus()
     await user.keyboard('{ArrowRight}')
 
-    expect(screen.getByRole('tab', { name: /^Todos/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: /^Publicações/ })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
   })
 
   it('a aba inicial pode vir da URL', async () => {
-    renderView('aba=others')
+    renderView('aba=deadlines')
 
-    expect(await screen.findByRole('tab', { name: /^Outros/ })).toHaveAttribute(
+    expect(await screen.findByRole('tab', { name: /^Prazos/ })).toHaveAttribute(
       'aria-selected',
       'true'
     )

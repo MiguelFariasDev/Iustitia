@@ -13,7 +13,7 @@ import { AlertaTabs } from './AlertaTabs'
 export function AlertasView() {
   const searchParams = useSearchParams()
 
-  // A aba inicial pode vir da URL (?aba=publications), para o painel e o sino levarem direto
+  // A aba inicial pode vir da URL (?aba=publications|deadlines), para o painel e o sino levarem direto
   // à lista certa. Só o estado INICIAL: depois, quem manda são as abas da tela.
   const [tab, setTab] = useState<AlertaTab>(() => {
     const fromUrl = searchParams.get('aba') as AlertaTab | null

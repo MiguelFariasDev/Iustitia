@@ -17,6 +17,8 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddPlatformApi(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<Middleware.MfaOptions>(configuration.GetSection(Middleware.MfaOptions.SectionName));
+
         services.AddApiVersioning(options =>
             {
                 options.DefaultApiVersion = new ApiVersion(1);

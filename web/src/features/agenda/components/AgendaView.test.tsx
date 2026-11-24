@@ -19,6 +19,21 @@ describe('AgendaView', () => {
     expect(screen.getByRole('button', { name: /Prazo: Prazo: contestação/ })).toBeInTheDocument()
   })
 
+  it('com um tipo filtrado, só o ponto dos demais esmaece; o texto continua legível', async () => {
+    const { user } = await renderAgenda()
+    const filtro = screen.getByRole('group', { name: 'Filtrar por tipo' })
+    const ponto = (nome: RegExp) =>
+      within(filtro).getByRole('button', { name: nome }).querySelector('span[aria-hidden] ')!
+
+    expect(ponto(/Reunião/)).not.toHaveClass('opacity-50')
+
+    await user.click(within(filtro).getByRole('button', { name: /Reunião/ }))
+
+    expect(ponto(/Reunião/)).not.toHaveClass('opacity-50')
+    expect(ponto(/Audiência/)).toHaveClass('opacity-50')
+    expect(within(filtro).getByRole('button', { name: /Audiência/ })).not.toHaveClass('opacity-50')
+  })
+
   it('filtra por tipo pelo chip', async () => {
     const { user } = await renderAgenda()
     const filtro = screen.getByRole('group', { name: 'Filtrar por tipo' })
@@ -47,7 +62,7 @@ describe('AgendaView', () => {
   it('troca para a visão semanal', async () => {
     const { user } = await renderAgenda()
 
-    await user.click(screen.getByRole('button', { name: 'Semana' }))
+    await user.click(screen.getByRole('radio', { name: 'Semana' }))
 
     expect(await screen.findByRole('grid', { name: 'Agenda por horário' })).toBeInTheDocument()
   })

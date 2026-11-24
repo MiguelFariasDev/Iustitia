@@ -69,6 +69,8 @@ public sealed class ProcessoConfiguration : IEntityTypeConfiguration<Processo>
         builder.Property(processo => processo.DataDistribuicao);
         builder.Property(processo => processo.Observacoes).HasMaxLength(2000);
 
+        builder.Property(processo => processo.Confidencial).HasDefaultValue(false).IsRequired();
+
         builder.Property(processo => processo.CreatedAt).IsRequired();
         builder.Property(processo => processo.CreatedBy).HasMaxLength(100);
         builder.Property(processo => processo.UpdatedBy).HasMaxLength(100);

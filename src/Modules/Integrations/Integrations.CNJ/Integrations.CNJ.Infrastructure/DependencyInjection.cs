@@ -37,12 +37,12 @@ public static class DependencyInjection
         // que não sejam auto-infligidas por estourar o limite do CNJ (ver
         // CnjRateLimitingHandler e ADR-059).
         //
-        // Singleton: o orçamento de taxa é do PROCESSO inteiro. Registrado como transient
-        // (o padrão de AddHttpMessageHandler), cada HttpClient teria o seu próprio e o
-        // limite global não seria respeitado.
-        services.AddSingleton<CnjRateLimitingHandler>();
-        httpClientBuilder.AddHttpMessageHandler(serviceProvider =>
-            serviceProvider.GetRequiredService<CnjRateLimitingHandler>());
+        // O orçamento de taxa é do PROCESSO inteiro, então mora num singleton (CnjRateLimiter).
+        // O handler em si é transient: o HttpClientFactory não aceita reaproveitar um
+        // DelegatingHandler entre pipelines (ele define o InnerHandler de cada instância).
+        services.AddSingleton<CnjRateLimiter>();
+        services.AddTransient<CnjRateLimitingHandler>();
+        httpClientBuilder.AddHttpMessageHandler<CnjRateLimitingHandler>();
 
         CnjResiliencePipeline.Configure(httpClientBuilder.AddStandardResilienceHandler(), options);
 

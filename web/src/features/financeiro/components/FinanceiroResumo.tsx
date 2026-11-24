@@ -10,10 +10,26 @@ interface FinanceiroResumoProps {
 /** Quatro números que respondem "como está o caixa?". Saldo negativo é dito, não só colorido. */
 export function FinanceiroResumo({ resumo }: FinanceiroResumoProps) {
   const cartoes = [
-    { rotulo: 'Faturamento do mês', valor: resumo.faturamentoMes, dica: 'honorários recebidos' },
-    { rotulo: 'Honorários a receber', valor: resumo.honorariosAReceber, dica: 'em aberto' },
-    { rotulo: 'Contas a pagar', valor: resumo.contasAPagar, dica: 'em aberto' },
-    { rotulo: 'Saldo', valor: resumo.saldo, dica: 'recebido menos pago' },
+    {
+      rotulo: 'Faturamento do mês',
+      valor: resumo.faturamentoMes,
+      dica: 'honorários recebidos',
+    },
+    {
+      rotulo: 'Honorários a receber',
+      valor: resumo.honorariosAReceber,
+      dica: 'em aberto',
+    },
+    {
+      rotulo: 'Contas a pagar',
+      valor: resumo.contasAPagar,
+      dica: 'em aberto',
+    },
+    {
+      rotulo: 'Saldo',
+      valor: resumo.saldo,
+      dica: 'recebido menos pago',
+    },
   ]
 
   return (
@@ -21,12 +37,12 @@ export function FinanceiroResumo({ resumo }: FinanceiroResumoProps) {
       {cartoes.map(({ rotulo, valor, dica }) => (
         <Card key={rotulo}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{rotulo}</CardTitle>
+            <CardTitle className="iu-label text-muted-foreground">{rotulo}</CardTitle>
           </CardHeader>
           <CardContent>
             <p
               className={cn(
-                'text-2xl font-semibold tabular-nums',
+                'iu-metric',
                 valor < 0 && 'text-destructive-foreground'
               )}
             >

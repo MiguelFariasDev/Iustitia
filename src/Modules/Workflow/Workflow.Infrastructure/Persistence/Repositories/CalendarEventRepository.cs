@@ -8,6 +8,12 @@ namespace Advocacia.Modules.Workflow.Infrastructure.Persistence.Repositories;
 public sealed class CalendarEventRepository(WorkflowDbContext dbContext)
     : Repository<CalendarEvent, CalendarEventId>(dbContext), ICalendarEventRepository
 {
+    public Task<CalendarEvent?> GetBySourcePublicationAsync(
+        Guid tenantId, Guid publicationId, CancellationToken cancellationToken = default) =>
+        DbSet.FirstOrDefaultAsync(
+            calendarEvent => calendarEvent.TenantId == tenantId && calendarEvent.SourcePublicationId == publicationId,
+            cancellationToken);
+
     public async Task<IReadOnlyList<CalendarEvent>> ListByPeriodAsync(
         Guid tenantId,
         DateTimeOffset from,

@@ -196,11 +196,13 @@ public sealed class SupabaseAuthService(
     private static async Task<Error> MapErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         string? message = null;
+        string? errorCode = null;
 
         try
         {
             var errorPayload = await response.Content.ReadFromJsonAsync<SupabaseErrorPayload>(cancellationToken);
             message = errorPayload?.ErrorDescription ?? errorPayload?.Msg ?? errorPayload?.Message;
+            errorCode = errorPayload?.ErrorCode;
         }
         catch
         {
@@ -208,6 +210,25 @@ public sealed class SupabaseAuthService(
         }
 
         message ??= "Falha na comunicação com o Supabase Auth.";
+
+        // O Supabase responde 422 para recusas de cadastro que são do usuário (e-mail já em uso,
+        // senha fraca, e-mail inválido). Sem este mapeamento viravam 500 genérico e a tela não
+        // dizia o que corrigir. O código de erro do GoTrue é estável; a mensagem em inglês, não.
+        if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+        {
+            return errorCode switch
+            {
+                "user_already_exists" or "email_exists" =>
+                    Error.Conflict("auth.email_in_use", "Este e-mail já está cadastrado. Entre com ele ou use outro e-mail."),
+                "weak_password" =>
+                    Error.Validation("auth.weak_password", "Senha fraca demais. Use ao menos 8 caracteres, com letras e números."),
+                "email_address_invalid" =>
+                    Error.Validation("auth.email_invalid", "O Supabase recusou este e-mail. Use um endereço real."),
+                "signup_disabled" =>
+                    Error.Failure("auth.signup_disabled", "O cadastro de novas contas está desativado no Supabase."),
+                _ => Error.Validation("auth.unprocessable", message),
+            };
+        }
 
         return response.StatusCode switch
         {
@@ -246,5 +267,6 @@ public sealed class SupabaseAuthService(
     private sealed record SupabaseErrorPayload(
         [property: JsonPropertyName("error_description")] string? ErrorDescription,
         [property: JsonPropertyName("msg")] string? Msg,
-        [property: JsonPropertyName("message")] string? Message);
+        [property: JsonPropertyName("message")] string? Message,
+        [property: JsonPropertyName("error_code")] string? ErrorCode);
 }

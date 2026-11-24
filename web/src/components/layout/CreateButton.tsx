@@ -33,13 +33,13 @@ export function CreateButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" className="gap-1.5" aria-label="Criar novo item">
+        <Button className="h-10 gap-1.5 px-4" aria-label="Criar novo item">
           <Plus aria-hidden />
-          <span className="hidden sm:inline">Criar</span>
+          <span className="hidden sm:inline">Novo</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel>Criar</DropdownMenuLabel>
+        <DropdownMenuLabel>Novo</DropdownMenuLabel>
         {createActions
           .filter((a) => !a.href)
           .map((action) => (

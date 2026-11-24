@@ -20,6 +20,8 @@ public static class DependencyInjection
         services.TryAddSingleton(typeAdapterConfig);
         services.TryAddScoped<IMapper, ServiceMapper>();
 
+        services.AddScoped<BuildingBlocks.Application.Abstractions.IPrazoAgendador, Services.PrazoAgendador>();
+
         return services;
     }
 }

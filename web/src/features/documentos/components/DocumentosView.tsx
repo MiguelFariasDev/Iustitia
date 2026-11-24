@@ -6,9 +6,9 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
-import { FilterChip } from '@/components/shared/FilterChip'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { SearchInput } from '@/components/shared/SearchInput'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { baixarDocumento } from '../api'
 import { useDeleteDocumento, useDocumentos } from '../hooks'
 import {
@@ -17,8 +17,12 @@ import {
   tipoVinculoLabels,
   type Documento,
   type DocumentosFilters,
+  type TipoArquivo,
+  type TipoVinculo,
 } from '../types'
 import { DocumentoGrid } from './DocumentoGrid'
+
+const TODOS = '__todos__'
 
 export function DocumentosView() {
   const [filters, setFilters] = useState<DocumentosFilters>({})
@@ -44,36 +48,37 @@ export function DocumentosView() {
         />
 
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <div
-            className="flex flex-wrap gap-2"
-            role="group"
-            aria-label="Filtrar por tipo de arquivo"
-          >
-            {tiposArquivo.map((tipo) => (
-              <FilterChip
-                key={tipo}
-                active={filters.tipoArquivo === tipo}
-                onClick={() =>
-                  setFilters((f) => ({ ...f, tipoArquivo: f.tipoArquivo === tipo ? null : tipo }))
-                }
-              >
-                {tipo}
-              </FilterChip>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por vínculo">
-            {tiposVinculo.map((vinculo) => (
-              <FilterChip
-                key={vinculo}
-                active={filters.vinculo === vinculo}
-                onClick={() =>
-                  setFilters((f) => ({ ...f, vinculo: f.vinculo === vinculo ? null : vinculo }))
-                }
-              >
-                {tipoVinculoLabels[vinculo]}
-              </FilterChip>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Filtrar por tipo de arquivo"
+            value={filters.tipoArquivo ?? TODOS}
+            onChange={(valor) =>
+              setFilters((f) => ({
+                ...f,
+                tipoArquivo: valor === TODOS ? null : (valor as TipoArquivo),
+              }))
+            }
+            options={[
+              { value: TODOS, label: 'Todos' },
+              ...tiposArquivo.map((tipo) => ({ value: tipo, label: tipo })),
+            ]}
+          />
+          <SegmentedControl
+            label="Filtrar por vínculo"
+            value={filters.vinculo ?? TODOS}
+            onChange={(valor) =>
+              setFilters((f) => ({
+                ...f,
+                vinculo: valor === TODOS ? null : (valor as TipoVinculo),
+              }))
+            }
+            options={[
+              { value: TODOS, label: 'Todos' },
+              ...tiposVinculo.map((vinculo) => ({
+                value: vinculo,
+                label: tipoVinculoLabels[vinculo],
+              })),
+            ]}
+          />
         </div>
       </div>
 

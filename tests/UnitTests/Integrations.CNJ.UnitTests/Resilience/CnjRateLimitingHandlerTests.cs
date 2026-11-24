@@ -30,7 +30,7 @@ public class CnjRateLimitingHandlerTests
     {
         var inner = new CountingHandler();
         var limiter = new CnjRateLimitingHandler(
-            Options.Create(options), NullLogger<CnjRateLimitingHandler>.Instance)
+            new CnjRateLimiter(Options.Create(options)), NullLogger<CnjRateLimitingHandler>.Instance)
         {
             InnerHandler = inner,
         };

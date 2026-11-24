@@ -15,7 +15,8 @@ public class GetPublicationByIdHandlerTests
 
     public GetPublicationByIdHandlerTests()
     {
-        _handler = new GetPublicationByIdHandler(_repository, Substitute.For<IClienteRepository>(), TestMapper.Create());
+        _handler = new GetPublicationByIdHandler(
+            _repository, Substitute.For<IClienteRepository>(), Substitute.For<IPublicationSuggestionRepository>(), TestMapper.Create());
     }
 
     [Fact]

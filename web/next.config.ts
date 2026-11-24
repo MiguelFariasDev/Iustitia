@@ -9,7 +9,18 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
 ]
 
+/**
+ * Hosts extras que podem acessar o servidor de DESENVOLVIMENTO (ex.: um túnel do Cloudflare).
+ * Só o hostname, sem esquema nem porta. Vem do ambiente para a URL temporária do túnel não
+ * ser versionada: `NEXT_ALLOWED_DEV_ORIGINS=abc.trycloudflare.com` no .env.local.
+ */
+const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS ?? '')
+  .split(',')
+  .map((host) => host.trim())
+  .filter(Boolean)
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins,
   // Diretório de build isolável: o E2E compila em .next-e2e para não invalidar o
   // .next de um `next dev` em andamento.
   distDir: process.env.NEXT_DIST_DIR || '.next',

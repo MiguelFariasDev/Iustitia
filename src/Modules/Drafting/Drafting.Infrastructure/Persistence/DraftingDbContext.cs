@@ -1,0 +1,35 @@
+using Advocacia.BuildingBlocks.Application.Abstractions;
+using Advocacia.BuildingBlocks.Infrastructure.Persistence.DbContext;
+using Advocacia.Modules.Drafting.Domain.Acervo;
+using Advocacia.Modules.Drafting.Domain.Fila;
+using Advocacia.Modules.Drafting.Domain.Gpu;
+using Advocacia.Modules.Drafting.Domain.Normas;
+using Advocacia.Modules.Drafting.Domain.Pecas;
+using Microsoft.EntityFrameworkCore;
+
+namespace Advocacia.Modules.Drafting.Infrastructure.Persistence;
+
+/// <summary>DbContext do módulo Drafting — um por módulo, mesmo banco físico (ADR-001).</summary>
+public sealed class DraftingDbContext(DbContextOptions<DraftingDbContext> options, ITenantContext tenantContext)
+    : BaseDbContext(options, tenantContext)
+{
+    public DbSet<LegalDocumentRequest> LegalDocumentRequests => Set<LegalDocumentRequest>();
+
+    public DbSet<RetrievedSource> RetrievedSources => Set<RetrievedSource>();
+
+    public DbSet<LegalDocumentEvent> LegalDocumentEvents => Set<LegalDocumentEvent>();
+
+    public DbSet<GenerationQueueItem> GenerationQueue => Set<GenerationQueueItem>();
+
+    public DbSet<GpuInstanceLog> GpuInstanceLogs => Set<GpuInstanceLog>();
+
+    public DbSet<IndexedDocument> IndexedDocuments => Set<IndexedDocument>();
+
+    public DbSet<NormaJuridica> Normas => Set<NormaJuridica>();
+
+    public DbSet<NormaChunk> NormaChunks => Set<NormaChunk>();
+
+    public DbSet<NormaVersao> NormaVersoes => Set<NormaVersao>();
+
+    public DbSet<IngestaoJob> IngestaoJobs => Set<IngestaoJob>();
+}

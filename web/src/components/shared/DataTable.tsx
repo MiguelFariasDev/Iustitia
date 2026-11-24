@@ -158,7 +158,7 @@ export function DataTable<TData>({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border bg-card" aria-busy={isLoading}>
+      <div className="overflow-x-auto rounded-xl border bg-card" aria-busy={isLoading}>
         {/* Anuncia o carregamento: os esqueletos sozinhos são invisíveis para leitor de tela. */}
         {isLoading ? (
           <span role="status" aria-label="Carregando tabela" className="sr-only">
@@ -167,7 +167,7 @@ export function DataTable<TData>({
         ) : null}
         <Table>
           <caption className="sr-only">{caption}</caption>
-          <TableHeader className="bg-muted/50">
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {

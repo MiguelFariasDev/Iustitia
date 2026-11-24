@@ -51,6 +51,13 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
 
     public string? Observacoes { get; private set; }
 
+    /// <summary>
+    /// Processo sob sigilo interno: só o responsável e a sociedade (Owner/Partner) o enxergam.
+    /// Distinto do segredo de justiça do tribunal — é a escolha do escritório de restringir um caso
+    /// (cliente sensível, conflito de interesses, advogado do outro lado na mesma equipe).
+    /// </summary>
+    public bool Confidencial { get; private set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public string? CreatedBy { get; set; }
@@ -207,6 +214,17 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
         RaiseDomainEvent(new ProcessoStatusAlteradoEvent(Id.Value, TenantId, statusAnterior, novoStatus));
 
         return Result.Success();
+    }
+
+    public void DefinirConfidencialidade(bool confidencial)
+    {
+        if (Confidencial == confidencial)
+        {
+            return;
+        }
+
+        Confidencial = confidencial;
+        RaiseDomainEvent(new ProcessoAtualizadoEvent(Id.Value, TenantId));
     }
 
     public Result Archive() => ChangeStatus(StatusProcesso.Arquivado);

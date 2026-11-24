@@ -115,7 +115,10 @@ export function ContextPanel({ atendimentoId }: { atendimentoId: string }) {
   const current = atendimento.data
 
   return (
-    <aside aria-label="Contexto do atendimento" className="space-y-5 rounded-xl border bg-card p-4">
+    <aside
+      aria-label="Contexto do atendimento"
+      className="animate-iu-in space-y-5 rounded-xl border bg-card p-4"
+    >
       <section className="space-y-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <UserRound className="size-4" aria-hidden /> Contato

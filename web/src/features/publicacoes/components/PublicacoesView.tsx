@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { ErrorState } from '@/components/shared/ErrorState'
+import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { downloadCsv } from '@/lib/csv'
 import { handleApiError } from '@/lib/api/toastHandler'
 import { notify } from '@/lib/notify'
@@ -11,6 +12,7 @@ import { exportPublicationsCsv } from '../export'
 import { countActiveFilters, filtersFromSearchParams, filtersToSearchParams } from '../filters'
 import { useBulkPublicacaoAction, usePublicacoes, type BulkAction } from '../hooks'
 import type { PublicationSort, PublicationsFilters } from '../types'
+import { quickViewFilters, quickViewOf, quickViews } from '../view'
 import { PublicacaoFilters } from './PublicacaoFilters'
 import { PublicacaoList } from './PublicacaoList'
 import { PublicacaoResumoCards } from './PublicacaoResumoCards'
@@ -73,6 +75,13 @@ export function PublicacoesView() {
         <h2 id="publicacoes-lista" className="sr-only">
           Lista de publicações
         </h2>
+
+        <SegmentedControl
+          value={quickViewOf(filters)}
+          onChange={(view) => updateFilters(quickViewFilters(view))}
+          options={quickViews}
+          label="Visão da lista de publicações"
+        />
 
         <PublicacaoFilters filters={filters} onChange={updateFilters} onClear={clearFilters} />
 

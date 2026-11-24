@@ -45,7 +45,7 @@ export const features: Feature[] = [
   {
     id: 'alertas',
     icon: Bell,
-    title: 'Alertas que chamam a atenção certa',
+    title: 'Alertas no momento certo',
     description:
       'Prazos próximos e itens sem tratamento aparecem em destaque, para nada vencer por esquecimento.',
     status: 'disponivel',

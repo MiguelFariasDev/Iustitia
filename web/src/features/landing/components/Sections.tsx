@@ -1,38 +1,99 @@
-import { Check, Scale } from 'lucide-react'
+import {
+  Building2,
+  CalendarCheck,
+  CircleCheck,
+  History,
+  Inbox,
+  ShieldCheck,
+  Sparkles,
+  UserCog,
+  type LucideIcon,
+} from 'lucide-react'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { env } from '@/config/env'
 import { routes } from '@/config/routes'
 import { faq, features, responsibleAi, security, statusLabel, steps } from '../content'
 
-function SectionHeading({ eyebrow, title, intro }: { eyebrow: string; title: string; intro?: string }) {
+/** Seção da landing: 96px entre seções (`py-24`), conteúdo em até 1200px, fundos alternados. */
+function Section({
+  id,
+  titleId,
+  tone = 'background',
+  children,
+}: {
+  id?: string
+  titleId: string
+  tone?: 'background' | 'card'
+  children: React.ReactNode
+}) {
   return (
-    <div className="mx-auto max-w-2xl space-y-3 text-center">
-      <p className="text-sm font-semibold tracking-wide text-secondary uppercase">{eyebrow}</p>
-      <h2 className="font-serif text-3xl font-semibold text-balance sm:text-4xl">{title}</h2>
-      {intro ? <p className="text-muted-foreground text-pretty">{intro}</p> : null}
+    <section
+      id={id}
+      aria-labelledby={titleId}
+      className={`scroll-mt-16 px-4 py-16 sm:px-6 lg:py-24 ${tone === 'card' ? 'bg-card' : 'bg-background'}`}
+    >
+      <div className="mx-auto max-w-[1200px]">{children}</div>
+    </section>
+  )
+}
+
+function SectionHeading({
+  id,
+  eyebrow,
+  title,
+  intro,
+  tone = 'brand',
+}: {
+  id: string
+  eyebrow: string
+  title: string
+  intro?: string
+  tone?: 'brand' | 'ia'
+}) {
+  return (
+    <div className="mb-12 max-w-[640px]">
+      <p className={`iu-label mb-3 ${tone === 'ia' ? 'text-ia-text' : 'text-primary'}`}>{eyebrow}</p>
+      <h2 id={id} className="display-l text-foreground">
+        {title}
+      </h2>
+      {intro ? <p className="mt-4 text-lg leading-[29px] text-muted-foreground">{intro}</p> : null}
     </div>
   )
 }
 
+function IconBox({ icon: Icon, tone = 'brand' }: { icon: LucideIcon; tone?: 'brand' | 'ia' }) {
+  return (
+    <div
+      className={`mb-5 grid size-11 place-items-center rounded-md ${
+        tone === 'ia' ? 'bg-ia-soft text-ia-text' : 'bg-brand-soft text-primary'
+      }`}
+    >
+      <Icon className="size-[18px]" aria-hidden />
+    </div>
+  )
+}
+
+const stepIcons: LucideIcon[] = [Inbox, Sparkles, CalendarCheck]
+
 export function HowItWorksSection() {
   return (
-    <section aria-labelledby="como-funciona" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
-      <SectionHeading eyebrow="Como funciona" title="Da publicação ao prazo na agenda" />
-      <h3 id="como-funciona" className="sr-only">Passos</h3>
-      <ol className="mt-12 grid gap-6 md:grid-cols-3">
+    <Section id="como-funciona" titleId="como-funciona-titulo">
+      <SectionHeading
+        id="como-funciona-titulo"
+        eyebrow="Como funciona"
+        title="Da publicação ao prazo na agenda"
+      />
+      <ol className="grid gap-6 md:grid-cols-3">
         {steps.map((step, index) => (
-          <li key={step.title} className="space-y-3 rounded-xl border bg-card p-6">
-            <span className="flex size-9 items-center justify-center rounded-full bg-primary font-serif text-lg font-semibold text-primary-foreground dark:bg-secondary">
-              {index + 1}
-            </span>
-            <p className="text-lg font-semibold">{step.title}</p>
-            <p className="text-sm text-muted-foreground">{step.description}</p>
+          <li key={step.title} className="rounded-lg border bg-card p-8">
+            <IconBox icon={stepIcons[index] ?? Inbox} tone={index === 1 ? 'ia' : 'brand'} />
+            <p className="mb-2 text-[17px] leading-6 font-semibold">{step.title}</p>
+            <p className="text-muted-foreground">{step.description}</p>
           </li>
         ))}
       </ol>
-    </section>
+    </Section>
   )
 }
 

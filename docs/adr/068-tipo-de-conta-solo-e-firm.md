@@ -68,9 +68,12 @@ papel): mudou uma policy no backend, o teste e a tabela acima são o que acusa a
 
 O assistente `/onboarding` ganha, na primeira etapa, a pergunta "Como você atua?" com as duas
 opções. Solo: CPF obrigatório, sem nome de escritório (a conta leva o nome do titular), e a
-pergunta de tamanho de equipe some (vale 1). A opção Solo só aparece com
-`NEXT_PUBLIC_SOLO_SIGNUP=true` ou com os mocks ligados, para não oferecer ao usuário um cadastro
-que um backend antigo recusaria.
+pergunta de tamanho de equipe some (vale 1). A opção Solo vem ligada por padrão, já que o
+backend e a migration `AddTenantAccountType` existem; `NEXT_PUBLIC_SOLO_SIGNUP=false` a desliga
+para apontar o frontend a um backend antigo que recusaria o cadastro.
+
+Conta Solo também não vê **Tarefas** (kanban de gestão da equipe), só faz sentido com equipe.
+Como é sempre Owner, mantém financeiro, indicadores, auditoria e as telas de advogado.
 
 ## Consequências e pendências
 

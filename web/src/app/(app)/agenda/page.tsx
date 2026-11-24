@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AgendaView } from '@/features/agenda/components/AgendaView'
 
@@ -8,7 +9,9 @@ export default function AgendaPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Agenda" description="Audiências, reuniões, prazos e tarefas da equipe." />
-      <AgendaView />
+      <Suspense>
+        <AgendaView />
+      </Suspense>
     </div>
   )
 }

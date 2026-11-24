@@ -96,7 +96,7 @@ export function ChatPanel({ atendimentoId, onBack }: ChatPanelProps) {
   return (
     <section
       aria-label="Conversa"
-      className="flex h-full min-h-0 flex-col rounded-xl border bg-card"
+      className="flex h-full min-h-0 animate-iu-in flex-col rounded-xl border bg-card"
     >
       <header className="flex flex-wrap items-center gap-3 border-b p-3">
         {onBack ? (

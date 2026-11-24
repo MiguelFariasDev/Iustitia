@@ -29,7 +29,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         <TooltipProvider delayDuration={300}>
           <AuthListener />
           {children}
-          <Toaster position="top-right" richColors closeButton />
+          <Toaster />
         </TooltipProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />

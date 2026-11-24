@@ -37,6 +37,8 @@ public static class DependencyInjection
         });
 
         services.AddScoped<ICalendarEventRepository, CalendarEventRepository>();
+        services.AddScoped<IWorkTaskRepository, WorkTaskRepository>();
+        services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IWorkflowUnitOfWork, WorkflowUnitOfWork>();
         services.AddScoped<IProcessLookup, SqlProcessLookup>();
 

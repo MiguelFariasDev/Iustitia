@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Advocacia.Modules.Drafting.Api</RootNamespace>
+    <AssemblyName>Advocacia.Modules.Drafting.Api</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Drafting.Application\Drafting.Application.csproj" />
+    <!-- Encanamento web compartilhado (MapVersionedGroup, ResultExtensions, Policies, rate limiting); nunca Platform.Domain/Platform.Application. -->
+    <ProjectReference Include="..\..\..\Platform\Platform.Api\Platform.Api.csproj" />
+    <ProjectReference Include="..\..\..\Platform\Platform.Infrastructure\Platform.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -8,7 +8,8 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- CS1573: records com <param> só em parte dos parâmetros (o resumo da record já descreve o resto) -->
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
 
     <!-- Só trata warnings como erro em Release, para não travar o dia a dia em Debug -->
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>

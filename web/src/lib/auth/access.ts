@@ -14,13 +14,15 @@ import type { AccountType, UserRole } from './types'
  * Mudou uma policy no backend? Mude a linha correspondente aqui — e o teste de `access.test.ts`
  * que lista cada tela por papel é o que acusa a divergência na revisão.
  *
- * Conta Solo: uma pessoa só, sempre Owner. Some o que só faz sentido com equipe (usuários,
- * filtro por responsável) e o cadastro do "escritório" vira "dados profissionais".
+ * Conta Solo: uma pessoa só, sempre Owner — logo com TODAS as permissões de titular (advogado,
+ * financeiro, indicadores, auditoria…). Some só o que exige equipe (usuários, tarefas/kanban de
+ * gestão, filtro por responsável) e o cadastro do "escritório" vira "dados profissionais".
  */
 export type Screen =
   | 'dashboard'
   | 'agenda'
   | 'publications'
+  | 'review'
   | 'alerts'
   | 'processes'
   | 'clients'
@@ -30,6 +32,7 @@ export type Screen =
   | 'drafting'
   | 'documents'
   | 'indicators'
+  | 'tasks'
   | 'settings.profile'
   | 'settings.tenant'
   | 'settings.users'
@@ -52,6 +55,7 @@ export const screenRules: Record<Screen, Rule> = {
   agenda: { roles: allRoles },
   documents: { roles: allRoles },
   publications: { roles: lawyerOrAbove },
+  review: { roles: lawyerOrAbove },
   alerts: { roles: lawyerOrAbove },
   processes: { roles: lawyerOrAbove },
   clients: { roles: lawyerOrAbove },
@@ -60,6 +64,9 @@ export const screenRules: Record<Screen, Rule> = {
   drafting: { roles: lawyerOrAbove },
   finance: { roles: ['Owner', 'Partner', 'Financial'] },
   indicators: { roles: partnerOrAbove },
+  // Tarefas da equipe (kanban de gestão do escritório): todos, menos o financeiro, e só em
+  // conta com equipe. Não há API de tarefas: sem policy a espelhar.
+  tasks: { roles: ['Owner', 'Partner', 'Lawyer', 'Intern', 'Admin'] },
   'settings.profile': { roles: allRoles },
   'settings.notifications': { roles: allRoles },
   'settings.integrations': { roles: allRoles },
@@ -103,6 +110,8 @@ export function screenLabel(screen: Screen, fallback: string, context: AccessCon
 }
 
 const pathScreens: readonly (readonly [string, Screen])[] = [
+  // Mais específica que /publicacoes, então vem antes.
+  ['/publicacoes/revisao', 'review'],
   [routes.settings.profile, 'settings.profile'],
   [routes.settings.tenant, 'settings.tenant'],
   [routes.settings.users, 'settings.users'],
@@ -120,6 +129,7 @@ const pathScreens: readonly (readonly [string, Screen])[] = [
   [routes.finance, 'finance'],
   [routes.drafting, 'drafting'],
   [routes.documents, 'documents'],
+  [routes.tasks, 'tasks'],
   [routes.indicators, 'indicators'],
 ]
 

@@ -1,6 +1,5 @@
 'use client'
 
-import { DemoNotice } from '@/components/shared/DemoNotice'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { useFinanceiroResumo, useFluxoCaixa, useLancamentos } from '../hooks'
@@ -16,10 +15,6 @@ export function FinanceiroView() {
 
   return (
     <div className="space-y-6">
-      <DemoNotice modulo="Financeiro">
-        nada aqui é do seu escritório. Lançamentos novos valem só até recarregar a página.
-      </DemoNotice>
-
       {erro ? (
         <ErrorState
           error={erro}

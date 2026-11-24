@@ -19,6 +19,22 @@ public sealed class PublicationSuggestionRepository(LegalDbContext dbContext) : 
             suggestion => suggestion.TenantId == tenantId && suggestion.PublicationId == publicationId,
             cancellationToken);
 
+    public async Task<IReadOnlyDictionary<Guid, PublicationSuggestion>> ListByPublicationIdsAsync(
+        Guid tenantId, IReadOnlyCollection<Guid> publicationIds, CancellationToken cancellationToken = default)
+    {
+        if (publicationIds.Count == 0)
+        {
+            return new Dictionary<Guid, PublicationSuggestion>();
+        }
+
+        var ids = publicationIds.Select(PublicationId.From).ToList();
+        var suggestions = await dbContext.PublicationSuggestions
+            .Where(suggestion => suggestion.TenantId == tenantId && ids.Contains(suggestion.PublicationId))
+            .ToListAsync(cancellationToken);
+
+        return suggestions.ToDictionary(suggestion => suggestion.PublicationId.Value);
+    }
+
     public async Task<IReadOnlyList<Publication>> ListAwaitingSuggestionAsync(
         Guid tenantId, int skip, int take, CancellationToken cancellationToken = default) =>
         await dbContext.Publications

@@ -45,7 +45,7 @@ export function AtendimentosView() {
   }
 
   return (
-    <div className="grid h-[calc(100dvh-13rem)] min-h-[32rem] gap-4 lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
+    <div className="grid h-[calc(100dvh-16.5rem)] min-h-[32rem] gap-4 md:h-[calc(100dvh-13rem)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
       <div className={selectedId ? 'hidden min-h-0 lg:block' : 'min-h-0'}>
         <ConversaList
           tab={tab}

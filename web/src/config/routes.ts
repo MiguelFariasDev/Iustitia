@@ -6,6 +6,7 @@ export const routes = {
   forgotPassword: '/esqueci-senha',
   resetPassword: '/redefinir-senha',
   onboarding: '/onboarding',
+  mfa: '/mfa',
   dashboard: '/painel',
   publications: '/publicacoes',
   alerts: '/alertas',
@@ -17,6 +18,7 @@ export const routes = {
   finance: '/financeiro',
   drafting: '/criacao-de-pecas',
   documents: '/documentos',
+  tasks: '/tarefas',
   indicators: '/indicadores',
   settings: {
     root: '/configuracoes',

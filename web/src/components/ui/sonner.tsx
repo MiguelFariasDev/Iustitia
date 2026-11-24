@@ -16,6 +16,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={resolvedTheme}
+      // Centralizado embaixo (34px do fundo), como no protótipo. O `offset` empurra o contêiner;
+      // o centramento é do próprio Sonner (sem translateX, que a animação de entrada anularia).
+      position="bottom-center"
+      offset={34}
       className="toaster group"
       containerAriaLabel="Notificações"
       icons={{
@@ -27,9 +31,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       style={
         {
-          '--normal-bg': 'var(--popover)',
-          '--normal-text': 'var(--popover-foreground)',
-          '--normal-border': 'var(--border)',
+          // Toast escuro fixo nos dois temas (token --toast), legível sobre qualquer tela.
+          '--normal-bg': 'var(--toast)',
+          '--normal-text': 'var(--toast-foreground)',
+          '--normal-border': 'transparent',
           '--border-radius': 'var(--radius)',
         } as React.CSSProperties
       }

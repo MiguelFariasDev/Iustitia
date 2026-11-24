@@ -56,6 +56,22 @@ export interface Credentials {
   password: string
 }
 
+/** Segundo fator (TOTP) do Supabase Auth. */
+export interface MfaStatus {
+  /** Já existe um autenticador verificado cadastrado. */
+  enrolled: boolean
+  /** Id do fator verificado, para o desafio de login. */
+  factorId: string | null
+}
+
+export interface MfaEnrollment {
+  factorId: string
+  /** QR code como URI de dados (SVG) — vai direto em <img src>. */
+  qrCode: string
+  /** Chave para digitar à mão quando não dá para ler o QR. */
+  secret: string
+}
+
 export interface AuthService {
   signIn(credentials: Credentials): Promise<AuthSession>
   signOut(): Promise<void>
@@ -64,6 +80,11 @@ export interface AuthService {
   onAuthStateChange(callback: (event: AuthEvent, session: AuthSession | null) => void): () => void
   resetPassword(email: string): Promise<void>
   updatePassword(password: string): Promise<void>
+  mfaStatus(): Promise<MfaStatus>
+  /** Inicia o cadastro do autenticador; só vale depois de confirmado com mfaVerify. */
+  mfaEnroll(): Promise<MfaEnrollment>
+  /** Confirma o código de 6 dígitos e eleva a sessão a aal2. */
+  mfaVerify(factorId: string, code: string): Promise<void>
 }
 
 export class AuthError extends Error {

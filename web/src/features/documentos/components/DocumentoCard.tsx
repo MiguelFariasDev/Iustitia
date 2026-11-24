@@ -24,7 +24,7 @@ export function DocumentoCard({ documento, onDownload, onDelete }: DocumentoCard
   const { vinculo } = documento
 
   return (
-    <Card className="h-full">
+    <Card className="h-full iu-lift">
       <CardContent className="flex h-full flex-col gap-3 px-4">
         <div className="flex items-start gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary">

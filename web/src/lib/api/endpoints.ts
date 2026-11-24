@@ -47,21 +47,56 @@ export const endpoints = {
     byId: (id: string) => `/contatos/${id}`,
     reactivate: (id: string) => `/contatos/${id}/reactivate`,
   },
+  tarefas: {
+    root: '/tarefas',
+    byId: (id: string) => `/tarefas/${id}`,
+    status: (id: string) => `/tarefas/${id}/status`,
+  },
+  tags: {
+    root: '/tags',
+    byId: (id: string) => `/tags/${id}`,
+    atribuicoes: '/tags/atribuicoes',
+  },
   agenda: {
     eventos: '/agenda/eventos',
     eventoById: (id: string) => `/agenda/eventos/${id}`,
     reschedule: (id: string) => `/agenda/eventos/${id}/reschedule`,
   },
+  /** Criação de peças com IA (Drafting). A geração é assíncrona: enfileira e se acompanha por status. */
+  pecas: {
+    gerar: '/pecas/gerar',
+    status: (id: string) => `/pecas/${id}/status`,
+    byId: (id: string) => `/pecas/${id}`,
+    cancelar: (id: string) => `/pecas/${id}/cancelar`,
+  },
+  /** Acervo de documentos que alimenta a geração de peças (upload indexa de forma assíncrona). */
+  acervo: {
+    upload: '/documentos/upload',
+    byId: (id: string) => `/documentos/${id}`,
+  },
   clientes: {
     list: '/clientes',
     byId: (id: string) => `/clientes/${id}`,
     reactivate: (id: string) => `/clientes/${id}/reactivate`,
+    /** LGPD: GET devolve um JSON com todos os dados do titular (acesso e portabilidade). */
+    exportacao: (id: string) => `/clientes/${id}/exportacao`,
+    /** LGPD: POST elimina de forma irreversível os dados pessoais do cliente. */
+    anonimizar: (id: string) => `/clientes/${id}/anonimizar`,
+  },
+  financeiro: {
+    lancamentos: '/financeiro/lancamentos',
+    pagar: (id: string) => `/financeiro/lancamentos/${id}/pagar`,
+    excluir: (id: string) => `/financeiro/lancamentos/${id}`,
+    resumo: '/financeiro/resumo',
+    fluxoCaixa: '/financeiro/fluxo-caixa',
   },
   processos: {
     list: '/processos',
     byId: (id: string) => `/processos/${id}`,
     status: (id: string) => `/processos/${id}/status`,
     archive: (id: string) => `/processos/${id}/archive`,
+    /** PATCH { confidencial } — sigilo interno; só Partner ou acima. */
+    confidencial: (id: string) => `/processos/${id}/confidencial`,
     /**
      * Consulta de metadados no tribunal (DataJud, via backend) para auto-preencher o
      * cadastro. Limitada a 10 consultas/min por usuário — ver ADR-064.
@@ -78,6 +113,8 @@ export const endpoints = {
     read: (id: string) => `/publications/${id}/read`,
     /** PATCH { status, notes } — revisão humana (ADR-012). */
     status: (id: string) => `/publications/${id}/status`,
+    /** POST { decision, deadlineDays?, notes? } — decisão completa: status + prazo calculado no servidor + agenda. */
+    review: (id: string) => `/publications/${id}/review`,
   },
   /** Inbox do advogado (JWT). O Bot usa /bot/atendimentos com chave de API — nunca daqui. */
   atendimentos: {

@@ -69,8 +69,15 @@ describe('conta Solo', () => {
     expect(canAccess('settings.users', ctx('Owner', 'Firm'))).toBe(true)
   })
 
-  it('mantém todo o resto que o titular enxerga', () => {
-    expect(telas.filter((tela) => !canAccess(tela, solo))).toEqual(['settings.users'])
+  it('tem tarefas: servem também para organizar o próprio trabalho', () => {
+    expect(canAccess('tasks', solo)).toBe(true)
+  })
+
+  it('mantém todo o resto que o titular enxerga, inclusive financeiro e indicadores', () => {
+    expect(telas.filter((tela) => !canAccess(tela, solo)).sort()).toEqual(['settings.users'])
+    expect(canAccess('finance', solo)).toBe(true)
+    expect(canAccess('indicators', solo)).toBe(true)
+    expect(canAccess('processes', solo)).toBe(true)
   })
 
   it('a tela do escritório vira "Dados profissionais"', () => {
@@ -105,6 +112,7 @@ describe('screenForPath', () => {
         '/painel',
         '/agenda',
         '/publicacoes',
+        '/publicacoes/revisao',
         '/alertas',
         '/processos',
         '/clientes',
@@ -113,6 +121,7 @@ describe('screenForPath', () => {
         '/financeiro',
         '/criacao-de-pecas',
         '/documentos',
+        '/tarefas',
         '/indicadores',
         '/configuracoes/perfil',
         '/configuracoes/escritorio',

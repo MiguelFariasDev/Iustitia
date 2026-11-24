@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Newspaper } from 'lucide-react'
+import { ListChecks, Newspaper } from 'lucide-react'
 import Link from 'next/link'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { routes } from '@/config/routes'
+import { useTarefaActions, useTarefas } from '@/features/tarefas/hooks'
+import { rotuloColuna } from '@/features/tarefas/kanban'
 import { ApiError } from '@/lib/api/errors'
 import { formatDate } from '@/lib/format'
 import { getPublicationsByProcess } from '../../publicacoes/api'
@@ -18,18 +20,28 @@ import { useConsultarTribunal } from '../hooks'
 import type { Processo } from '../types'
 
 /**
- * Abas do detalhe. "Tarefas" e "Documentos" chegam nas Fases 3 e 4, e "Histórico" espera o
- * filtro por entidade na auditoria (hoje só existe por tipo) — abas vazias não entram.
+ * Abas do detalhe. "Documentos" chega na Fase 4, e "Histórico" espera o filtro por entidade na
+ * auditoria (hoje só existe por tipo) — abas vazias não entram.
  */
-export function ProcessoAbas({ processo }: { processo: Processo }) {
+export function ProcessoAbas({
+  processo,
+  onNovaTarefa,
+}: {
+  processo: Processo
+  onNovaTarefa: () => void
+}) {
   return (
     <Tabs defaultValue="publicacoes">
       <TabsList>
         <TabsTrigger value="publicacoes">Publicações</TabsTrigger>
         <TabsTrigger value="movimentos">Movimentos</TabsTrigger>
+        <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
       </TabsList>
       <TabsContent value="publicacoes">
         <PublicacoesDoProcesso processoId={processo.id} />
+      </TabsContent>
+      <TabsContent value="tarefas">
+        <TarefasDoProcesso processoId={processo.id} onNovaTarefa={onNovaTarefa} />
       </TabsContent>
       <TabsContent value="movimentos">
         <MovimentosDoProcesso cnjNumber={processo.cnjNumber} />
@@ -136,6 +148,72 @@ function MovimentosDoProcesso({ cnjNumber }: { cnjNumber: string }) {
             ))}
           </ol>
         ) : null}
+      </CardContent>
+    </Card>
+  )
+}
+
+function TarefasDoProcesso({
+  processoId,
+  onNovaTarefa,
+}: {
+  processoId: string
+  onNovaTarefa: () => void
+}) {
+  const tarefas = useTarefas().filter((t) => t.processoId === processoId)
+  const { mover, remover } = useTarefaActions()
+
+  if (tarefas.length === 0) {
+    return (
+      <EmptyState
+        icon={ListChecks}
+        title="Nenhuma tarefa neste processo"
+        description="Crie tarefas para acompanhar o que falta fazer neste caso."
+        action={
+          <Button size="sm" onClick={onNovaTarefa}>
+            Nova tarefa
+          </Button>
+        }
+      />
+    )
+  }
+
+  return (
+    <Card>
+      <CardContent className="divide-y p-0">
+        {tarefas.map((tarefa) => {
+          const concluida = tarefa.coluna === 'concluido'
+
+          return (
+            <div key={tarefa.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={concluida}
+                onChange={() => void mover(tarefa.id, concluida ? 'afazer' : 'concluido')}
+                aria-label={`Concluir “${tarefa.titulo}”`}
+                className="size-4"
+              />
+              <div className="min-w-0 flex-1">
+                <p className={concluida ? 'text-sm line-through' : 'text-sm font-medium'}>
+                  {tarefa.titulo}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {rotuloColuna(tarefa.coluna)}
+                  {tarefa.prazo ? ` · prazo ${formatDate(`${tarefa.prazo}T12:00:00`)}` : ''}
+                  {tarefa.responsavel ? ` · ${tarefa.responsavel}` : ''}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => void remover(tarefa.id)}>
+                Excluir
+              </Button>
+            </div>
+          )
+        })}
+        <div className="px-4 py-3">
+          <Button variant="outline" size="sm" onClick={onNovaTarefa}>
+            Nova tarefa
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

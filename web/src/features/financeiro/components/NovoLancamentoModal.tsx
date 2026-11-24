@@ -37,9 +37,8 @@ import { lancamentoFormDefaults, lancamentoFormSchema, type LancamentoFormValues
 import { tiposLancamento, tipoLancamentoLabels } from '../types'
 
 /**
- * MOCK: grava no repositório em memória (ver mocks.ts) — o lançamento aparece na lista e nos
- * totais, mas some ao recarregar. TODO(financeiro-backend, Fase 4/8): sem mudança aqui; só
- * api.ts passa a chamar o servidor.
+ * Registra o lançamento no servidor: ele aparece na lista e nos totais para todo o escritório
+ * autorizado (titular, sócios e financeiro).
  */
 export function NovoLancamentoModal() {
   const [open, setOpen] = useState(false)
@@ -77,7 +76,7 @@ export function NovoLancamentoModal() {
         <DialogHeader>
           <DialogTitle>Novo lançamento</DialogTitle>
           <DialogDescription>
-            Demonstração: o lançamento vale só até recarregar a página.
+            O lançamento fica salvo no escritório, visível a quem tem acesso ao financeiro.
           </DialogDescription>
         </DialogHeader>
 

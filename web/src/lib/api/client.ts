@@ -22,6 +22,17 @@ export interface ApiClientOptions {
   getAccessToken?: () => Promise<string | null>
   refreshAccessToken?: () => Promise<string | null>
   onUnauthorized?: () => void
+  /** 401 AUTH_MFA_REQUIRED: a sessão é válida, mas falta o segundo fator (papéis privilegiados). */
+  onMfaRequired?: () => void
+}
+
+function redirectToMfa() {
+  if (typeof window === 'undefined') return
+  // Já na tela de MFA: nada a fazer (evita laço de navegação).
+  if (window.location.pathname.startsWith('/mfa')) return
+  const next = `${window.location.pathname}${window.location.search}`
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.assign(`/mfa?next=${encodeURIComponent(next)}`)
 }
 
 function redirectToLogin() {
@@ -47,6 +58,7 @@ export function createApiClient(options: ApiClientOptions = {}): AxiosInstance {
     onUnauthorized = () => {
       void authService.signOut().finally(redirectToLogin)
     },
+    onMfaRequired = redirectToMfa,
   } = options
 
   const instance = axios.create({
@@ -89,6 +101,17 @@ export function createApiClient(options: ApiClientOptions = {}): AxiosInstance {
 
       const config = error.config as RetriableConfig | undefined
       const status = error.response?.status ?? (error.code === 'ECONNABORTED' ? 408 : 0)
+
+      // Renovar o token não resolve: o nível de garantia só sobe com o desafio do TOTP.
+      const errorData: unknown = error.response?.data
+      if (
+        status === 401 &&
+        isProblemDetails(errorData) &&
+        errorData.errorCode === 'AUTH_MFA_REQUIRED'
+      ) {
+        onMfaRequired()
+        throw new ApiError(status, errorData)
+      }
 
       if (status === 401 && config && !config._retried) {
         config._retried = true

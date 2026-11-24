@@ -130,6 +130,22 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `INTEGRATION_RATE_LIMITED` | Limite de requisições ao serviço externo '{0}' excedido. Tente novamente mais tarde. | 500 | Failure | Reservado (ver acima). | Tentar novamente mais tarde. |
 | `INTEGRATION_INVALID_RESPONSE` | Resposta inesperada do serviço externo '{0}'. | 500 | Failure | Reservado (ver acima). | Reportar ao suporte. |
 
+## Client (1100–1199)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `CLIENT_NOT_FOUND` | Cliente não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `CLIENT_DOCUMENT_DUPLICATED` | Já existe um cliente cadastrado com este CPF/CNPJ. | 409 | Conflict | CPF/CNPJ já cadastrado no escritório. | Usar o cliente existente. |
+| `CLIENT_DOCUMENT_INVALID` | CPF ou CNPJ inválido. | 400 | Validation | CPF/CNPJ com dígitos verificadores errados ou tipo divergente. | Corrigir o documento. |
+| `CLIENT_NAME_REQUIRED` | O nome do cliente é obrigatório. | 400 | Validation | Nome vazio. | Informar o nome. |
+| `CLIENT_ALREADY_ACTIVE` | Este cliente já está ativo. | 409 | Conflict | Reativar quem já está ativo. | Nenhuma ação. |
+| `CLIENT_ALREADY_INACTIVE` | Este cliente já está inativo. | 409 | Conflict | Desativar quem já está inativo. | Nenhuma ação. |
+| `CLIENT_EMAIL_INVALID` | E-mail do cliente inválido. | 400 | Validation | Formato de e-mail incorreto. | Corrigir o e-mail. |
+| `CLIENT_PHONE_INVALID` | Telefone inválido. Informe DDD e número (10 ou 11 dígitos). | 400 | Validation | Telefone fora do formato. | Corrigir o telefone. |
+| `CLIENT_BIRTHDATE_INVALID` | Data de nascimento inválida: não pode estar no futuro. | 400 | Validation | Data futura ou informada para pessoa jurídica. | Corrigir a data. |
+| `CLIENT_HAS_ACTIVE_PROCESSES` | Este cliente tem processos em andamento. Encerre ou arquive os processos antes de anonimizar os dados. | 409 | Conflict | Anonimização pedida com processo ativo ou suspenso (LGPD: o escritório precisa manter os dados do caso em curso). | Encerrar/arquivar os processos e repetir. |
+| `CLIENT_ANONYMIZED` | Os dados deste cliente foram anonimizados e não podem mais ser alterados. | 409 | Conflict | Editar, reativar ou anonimizar de novo um cliente já anonimizado. | Nenhuma: a anonimização é irreversível. |
+
 ## Publication (1300–1399)
 
 Módulo Legal — ver `docs/modules/legal/publications.md`.
@@ -220,6 +236,40 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `AI_UNAVAILABLE` | O serviço de IA está indisponível no momento. | 500 | Failure | Falha de rede, `5xx` que sobreviveu ao retry, ou circuit breaker aberto. | Nenhuma ação (retry). |
 | `AI_INVALID_RESPONSE` | A resposta da IA não pôde ser validada e foi descartada. | 500 | Failure | O Claude devolveu texto que não é JSON, não segue o contrato do prompt (campo ausente, tipo errado, `act_type` fora da lista, `confidence` fora de 0–100). Os tokens consumidos continuam registrados em `ai_usage_logs`. | Nenhuma ação do usuário: a publicação segue sem sugestão; após 3 tentativas deixa de ser reprocessada. Se recorrente, revisar o prompt/versão. |
 | `AI_PROMPT_NOT_FOUND` | O prompt '{0}' não foi encontrado. | 500 | Failure | O arquivo `.md` versionado não está embarcado no assembly ou não tem as seções `SYSTEM`/`USER`. | Erro de empacotamento — reportar ao suporte. |
+
+## Drafting (2600–2699)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `DRAFTING_DISABLED` | A geração assistida de peças não está habilitada neste ambiente. | 500 | Failure | `Drafting:Enabled` é `false` (padrão). | Habilitar `Drafting:Enabled` depois de cumprir o checklist de privacidade da ADR-072. |
+| `DRAFTING_INVALID_PIECE_TYPE` | Tipo de peça inválido. | 400 | Validation | `tipoPeca` fora da lista aceita. | Usar um dos tipos documentados (ex.: `peticao_inicial`). |
+| `DRAFTING_INVALID_AREA` | Área do direito inválida. | 400 | Validation | `area` fora da lista aceita. | Usar uma das áreas documentadas (ex.: `civel`). |
+| `DRAFTING_FIELD_REQUIRED` | O campo '{0}' é obrigatório. | 400 | Validation | `fatos` ou `pedidos` vazios. | Preencher o campo. |
+| `DRAFTING_FIELD_TOO_LONG` | O campo '{0}' excede o limite de {1} caracteres. | 400 | Validation | Campo acima do limite. | Resumir o texto. |
+| `DRAFTING_PROMPT_INJECTION` | O campo '{0}' contém instruções dirigidas ao assistente, que não são aceitas. | 400 | Validation | O texto tenta mudar as regras do assistente (ex.: "ignore as regras anteriores"). | Descrever só fatos e pedidos. |
+| `DRAFTING_REQUEST_NOT_FOUND` | Solicitação de peça não encontrada. | 404 | NotFound | `pecaOrigemId` inexistente neste escritório. | Conferir o identificador. |
+| `DRAFTING_GENERATION_FAILED` | Não foi possível gerar a peça. Tente novamente. | 500 | Failure | Falha do Ollama/Qdrant, timeout ou cancelamento. O detalhe técnico fica no log e na solicitação, nunca na resposta. | Tentar de novo; se persistir, conferir a saúde da instância de IA. |
+| `DRAFTING_TOO_MANY_DOCUMENTS` | Informe no máximo {0} documentos. | 400 | Validation | `documentosIds` acima do limite. | Reduzir a lista. |
+| `DRAFTING_CANNOT_CANCEL` | Esta solicitação já foi concluída, falhou ou foi cancelada e não pode mais ser cancelada. | 409 | Conflict | `POST /pecas/{id}/cancelar` em solicitação terminal. | Nada a fazer; use regenerar para uma nova versão. |
+| `DRAFTING_CONFIRMATION_REQUIRED` | Confirme a regeração enviando "confirmar": true. | 400 | Validation | `POST /pecas/{id}/regenerar` sem confirmação. | Reenviar com `confirmar: true`. |
+| `DRAFTING_UNSUPPORTED_FILE` | Arquivo não suportado ou ilegível. Envie PDF com texto, DOCX ou TXT. | 400 | Validation | Extensão fora da lista, arquivo corrompido ou PDF escaneado (sem camada de texto; OCR não implementado). | Converter para PDF com texto/DOCX/TXT. |
+| `DRAFTING_FILE_TOO_LARGE` | O arquivo excede o limite de {0} MB. | 400 | Validation | Upload acima de `Drafting:Ingestao:MaxMegabytes`. | Dividir o arquivo. |
+| `DRAFTING_DOCUMENT_NOT_FOUND` | Documento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório/usuário (privado). | Conferir o identificador. |
+| `DRAFTING_DOCUMENT_DUPLICATE` | Este documento já foi enviado (mesmo conteúdo). | 409 | Conflict | Mesmo hash de conteúdo no escritório. | Usar o documento existente. |
+| `DRAFTING_NOT_STREAMING` | A solicitação não está em processamento; consulte o resultado em GET /pecas/{id}. | 409 | Conflict | `GET /pecas/{id}/stream` em solicitação já terminal. | Consultar `GET /pecas/{id}`. |
+| `DRAFTING_NOT_READY` | A minuta ainda não está pronta. Acompanhe o status da solicitação. | 409 | Conflict | Reservado para consumidores que exijam a minuta concluída. | Acompanhar `GET /pecas/{id}/status`. |
+| `DRAFTING_GPU_UNAVAILABLE` | A infraestrutura de IA não está disponível no momento. | 500 | Failure | A instância de GPU não subiu no prazo, o circuito está aberto ou a API da Vast.ai falhou. O detalhe fica em `gpu_instance_logs`; a solicitação continua na fila. | Verificar saldo/estado da instância na Vast.ai; o worker tenta de novo sozinho. |
+| `DRAFTING_NORMA_NOT_FOUND` | Norma não encontrada no acervo. | 404 | NotFound | Id inexistente ou norma removida do acervo normativo público. | Conferir o identificador (o `normaId` vem das fontes da peça). |
+| `DRAFTING_VECTOR_STORE_UNAVAILABLE` | O acervo de documentos está indisponível no momento. Tente novamente. | 500 | Failure | O Qdrant não respondeu ao remover um documento. | Tentar de novo; conferir o Qdrant. |
+
+## Finance (2700–2799)
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `FINANCE_ENTRY_NOT_FOUND` | Lançamento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório. | Confirmar o identificador. |
+| `FINANCE_ENTRY_DESCRIPTION_INVALID` | Informe a descrição do lançamento (até 200 caracteres). | 400 | Validation | Descrição vazia ou acima de 200 caracteres. | Corrigir a descrição. |
+| `FINANCE_ENTRY_AMOUNT_INVALID` | O valor deve ser maior que zero, com no máximo duas casas decimais. | 400 | Validation | Valor zero, negativo, absurdo ou com mais de duas casas. | Corrigir o valor. |
+| `FINANCE_ENTRY_ALREADY_PAID` | Este lançamento já foi pago. | 409 | Conflict | Marcar como pago um lançamento já pago. | Nenhuma ação. |
 
 ## Internal (9000–9999)
 

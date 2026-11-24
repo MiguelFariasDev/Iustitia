@@ -27,6 +27,8 @@ export interface ClienteDto {
   observacoes: string | null
   isActive: boolean
   createdAt: string
+  /** Preenchido quando os dados pessoais foram anonimizados (LGPD). */
+  anonimizadoEm?: string | null
 }
 
 /** ClienteListItem (Legal.Application.Features.Clientes). */
@@ -69,6 +71,7 @@ export function toCliente(dto: ClienteDto): Cliente {
     observacoes: dto.observacoes,
     isActive: dto.isActive,
     createdAt: dto.createdAt,
+    anonimizadoEm: dto.anonimizadoEm ?? null,
     endereco: {
       logradouro: dto.logradouro,
       numero: dto.numero,

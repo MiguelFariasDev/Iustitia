@@ -40,6 +40,7 @@
     <PackageVersion Include="Dapper" Version="2.1.35" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
@@ -49,6 +50,13 @@
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <!-- Pin de segurança: trazido transitivamente pelo Hangfire.AspNetCore (Etapa 0.5) -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+
+    <!-- Banco vetorial (módulo Drafting, ADR-072): cliente oficial do Qdrant, gRPC. -->
+    <PackageVersion Include="Qdrant.Client" Version="1.15.1" />
+
+    <!-- Extração de texto do acervo (módulo Drafting, ADR-072): PDF com camada de texto e DOCX. Ambas sem custo e com licença permissiva (Apache-2.0 / MIT). -->
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
+    <PackageVersion Include="DocumentFormat.OpenXml" Version="3.3.0" />
 
     <!-- Jobs / Mensageria -->
     <PackageVersion Include="Hangfire.Core" Version="1.8.15" />
