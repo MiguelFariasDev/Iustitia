@@ -100,10 +100,14 @@ public static class DependencyInjection
             bus.AddConsumer<TenantCreatedConsumer>();
             bus.AddConsumer<AuditLogCreatedConsumer>();
             bus.AddConsumer<AlertCreatedConsumer>();
+            bus.AddConsumer<AlertEmailConsumer>();
 
             configureModuleConsumers?.Invoke(bus);
         });
 
+        // E-mail transacional (provedor Resend; chave só por variável de ambiente — Email__ApiKey).
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.AddHttpClient<IEmailSender, ResendEmailSender>(client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<INotificationService, EmailService>();
 
         // Alertas in-app (ADR-065): repositório, porta de criação para os módulos e push Realtime.
