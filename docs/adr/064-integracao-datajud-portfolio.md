@@ -1,6 +1,8 @@
 # ADR-064: Integração com a API Pública do DataJud (uso portfólio)
 
-**Status:** Aceito — com prazo de validade explícito (ver "Consequências")
+**Status:** Aceito — com prazo de validade explícito (ver "Consequências"). **Revisado pelo ADR-075** (2026-11-25):
+o DataJud deixa de ser a fonte principal e passa a ser o fallback do juscraper, na consulta do cadastro e no
+acompanhamento de tribunais sem cobertura. O enquadramento de portfólio continua valendo para esse uso.
 
 ## Contexto
 
@@ -124,3 +126,13 @@ pública descreve a intenção, não o que o serviço faz.
   de uso em geral proíbem automação — além de frágil e caro de manter.
 - **Não integrar**: o cadastro manual funciona. Mas migrar um acervo inteiro à mão é o tipo
   de atrito que faz um sistema ser abandonado na primeira semana.
+
+## Revisão — ADR-075 (2026-11-25)
+
+O cenário previsto aqui ("trocar de fonte é escrever outro adaptador") aconteceu: o juscraper, que consulta os
+portais dos tribunais, virou a fonte principal. A porta, o handler, o endpoint e a tela não mudaram; só o
+registro em `DependencyInjection` passou a apontar para um composto com fallback.
+
+O que **não** mudou: o DataJud continua restrito a portfólio. Como fallback, seu uso diminui, mas não some. Ao
+comercializar, `Juscraper:FallbackDataJud` vai para `false` (ou o DataJud é trocado por provedor com contrato).
+
