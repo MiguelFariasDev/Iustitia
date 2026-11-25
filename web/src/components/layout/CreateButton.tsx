@@ -1,7 +1,7 @@
 'use client'
 
 import { Plus } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { notify } from '@/lib/notify'
-import { createActions, type CreateAction } from './createActions'
+import { createActions, hrefNoProcesso, opcoesNoProcesso, processoDaRota, type CreateAction } from './createActions'
 
 export function useRunCreateAction() {
   const router = useRouter()
@@ -29,6 +29,8 @@ export function useRunCreateAction() {
 
 export function CreateButton() {
   const run = useRunCreateAction()
+  const router = useRouter()
+  const processoId = processoDaRota(usePathname())
 
   return (
     <DropdownMenu>
@@ -39,6 +41,21 @@ export function CreateButton() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
+        {processoId ? (
+          <>
+            <DropdownMenuLabel>Neste processo</DropdownMenuLabel>
+            {opcoesNoProcesso.map((opcao) => (
+              <DropdownMenuItem
+                key={opcao.id}
+                onSelect={() => router.push(hrefNoProcesso(processoId, opcao.id))}
+              >
+                <Plus aria-hidden />
+                {opcao.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuLabel>Novo</DropdownMenuLabel>
         {createActions
           .filter((a) => !a.href)

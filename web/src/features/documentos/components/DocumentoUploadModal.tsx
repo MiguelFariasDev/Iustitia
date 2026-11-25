@@ -43,14 +43,35 @@ const defaults = {
   vinculoRotulo: '',
 } as unknown as UploadFormValues
 
+interface DocumentoUploadModalProps {
+  /**
+   * Controlado de fora (ex.: "Novo › Documento" na tela do processo): sem botão próprio. Ausente,
+   * o modal traz o botão "Upload" e controla a si mesmo.
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** Vínculo já preenchido (ex.: o processo aberto). */
+  vinculo?: { tipo: UploadFormValues['vinculoTipo']; rotulo: string }
+}
+
 /** Botão "Upload" + o diálogo. O gatilho mora aqui para o cabeçalho da página ficar no servidor. */
-export function DocumentoUploadModal() {
-  const [open, setOpen] = useState(false)
+export function DocumentoUploadModal({
+  open: openControlado,
+  onOpenChange,
+  vinculo,
+}: DocumentoUploadModalProps = {}) {
+  const [openInterno, setOpenInterno] = useState(false)
+  const controlado = openControlado !== undefined
+  const open = controlado ? openControlado : openInterno
+  const setOpen = (next: boolean) => (controlado ? onOpenChange?.(next) : setOpenInterno(next))
   const { mutate, isPending } = useUploadDocumento()
+  const iniciais = vinculo
+    ? ({ ...defaults, vinculoTipo: vinculo.tipo, vinculoRotulo: vinculo.rotulo } as UploadFormValues)
+    : defaults
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadFormSchema),
-    defaultValues: defaults,
+    defaultValues: iniciais,
     mode: 'onSubmit',
     reValidateMode: 'onChange',
   })
@@ -60,7 +81,7 @@ export function DocumentoUploadModal() {
   function handleOpenChange(next: boolean) {
     setOpen(next)
     // Fechar descarta o rascunho: reabrir com o arquivo anterior selecionado confundiria.
-    if (!next) form.reset(defaults)
+    if (!next) form.reset(iniciais)
   }
 
   function onSubmit(values: UploadFormValues) {
@@ -69,12 +90,14 @@ export function DocumentoUploadModal() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Upload aria-hidden />
-          Upload
-        </Button>
-      </DialogTrigger>
+      {controlado ? null : (
+        <DialogTrigger asChild>
+          <Button>
+            <Upload aria-hidden />
+            Upload
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent>
         <DialogHeader>

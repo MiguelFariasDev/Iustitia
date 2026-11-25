@@ -269,11 +269,11 @@ public static class ErrorCatalog
             [ErrorCode.WORK_TASK_PROCESS_NOT_FOUND] = new(ErrorGroup.Calendar, nameof(ErrorCode.WORK_TASK_PROCESS_NOT_FOUND),
                 "O processo informado para a tarefa não existe neste escritório.", 404, ErrorType.NotFound),
             [ErrorCode.TAG_NOT_FOUND] = new(ErrorGroup.Calendar, nameof(ErrorCode.TAG_NOT_FOUND),
-                "Tag não encontrada.", 404, ErrorType.NotFound),
+                "Etiqueta não encontrada.", 404, ErrorType.NotFound),
             [ErrorCode.TAG_NAME_REQUIRED] = new(ErrorGroup.Calendar, nameof(ErrorCode.TAG_NAME_REQUIRED),
-                "O nome da tag é obrigatório.", 400, ErrorType.Validation),
+                "O nome da etiqueta é obrigatório.", 400, ErrorType.Validation),
             [ErrorCode.TAG_TARGET_INVALID] = new(ErrorGroup.Calendar, nameof(ErrorCode.TAG_TARGET_INVALID),
-                "Alvo da tag inválido. Valores aceitos: Processo, Advogado.", 400, ErrorType.Validation),
+                "Alvo da etiqueta inválido. Valores aceitos: Processo, Advogado.", 400, ErrorType.Validation),
             // ATENDIMENTO (módulo Atendimento — ver docs/modules/atendimento.md)
             [ErrorCode.ATENDIMENTO_NOT_FOUND] = new(ErrorGroup.Atendimento, nameof(ErrorCode.ATENDIMENTO_NOT_FOUND),
                 "Atendimento não encontrado.", 404, ErrorType.NotFound),
@@ -377,6 +377,8 @@ public static class ErrorCatalog
                 "O valor deve ser maior que zero, com no máximo duas casas decimais.", 400, ErrorType.Validation),
             [ErrorCode.FINANCE_ENTRY_ALREADY_PAID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_ALREADY_PAID),
                 "Este lançamento já foi pago.", 409, ErrorType.Conflict),
+            [ErrorCode.FINANCE_ENTRY_INSTALLMENTS_INVALID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_INSTALLMENTS_INVALID),
+                "Informe de 2 a 60 parcelas (ou meses de cobrança).", 400, ErrorType.Validation),
 
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),

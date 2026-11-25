@@ -33,6 +33,32 @@ export async function listEventos(
   return data.items.map(toAgendaEvento)
 }
 
+/** Janela da tela do processo: 5 anos para trás e 5 para a frente (o servidor aceita até 3660 dias com filtro por processo). */
+const JANELA_PROCESSO_DIAS = 1825
+
+/** Prazos, audiências e demais compromissos de UM processo, do mais antigo ao mais recente. */
+export async function listEventosDoProcesso(processoId: string): Promise<AgendaEvento[]> {
+  const agora = Date.now()
+  const dia = 24 * 60 * 60 * 1000
+  const periodo: AgendaPeriodo = {
+    from: new Date(agora - JANELA_PROCESSO_DIAS * dia).toISOString(),
+    to: new Date(agora + JANELA_PROCESSO_DIAS * dia).toISOString(),
+  }
+
+  if (env.useMocks) {
+    return mockResponse(
+      mockListEventos(periodo).filter((evento) => evento.processoId === processoId),
+      200
+    )
+  }
+
+  const { data } = await apiClient.get<ListCalendarEventsDto>(endpoints.agenda.eventos, {
+    params: { from: periodo.from, to: periodo.to, processoId },
+  })
+
+  return data.items.map(toAgendaEvento).sort((a, b) => a.inicio.localeCompare(b.inicio))
+}
+
 export async function createEvento(values: EventoFormValues): Promise<AgendaEvento> {
   const payload = formToPayload(values)
 

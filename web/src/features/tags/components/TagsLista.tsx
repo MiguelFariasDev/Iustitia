@@ -5,7 +5,7 @@ import { tagsDe } from '../repositorio'
 import type { AlvoTag } from '../types'
 import { TagBadge } from './TagBadge'
 
-/** Só exibe as tags aplicadas (listagens); para editar, use TagsEditor. */
+/** Só exibe as etiquetas aplicadas (listagens); para editar, use TagsEditor. */
 export function TagsLista({ alvo, alvoId }: { alvo: AlvoTag; alvoId: string }) {
   const tags = tagsDe(useTagsState(), alvo, alvoId)
   if (tags.length === 0) return null

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircle, ArrowLeft, MailCheck, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -101,6 +101,7 @@ export function OnboardingWizard() {
       acknowledgeAiReview: false,
     },
   })
+  const enviando = useRef(false)
   const password = useWatch({ control: ownerForm.control, name: 'password' })
   const accountType = useWatch({ control: officeForm.control, name: 'accountType' })
   const isSolo = accountType === 'Solo'
@@ -114,6 +115,12 @@ export function OnboardingWizard() {
 
   async function finish(preferences: OnboardingPreferencesValues) {
     if (!office || !owner) return
+    // Trava SÍNCRONA contra envio repetido. O `disabled` do botão só vale depois que o React
+    // redesenha; com rede lenta, toques seguidos passavam antes disso e mandavam o cadastro várias
+    // vezes: o primeiro criava a conta e os outros voltavam "já existe uma conta com este e-mail",
+    // erro que a pessoa via mesmo com a conta criada.
+    if (enviando.current) return
+    enviando.current = true
     setError(null)
 
     // 1) Cadastro: o backend cria a conta E o titular (no Supabase Auth e no banco) de uma vez.
@@ -122,6 +129,7 @@ export function OnboardingWizard() {
     try {
       created = await createTenant({ office, owner, preferences })
     } catch (err) {
+      enviando.current = false
       setError(getErrorMessage(err))
       return
     }

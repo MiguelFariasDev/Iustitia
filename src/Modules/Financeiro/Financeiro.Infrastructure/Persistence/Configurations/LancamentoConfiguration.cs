@@ -29,6 +29,14 @@ public sealed class LancamentoConfiguration : IEntityTypeConfiguration<Lancament
         builder.Property(lancamento => lancamento.Vencimento).HasColumnType("date").IsRequired();
         builder.Property(lancamento => lancamento.PagoEm);
 
+        // Lançamentos antigos nascem "Unica": o default do banco preenche as linhas que já existem.
+        builder.Property(lancamento => lancamento.Recorrencia)
+            .HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(RecorrenciaLancamento.Unica)
+            .HasSentinel((RecorrenciaLancamento)(-1));
+        builder.Property(lancamento => lancamento.SerieId);
+        builder.Property(lancamento => lancamento.Parcela);
+        builder.Property(lancamento => lancamento.TotalParcelas);
+
         builder.Property(lancamento => lancamento.CreatedAt).IsRequired();
         builder.Property(lancamento => lancamento.CreatedBy).HasMaxLength(100);
         builder.Property(lancamento => lancamento.UpdatedBy).HasMaxLength(100);
@@ -40,5 +48,8 @@ public sealed class LancamentoConfiguration : IEntityTypeConfiguration<Lancament
             .HasDatabaseName("ix_lancamentos_tenant_status_tipo");
         builder.HasIndex(lancamento => new { lancamento.TenantId, lancamento.PagoEm })
             .HasDatabaseName("ix_lancamentos_tenant_pago_em");
+        builder.HasIndex(lancamento => new { lancamento.TenantId, lancamento.SerieId })
+            .HasDatabaseName("ix_lancamentos_tenant_serie")
+            .HasFilter("serie_id IS NOT NULL");
     }
 }

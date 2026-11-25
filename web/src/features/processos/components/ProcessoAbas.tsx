@@ -12,11 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { routes } from '@/config/routes'
 import { useTarefaActions, useTarefas } from '@/features/tarefas/hooks'
 import { rotuloColuna } from '@/features/tarefas/kanban'
-import { ApiError } from '@/lib/api/errors'
 import { formatDate } from '@/lib/format'
 import { getPublicationsByProcess } from '../../publicacoes/api'
 import { kindMeta, statusMeta } from '../../publicacoes/presentation'
+import { mensagemConsultaTribunal } from '../datajud'
 import { useConsultarTribunal } from '../hooks'
+import { CompromissosDoProcesso } from './CompromissosDoProcesso'
 import type { Processo } from '../types'
 
 /**
@@ -25,18 +26,24 @@ import type { Processo } from '../types'
  */
 export function ProcessoAbas({
   processo,
+  clienteNome = null,
   onNovaTarefa,
 }: {
   processo: Processo
+  clienteNome?: string | null
   onNovaTarefa: () => void
 }) {
   return (
     <Tabs defaultValue="publicacoes">
       <TabsList>
         <TabsTrigger value="publicacoes">Publicações</TabsTrigger>
+        <TabsTrigger value="agenda">Prazos, audiências e eventos</TabsTrigger>
         <TabsTrigger value="movimentos">Movimentos</TabsTrigger>
         <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
       </TabsList>
+      <TabsContent value="agenda">
+        <CompromissosDoProcesso processoId={processo.id} clienteNome={clienteNome} />
+      </TabsContent>
       <TabsContent value="publicacoes">
         <PublicacoesDoProcesso processoId={processo.id} />
       </TabsContent>
@@ -123,9 +130,7 @@ function MovimentosDoProcesso({ cnjNumber }: { cnjNumber: string }) {
         {consulta.isPending ? <LoadingSpinner label="Consultando o tribunal…" /> : null}
         {consulta.error ? (
           <p role="alert" className="text-sm text-destructive">
-            {consulta.error instanceof ApiError
-              ? consulta.error.message
-              : 'Não foi possível consultar o tribunal agora.'}
+            {mensagemConsultaTribunal(consulta.error)}
           </p>
         ) : null}
         {consulta.data && !consulta.data.found ? (

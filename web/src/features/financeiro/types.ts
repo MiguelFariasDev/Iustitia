@@ -14,6 +14,20 @@ export const tipoLancamentoLabels: Record<TipoLancamento, string> = {
   ContaReceber: 'Conta a receber',
 }
 
+/** Avulso, parcela de um valor total ou mês de uma cobrança mensal. */
+export type RecorrenciaLancamento = 'Unica' | 'Parcelado' | 'Mensal'
+
+export const recorrenciasLancamento: readonly RecorrenciaLancamento[] = ['Unica', 'Parcelado', 'Mensal']
+
+export const recorrenciaLabels: Record<RecorrenciaLancamento, string> = {
+  Unica: 'À vista (uma vez)',
+  Parcelado: 'Parcelado',
+  Mensal: 'Cobrança mensal',
+}
+
+/** Teto do servidor (Lancamento.MaxParcelas). */
+export const MAX_PARCELAS = 60
+
 export interface Lancamento {
   id: string
   tipo: TipoLancamento
@@ -28,6 +42,11 @@ export interface Lancamento {
   status: StatusLancamento
   /** Quando foi pago; `null` enquanto em aberto. Base do "faturamento do mês". */
   pagoEm: string | null
+  recorrencia: RecorrenciaLancamento
+  /** Posição na série (1 = primeira); `null` no avulso. */
+  parcela: number | null
+  totalParcelas: number | null
+  serieId: string | null
 }
 
 export interface FluxoCaixaMes {

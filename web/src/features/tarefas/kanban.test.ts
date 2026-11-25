@@ -120,3 +120,39 @@ describe('anel', () => {
     expect(deslocamento(50)).toBeCloseTo(47.1)
   })
 })
+
+describe('tarefas em atraso', () => {
+  const agora = new Date(2026, 10, 24, 15, 0)
+  const base = {
+    id: 't',
+    titulo: 'X',
+    processo: '',
+    responsavel: '',
+    coluna: 'afazer' as const,
+    criadaEm: '2026-11-01T12:00:00Z',
+  }
+
+  it('atrasa só com prazo antes de hoje e sem estar concluída', async () => {
+    const { estaAtrasada, diasDeAtraso } = await import('./kanban')
+
+    expect(estaAtrasada({ ...base, prazo: '2026-11-23' }, agora)).toBe(true)
+    expect(diasDeAtraso({ ...base, prazo: '2026-11-21' }, agora)).toBe(3)
+    expect(estaAtrasada({ ...base, prazo: '2026-11-24' }, agora)).toBe(false)
+    expect(estaAtrasada({ ...base, prazo: null }, agora)).toBe(false)
+    expect(estaAtrasada({ ...base, prazo: '2026-11-01', coluna: 'concluido' }, agora)).toBe(false)
+  })
+
+  it('ordena da mais antiga para a mais recente', async () => {
+    const { tarefasAtrasadas } = await import('./kanban')
+    const lista = tarefasAtrasadas(
+      [
+        { ...base, id: 'b', prazo: '2026-11-22' },
+        { ...base, id: 'a', prazo: '2026-11-10' },
+        { ...base, id: 'c', prazo: '2026-11-30' },
+      ],
+      agora
+    )
+
+    expect(lista.map((t) => t.id)).toEqual(['a', 'b'])
+  })
+})

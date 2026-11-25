@@ -12,9 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ApiError } from '@/lib/api/errors'
 import { formatDate } from '@/lib/format'
-import type { ConsultaTribunalResult, ProcessoTribunal } from '../datajud'
+import { mensagemConsultaTribunal, type ConsultaTribunalResult, type ProcessoTribunal } from '../datajud'
 
 interface ConsultaTribunalDialogProps {
   open: boolean
@@ -176,10 +175,7 @@ function NaoEncontrado({ tribunal }: { tribunal: string | null }) {
 }
 
 function ConsultaErro({ error }: { error: unknown }) {
-  const mensagem =
-    error instanceof ApiError
-      ? error.message
-      : 'Não foi possível consultar o tribunal agora. Tente de novo ou preencha manualmente.'
+  const mensagem = mensagemConsultaTribunal(error)
 
   return (
     <div className="flex flex-col items-center gap-3 py-8 text-center">

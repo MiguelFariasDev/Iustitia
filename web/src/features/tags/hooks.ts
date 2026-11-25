@@ -12,7 +12,7 @@ export function useTagsState(): EstadoTags {
   return data ?? VAZIO
 }
 
-/** Ações sobre tags. Marcar/desmarcar atualiza a tela na hora e desfaz se o servidor recusar. */
+/** Ações sobre etiquetas. Marcar/desmarcar atualiza a tela na hora e desfaz se o servidor recusar. */
 export function useTagActions() {
   const queryClient = useQueryClient()
   const recarregar = () => queryClient.invalidateQueries({ queryKey: CHAVE })
@@ -23,12 +23,16 @@ export function useTagActions() {
 
   async function criar(nome: string): Promise<Tag | null> {
     try {
-      const tag = await criarTagApi(nome)
+      const atuais = queryClient.getQueryData<EstadoTags>(CHAVE)?.tags ?? []
+      const tag = await criarTagApi(
+        nome,
+        atuais.map((t) => t.cor)
+      )
       await recarregar()
 
       return tag
     } catch {
-      falhou('Não foi possível criar a tag.')
+      falhou('Não foi possível criar a etiqueta.')
 
       return null
     }
@@ -48,7 +52,7 @@ export function useTagActions() {
     try {
       await definirTagApi(alvo, alvoId, tagId, aplicada)
     } catch {
-      falhou('Não foi possível atualizar as tags.')
+      falhou('Não foi possível atualizar as etiquetas.')
     }
   }
 
@@ -57,7 +61,7 @@ export function useTagActions() {
       await removerTagApi(tagId)
       await recarregar()
     } catch {
-      falhou('Não foi possível apagar a tag.')
+      falhou('Não foi possível apagar a etiqueta.')
     }
   }
 

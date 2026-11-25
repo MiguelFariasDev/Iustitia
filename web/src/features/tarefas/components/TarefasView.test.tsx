@@ -78,3 +78,20 @@ describe('TarefasView', () => {
     expect(screen.getByRole('dialog', { name: 'Nova tarefa' })).toBeInTheDocument()
   })
 })
+
+describe('TarefasView — em atraso', () => {
+  it('tarefa com prazo vencido vai para "Em atraso" e sai da coluna da etapa', async () => {
+    vi.mocked(useNow).mockReturnValue(new Date(2026, 10, 24, 10, 0))
+    criarTarefa({ titulo: 'Protocolar recurso', prazo: '2026-11-20' })
+    criarTarefa({ titulo: 'Ligar para o cliente', prazo: '2026-11-30' })
+    renderWithProviders(<TarefasView />)
+
+    const atraso = await screen.findByRole('region', { name: /^Em atraso, 1 tarefas/ })
+    expect(within(atraso).getByText('Protocolar recurso')).toBeInTheDocument()
+    expect(within(atraso).getByText('venceu há 4 dias')).toBeInTheDocument()
+    expect(within(atraso).getByText('Etapa: A fazer')).toBeInTheDocument()
+    const aFazer = coluna(/^A fazer, 1 tarefas/)
+    expect(within(aFazer).getByText('Ligar para o cliente')).toBeInTheDocument()
+    expect(within(aFazer).queryByText('Protocolar recurso')).toBeNull()
+  })
+})
