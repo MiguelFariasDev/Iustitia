@@ -26,7 +26,11 @@ public static class DataJudResiliencePipeline
             resilience.Retry.Delay = TimeSpan.FromSeconds(options.RetryBaseDelaySeconds);
             resilience.Retry.BackoffType = DelayBackoffType.Exponential;
             resilience.Retry.UseJitter = true;
-            resilience.Retry.ShouldHandle = arguments => ValueTask.FromResult(IsTransient(arguments.Outcome));
+            // 429 fica de fora da REPETIÇÃO (continua contando para o circuito): repetir um "limite
+            // excedido" na hora só gasta a cota e o tempo de quem espera. O cliente pausa as
+            // consultas por um tempo (DataJudClient.PausaCacheKey).
+            resilience.Retry.ShouldHandle = arguments => ValueTask.FromResult(
+                IsTransient(arguments.Outcome) && arguments.Outcome.Result?.StatusCode != HttpStatusCode.TooManyRequests);
 
             resilience.CircuitBreaker.FailureRatio = options.CircuitBreakerFailureRatio;
             resilience.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(options.CircuitBreakerSamplingDurationSeconds);

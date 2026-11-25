@@ -12,10 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { routes } from '@/config/routes'
 import { useTarefaActions, useTarefas } from '@/features/tarefas/hooks'
 import { rotuloColuna } from '@/features/tarefas/kanban'
-import { ApiError } from '@/lib/api/errors'
 import { formatDate } from '@/lib/format'
 import { getPublicationsByProcess } from '../../publicacoes/api'
 import { kindMeta, statusMeta } from '../../publicacoes/presentation'
+import { mensagemConsultaTribunal } from '../datajud'
 import { useConsultarTribunal } from '../hooks'
 import type { Processo } from '../types'
 
@@ -123,9 +123,7 @@ function MovimentosDoProcesso({ cnjNumber }: { cnjNumber: string }) {
         {consulta.isPending ? <LoadingSpinner label="Consultando o tribunal…" /> : null}
         {consulta.error ? (
           <p role="alert" className="text-sm text-destructive">
-            {consulta.error instanceof ApiError
-              ? consulta.error.message
-              : 'Não foi possível consultar o tribunal agora.'}
+            {mensagemConsultaTribunal(consulta.error)}
           </p>
         ) : null}
         {consulta.data && !consulta.data.found ? (

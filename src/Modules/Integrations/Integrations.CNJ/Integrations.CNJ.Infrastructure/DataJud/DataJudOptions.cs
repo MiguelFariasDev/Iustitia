@@ -18,9 +18,17 @@ public sealed class DataJudOptions
     /// <summary>Valor do header Authorization, sem o prefixo "APIKey".</summary>
     public string ApiKey { get; init; } = string.Empty;
 
-    public int TimeoutSeconds { get; init; } = 30;
+    /// <summary>
+    /// Por tentativa. Quem espera é uma pessoa diante do formulário (e o navegador desiste aos
+    /// 30 s): tentativa + 1 repetição + espera cabem em ~22 s.
+    /// </summary>
+    public int TimeoutSeconds { get; init; } = 10;
 
-    public int RetryCount { get; init; } = 3;
+    /// <summary>Repetições só para falha de rede e 5xx/408. 429 (limite) NÃO se repete.</summary>
+    public int RetryCount { get; init; } = 1;
+
+    /// <summary>Depois de um 429, por quanto tempo responder "limite atingido" sem chamar o DataJud (se não vier Retry-After).</summary>
+    public int RateLimitPauseSeconds { get; init; } = 120;
 
     public int RetryBaseDelaySeconds { get; init; } = 2;
 

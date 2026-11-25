@@ -96,3 +96,16 @@ describe('mapeamento ampliado dos campos do DataJud', () => {
     expect(patch.observacoes).toBeUndefined()
   })
 })
+
+describe('mensagemConsultaTribunal', () => {
+  it('troca o texto da captura de publicações por orientação de quem está consultando', async () => {
+    const { mensagemConsultaTribunal } = await import('./datajud')
+    const { ApiError } = await import('@/lib/api/errors')
+    const erro = (codigo: string) => new ApiError(500, { errorCode: codigo, detail: 'A captura será retomada automaticamente.' })
+
+    expect(mensagemConsultaTribunal(erro('CNJ_RATE_LIMITED'))).toMatch(/limite de consultas.*alguns minutos/)
+    expect(mensagemConsultaTribunal(erro('CNJ_TIMEOUT'))).toMatch(/demorou demais/)
+    expect(mensagemConsultaTribunal(erro('CNJ_UNAVAILABLE'))).toMatch(/fora do ar/)
+    expect(mensagemConsultaTribunal(new Error('x'))).toMatch(/Não foi possível consultar/)
+  })
+})
