@@ -60,6 +60,10 @@ namespace Advocacia.Modules.Financeiro.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("pago_em");
 
+                    b.Property<int?>("Parcela")
+                        .HasColumnType("integer")
+                        .HasColumnName("parcela");
+
                     b.Property<string>("Pessoa")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -69,6 +73,18 @@ namespace Advocacia.Modules.Financeiro.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
                         .HasColumnName("processo");
+
+                    b.Property<string>("Recorrencia")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Unica")
+                        .HasColumnName("recorrencia");
+
+                    b.Property<Guid?>("SerieId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("serie_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -85,6 +101,10 @@ namespace Advocacia.Modules.Financeiro.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("tipo");
+
+                    b.Property<int?>("TotalParcelas")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_parcelas");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -108,6 +128,10 @@ namespace Advocacia.Modules.Financeiro.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId", "PagoEm")
                         .HasDatabaseName("ix_lancamentos_tenant_pago_em");
+
+                    b.HasIndex("TenantId", "SerieId")
+                        .HasDatabaseName("ix_lancamentos_tenant_serie")
+                        .HasFilter("serie_id IS NOT NULL");
 
                     b.HasIndex("TenantId", "Vencimento")
                         .HasDatabaseName("ix_lancamentos_tenant_vencimento");

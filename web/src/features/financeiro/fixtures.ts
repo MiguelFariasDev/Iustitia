@@ -5,7 +5,7 @@ import type { Lancamento } from './types'
  * Lançamentos de EXEMPLO para os testes. Não é importado pelo app: a tela mostra só o que o
  * servidor devolve para o escritório.
  */
-type Seed = Omit<Lancamento, 'vencimento' | 'pagoEm'> & { vence: number; pago?: boolean }
+type Seed = Omit<Lancamento, 'vencimento' | 'pagoEm' | 'recorrencia' | 'parcela' | 'totalParcelas' | 'serieId'> & { vence: number; pago?: boolean }
 
 export function lancamentosDeTeste(): Lancamento[] {
   const base: Seed[] = [
@@ -94,5 +94,9 @@ export function lancamentosDeTeste(): Lancamento[] {
     ...resto,
     vencimento: daysFromNow(vence, 12),
     pagoEm: pago ? daysFromNow(0, 12) : null,
+    recorrencia: 'Unica' as const,
+    parcela: null,
+    totalParcelas: null,
+    serieId: null,
   }))
 }

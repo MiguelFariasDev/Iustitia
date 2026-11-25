@@ -219,6 +219,7 @@ public enum ErrorCode
     FINANCE_ENTRY_DESCRIPTION_INVALID = 2701,
     FINANCE_ENTRY_AMOUNT_INVALID = 2702,
     FINANCE_ENTRY_ALREADY_PAID = 2703,
+    FINANCE_ENTRY_INSTALLMENTS_INVALID = 2704,
     // AI (1600-1699) — integração com a Anthropic (Etapa 3.1) e validação das respostas (Etapa 3.2)
     AI_INVALID_REQUEST = 1600,
     AI_UNAUTHORIZED = 1601,

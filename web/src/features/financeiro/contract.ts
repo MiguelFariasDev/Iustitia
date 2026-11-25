@@ -20,6 +20,11 @@ export interface LancamentoDto {
   status: string
   pagoEm: string | null
   createdAt: string
+  /** Ausente em respostas antigas: trata como avulso. */
+  recorrencia?: string
+  serieId?: string | null
+  parcela?: number | null
+  totalParcelas?: number | null
 }
 
 export interface ListLancamentosDto {
@@ -78,6 +83,10 @@ export function toLancamento(dto: LancamentoDto): Lancamento {
     vencimento: `${dto.vencimento}T12:00:00`,
     status: toStatus(dto.status),
     pagoEm: dto.pagoEm,
+    recorrencia: dto.recorrencia === 'Parcelado' || dto.recorrencia === 'Mensal' ? dto.recorrencia : 'Unica',
+    parcela: dto.parcela ?? null,
+    totalParcelas: dto.totalParcelas ?? null,
+    serieId: dto.serieId ?? null,
   }
 }
 

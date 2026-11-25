@@ -353,6 +353,8 @@ public static class ErrorCatalog
                 "O valor deve ser maior que zero, com no máximo duas casas decimais.", 400, ErrorType.Validation),
             [ErrorCode.FINANCE_ENTRY_ALREADY_PAID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_ALREADY_PAID),
                 "Este lançamento já foi pago.", 409, ErrorType.Conflict),
+            [ErrorCode.FINANCE_ENTRY_INSTALLMENTS_INVALID] = new(ErrorGroup.Finance, nameof(ErrorCode.FINANCE_ENTRY_INSTALLMENTS_INVALID),
+                "Informe de 2 a 60 parcelas (ou meses de cobrança).", 400, ErrorType.Validation),
 
             // CNJ (integração com o DJEN — ver docs/modules/legal/cnj-capture.md)
             [ErrorCode.CNJ_UNAVAILABLE] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_UNAVAILABLE),

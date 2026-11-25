@@ -270,6 +270,7 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `FINANCE_ENTRY_DESCRIPTION_INVALID` | Informe a descrição do lançamento (até 200 caracteres). | 400 | Validation | Descrição vazia ou acima de 200 caracteres. | Corrigir a descrição. |
 | `FINANCE_ENTRY_AMOUNT_INVALID` | O valor deve ser maior que zero, com no máximo duas casas decimais. | 400 | Validation | Valor zero, negativo, absurdo ou com mais de duas casas. | Corrigir o valor. |
 | `FINANCE_ENTRY_ALREADY_PAID` | Este lançamento já foi pago. | 409 | Conflict | Marcar como pago um lançamento já pago. | Nenhuma ação. |
+| `FINANCE_ENTRY_INSTALLMENTS_INVALID` | Informe de 2 a 60 parcelas (ou meses de cobrança). | 400 | Validation | Parcelamento ou cobrança mensal com menos de 2 ou mais de 60 parcelas. | Corrigir a quantidade. |
 
 ## Internal (9000–9999)
 
