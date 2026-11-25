@@ -107,3 +107,14 @@ fica no banco, sob RLS.
 | Sem scraper | os demais, inclusive TRFs, TRTs e tribunais superiores (o DataJud cobre) |
 
 A lista muda pela configuração do serviço; não a fixe no código.
+
+## Testes contra o serviço real
+
+Opcionais (a CI não depende de rede). Com o juscraper no ar:
+
+```bash
+ADVOCACIA_TEST_JUSCRAPER_URL=http://127.0.0.1:8000 ADVOCACIA_TEST_JUSCRAPER_KEY=<chave> \
+  dotnet test tests/UnitTests/Legal.Infrastructure.UnitTests --filter "FullyQualifiedName~JuscraperRealTests"
+```
+
+Consultam o processo público de exemplo do contrato (TJAL) e um do TRF1 (sem scraper → fallback).
