@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,8 @@ function Cartao({ tarefa, agora, onMover, onRemover, atrasada = false }: CartaoP
   const direita = colunaVizinha(tarefa.coluna, 1)
   const prog = agora ? progresso(tarefa, agora) : { pct: 0, tom: 'ok' as const, rotulo: '…' }
 
+  const concluida = tarefa.coluna === 'concluido'
+
   return (
     <article
       draggable
@@ -47,7 +49,14 @@ function Cartao({ tarefa, agora, onMover, onRemover, atrasada = false }: CartaoP
       className="cursor-grab space-y-3 rounded-[10px] border bg-card p-3.5 shadow-sm active:cursor-grabbing"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[17px] leading-snug font-medium">{tarefa.titulo}</h3>
+        <h3
+          className={cn(
+            'text-[17px] leading-snug font-medium',
+            concluida && 'text-muted-foreground line-through'
+          )}
+        >
+          {tarefa.titulo}
+        </h3>
         <AnelPrazo progresso={prog} />
       </div>
       {atrasada && agora ? (
@@ -79,6 +88,26 @@ function Cartao({ tarefa, agora, onMover, onRemover, atrasada = false }: CartaoP
           )}
         </span>
         <span className="flex gap-1">
+          {/* Concluir direto, de qualquer coluna (inclusive "Em atraso"): sem isto era preciso levar o
+              cartão etapa por etapa até "Concluído", o que no celular, sem arrastar, são três toques. */}
+          <button
+            type="button"
+            onClick={() => onMover(concluida ? 'afazer' : 'concluido')}
+            aria-label={concluida ? `Reabrir “${tarefa.titulo}”` : `Concluir “${tarefa.titulo}”`}
+            className={cn(
+              'inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              concluida
+                ? 'hover:bg-accent'
+                : 'border-success/40 text-success hover:bg-success-soft'
+            )}
+          >
+            {concluida ? (
+              <RotateCcw className="size-3.5" aria-hidden />
+            ) : (
+              <Check className="size-3.5" aria-hidden />
+            )}
+            {concluida ? 'Reabrir' : 'Concluir'}
+          </button>
           <button
             type="button"
             onClick={onRemover}
@@ -137,7 +166,11 @@ export function TarefasView() {
     if (!tarefa || tarefa.coluna === destino) return
     void mover(id, destino)
     // Leitor de tela: o cartão some de uma coluna e aparece em outra; sem isto ninguém é avisado.
-    setAviso(`“${tarefa.titulo}” movida para ${rotuloColuna(destino)}.`)
+    setAviso(
+      destino === 'concluido'
+        ? `“${tarefa.titulo}” concluída.`
+        : `“${tarefa.titulo}” movida para ${rotuloColuna(destino)}.`
+    )
   }
 
   return (
