@@ -135,6 +135,7 @@ app.UseMiddleware<IdempotencyMiddleware>();
 app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
+app.MapMovimentacoesEndpoints();
 app.MapPublicationsEndpoints();
 app.MapPrazosEndpoints();
 app.MapContactsEndpoints();
