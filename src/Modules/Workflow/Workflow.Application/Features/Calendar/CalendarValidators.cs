@@ -37,13 +37,22 @@ public sealed class ListCalendarEventsValidator : AbstractValidator<ListCalendar
     /// <summary>Teto de janela: uma consulta sem limite traria a agenda inteira do escritório.</summary>
     public const int MaxWindowDays = 62;
 
+    /// <summary>
+    /// Com filtro por processo o resultado já é limitado àquele caso: a tela do processo lista todos
+    /// os prazos, audiências e eventos dele numa consulta só.
+    /// </summary>
+    public const int MaxProcessWindowDays = 3660;
+
     public ListCalendarEventsValidator()
     {
         RuleFor(query => query.To)
             .GreaterThan(query => query.From)
             .WithMessage("O fim do período deve ser posterior ao início.");
         RuleFor(query => query)
-            .Must(query => query.To - query.From <= TimeSpan.FromDays(MaxWindowDays))
+            .Must(query => query.ProcessId is not null || query.To - query.From <= TimeSpan.FromDays(MaxWindowDays))
             .WithMessage($"O período consultado não pode passar de {MaxWindowDays} dias.");
+        RuleFor(query => query)
+            .Must(query => query.ProcessId is null || query.To - query.From <= TimeSpan.FromDays(MaxProcessWindowDays))
+            .WithMessage($"O período consultado não pode passar de {MaxProcessWindowDays} dias.");
     }
 }

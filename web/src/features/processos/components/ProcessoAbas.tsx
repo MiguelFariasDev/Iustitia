@@ -17,6 +17,7 @@ import { getPublicationsByProcess } from '../../publicacoes/api'
 import { kindMeta, statusMeta } from '../../publicacoes/presentation'
 import { mensagemConsultaTribunal } from '../datajud'
 import { useConsultarTribunal } from '../hooks'
+import { CompromissosDoProcesso } from './CompromissosDoProcesso'
 import type { Processo } from '../types'
 
 /**
@@ -25,18 +26,24 @@ import type { Processo } from '../types'
  */
 export function ProcessoAbas({
   processo,
+  clienteNome = null,
   onNovaTarefa,
 }: {
   processo: Processo
+  clienteNome?: string | null
   onNovaTarefa: () => void
 }) {
   return (
     <Tabs defaultValue="publicacoes">
       <TabsList>
         <TabsTrigger value="publicacoes">Publicações</TabsTrigger>
+        <TabsTrigger value="agenda">Prazos, audiências e eventos</TabsTrigger>
         <TabsTrigger value="movimentos">Movimentos</TabsTrigger>
         <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
       </TabsList>
+      <TabsContent value="agenda">
+        <CompromissosDoProcesso processoId={processo.id} clienteNome={clienteNome} />
+      </TabsContent>
       <TabsContent value="publicacoes">
         <PublicacoesDoProcesso processoId={processo.id} />
       </TabsContent>

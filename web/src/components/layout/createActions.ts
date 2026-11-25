@@ -34,3 +34,27 @@ export const createActions: CreateAction[] = [
     href: `${routes.settings.users}?convidar=1` as Route,
   },
 ]
+
+/** Opções do "Novo" quando a tela aberta é um processo: tudo nasce ligado a ele. */
+export const opcoesNoProcesso = [
+  { id: 'tarefa', label: 'Tarefa' },
+  { id: 'evento', label: 'Evento' },
+  { id: 'prazo', label: 'Prazo' },
+  { id: 'audiencia', label: 'Audiência' },
+  { id: 'atendimento', label: 'Atendimento' },
+  { id: 'documento', label: 'Documento' },
+] as const
+
+export type OpcaoNoProcesso = (typeof opcoesNoProcesso)[number]['id']
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+const rotaDoProcesso = new RegExp(`^${routes.processes}/(${UUID})$`, 'i')
+
+/** Id do processo se `pathname` é a tela de um processo; senão `null`. */
+export function processoDaRota(pathname: string | null): string | null {
+  return pathname?.match(rotaDoProcesso)?.[1] ?? null
+}
+
+/** Link que abre a tela do processo já com o diálogo de criação aberto (`?novo=prazo`). */
+export const hrefNoProcesso = (processoId: string, opcao: OpcaoNoProcesso) =>
+  `${routes.processes}/${processoId}?novo=${opcao}` as Route
