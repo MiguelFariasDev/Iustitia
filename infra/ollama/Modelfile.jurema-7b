@@ -1,14 +1,14 @@
 # Jurema-7B (NeuralMind, https://huggingface.co/Jurema-br/Jurema-7B) para o Ollama.
 #
 # O modelo não está na biblioteca do Ollama: `ollama pull jurema-7b` não funciona. O repositório oficial
-# exige aceite dos termos no Hugging Face e publica safetensors (BF16). Coloque os arquivos na pasta
-# apontada pelo FROM e crie a versão quantizada (o Ollama faz a conversão; não precisa de Python):
+# exige aceite dos termos no Hugging Face e publica safetensors (BF16). O Ollama atual NÃO quantiza para
+# q4_K_M no `create`: gere o GGUF uma vez com o llama.cpp (passo a passo em docs/modules/drafting.md),
+# copie-o para o caminho do FROM e crie o modelo:
 #
-#   ollama create jurema-7b --quantize q4_K_M -f Modelfile.jurema-7b
+#   ollama create jurema-7b -f Modelfile.jurema-7b
 #
-# Com um GGUF já pronto, troque o FROM pelo arquivo e omita --quantize. Os GGUF existentes no Hugging Face
-# são de terceiros, não da NeuralMind: confira a procedência antes de usá-los.
-FROM /root/modelos/jurema-7b
+# Os GGUF prontos no Hugging Face são de terceiros, não da NeuralMind: confira a procedência antes de usá-los.
+FROM /root/modelos/jurema-7b-q4_K_M.gguf
 
 # Formato ChatML, herdado do Qwen2.5-7B-Instruct (modelo-base). O card não publica um formato próprio:
 # confira com `ollama show jurema-7b --template` depois de criar.

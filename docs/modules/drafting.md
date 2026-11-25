@@ -289,9 +289,9 @@ Arquivos: [`infra/vast/onstart.sh`](../../infra/vast/onstart.sh),
 3. **Túnel.** No painel do Cloudflare, crie um túnel nomeado com hostname `ia.SEU-DOMINIO` → `http://127.0.0.1:8080`
    (nunca 11434). Alternativa por arquivo: [`infra/cloudflared/config.example.yml`](../../infra/cloudflared/config.example.yml).
 4. **Variáveis da instância:** `OLLAMA_PROXY_TOKEN` (`openssl rand -hex 32`) e `CF_TUNNEL_TOKEN`.
-5. **Primeira carga.** Copie os safetensors para `/root/modelos/jurema-7b` e o Modelfile para `/root/`, com uma chave
-   SSH temporária. Use `infra/vast/onstart.sh` como *on-start script*. Ele é idempotente: cria `jurema-7b` em q4_K_M,
-   baixa `bge-m3`, sobe nginx e túnel.
+5. **Primeira carga.** Gere o GGUF ([abaixo](#gerar-o-gguf-uma-vez)) e copie-o para `/root/modelos/jurema-7b-q4_K_M.gguf`
+   e o Modelfile para `/root/`, com uma chave SSH temporária. Use `infra/vast/onstart.sh` como *on-start script*. Ele é
+   idempotente: cria `jurema-7b`, baixa `bge-m3`, sobe nginx e túnel.
 6. **Conferir**, de fora:
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' https://ia.SEU-DOMINIO/api/tags                       # 401
@@ -307,6 +307,23 @@ Arquivos: [`infra/vast/onstart.sh`](../../infra/vast/onstart.sh),
 Instância parada **continua cobrando disco** ([documentação da Vast](https://docs.vast.ai/guides/instances/storage)), e
 saldo zerado a interrompe. Destruí-la apaga os modelos: é ação manual e o código não a executa. Ao religar, a GPU
 pode estar ocupada por outra pessoa; o circuito abre e a fila espera.
+
+### Gerar o GGUF (uma vez)
+
+O Ollama atual não quantiza para q4_K_M ao importar ([documentação](https://docs.ollama.com/import)); a conversão é do
+llama.cpp, fora da aplicação. Precisa de ~35 GB de disco e serve qualquer máquina com Python, inclusive um notebook do
+Google Colab (sem GPU). Ainda **não executado** neste projeto.
+
+```bash
+pip install -q huggingface_hub && hf auth login      # conta que aceitou os termos do modelo
+hf download Jurema-br/Jurema-7B --local-dir jurema
+git clone --depth 1 https://github.com/ggml-org/llama.cpp
+pip install -q -r llama.cpp/requirements/requirements-convert_hf_to_gguf.txt
+python llama.cpp/convert_hf_to_gguf.py jurema --outtype f16 --outfile jurema-f16.gguf
+cmake -S llama.cpp -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --target llama-quantize -j
+./build/bin/llama-quantize jurema-f16.gguf jurema-7b-q4_K_M.gguf Q4_K_M
+sha256sum jurema-7b-q4_K_M.gguf                      # anote e confira depois de copiar
+```
 
 ## Checklists
 

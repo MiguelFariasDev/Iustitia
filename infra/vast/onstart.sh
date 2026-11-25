@@ -13,13 +13,14 @@
 # Variáveis (defina na Vast como variáveis de ambiente da instância; nunca no script):
 #   OLLAMA_PROXY_TOKEN   token longo e aleatório; o mesmo valor de Ollama__ApiKey no Worker
 #   CF_TUNNEL_TOKEN      token do túnel nomeado do Cloudflare
-#   MODELO_DIR           opcional; pasta com os safetensors do Jurema-7B (padrão /root/modelos/jurema-7b)
+#   MODELO_GGUF          opcional; GGUF do Jurema-7B, o mesmo caminho do FROM do Modelfile
+#                        (padrão /root/modelos/jurema-7b-q4_K_M.gguf)
 #   MODELFILE            opcional; padrão /root/Modelfile.jurema-7b
 set -euo pipefail
 
 : "${OLLAMA_PROXY_TOKEN:?defina OLLAMA_PROXY_TOKEN}"
 : "${CF_TUNNEL_TOKEN:?defina CF_TUNNEL_TOKEN}"
-MODELO_DIR="${MODELO_DIR:-/root/modelos/jurema-7b}"
+MODELO_GGUF="${MODELO_GGUF:-/root/modelos/jurema-7b-q4_K_M.gguf}"
 MODELFILE="${MODELFILE:-/root/Modelfile.jurema-7b}"
 CLOUDFLARED_VERSAO="${CLOUDFLARED_VERSAO:-2025.8.1}"
 
@@ -109,12 +110,12 @@ if ! grep -q '^bge-m3' <<<"$modelos"; then
   ollama pull bge-m3
 fi
 if ! grep -q '^jurema-7b' <<<"$modelos"; then
-  [[ -d "$MODELO_DIR" && -f "$MODELFILE" ]] || {
-    echo "erro: jurema-7b ausente; coloque os safetensors em $MODELO_DIR e o Modelfile em $MODELFILE" >&2
+  [[ -f "$MODELO_GGUF" && -f "$MODELFILE" ]] || {
+    echo "erro: jurema-7b ausente; coloque o GGUF em $MODELO_GGUF e o Modelfile em $MODELFILE" >&2
     exit 1
   }
-  log "criando jurema-7b (quantização q4_K_M)"
-  ollama create jurema-7b --quantize q4_K_M -f "$MODELFILE"
+  log "criando jurema-7b"
+  ollama create jurema-7b -f "$MODELFILE"
 fi
 
 # O túnel sobe por último: só se publica o endereço quando há o que responder.
