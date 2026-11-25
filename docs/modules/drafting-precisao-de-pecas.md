@@ -2,9 +2,9 @@
 
 > **Natureza deste documento:** investigação e proposta, **não** decisão. Escrito em 25/11/2026 a partir do código do
 > módulo (commit atual), do conteúdo real do repositório `ctresb/leis` (commit `c9f21b4`, 02/11/2026) e de buscas na web.
-> O ambiente que o produziu **não conseguiu abrir** `huggingface.co`, `docs.vast.ai`, `dadosabertos.web.stj.jus.br`,
-> `pangea.cnj.jus.br` e `portal.stf.jus.br` (bloqueio de rede). Tudo que depende dessas páginas está marcado como
-> **[não verificado]** e precisa de conferência antes de virar decisão.
+> **Atualização (25/11/2026):** após liberação de rede, foram lidos diretamente os metadados do Hugging Face, a
+> documentação da Vast.ai e a API do portal de dados abertos do STJ; os pontos correspondentes abaixo estão marcados
+> **[verificado]**. Seguem **[não verificado]** o BNP/Pangea (não respondeu) e o STF (não consultado).
 
 ## 1. Resumo
 
@@ -16,9 +16,9 @@
    precedentes qualificados: súmulas, temas de repercussão geral e repetitivos, OJs do TST, controle concentrado. Uma
    petição real cita também acórdãos ("STJ, REsp 1.234.567/SP, Rel. Min. X, DJe …", com ementa). Isso não existe hoje no
    sistema e é a maior lacuna de conteúdo.
-3. **O Jurema-7B tem um ponto de licença a esclarecer antes de qualquer investimento.** Uma fonte secundária diz
-   Apache 2.0; os trechos do cartão do Hugging Face dizem uso para "pesquisa e desenvolvimento" e acesso condicionado
-   a aceite. **[não verificado]** — leia o campo `license` e o texto do cartão.
+3. **Licença do Jurema-7B: Apache 2.0 [verificado].** Os metadados do Hugging Face trazem `license: apache-2.0`, e o
+   formulário de acesso diz que a licença "permite uso, modificação, redistribuição e **uso comercial**". O acesso é
+   restrito (`gated: auto`): exige aceite de diretrizes de uso, com registro de contato. Não é impedimento comercial.
 4. **O Vast.ai não garante que uma instância parada volte.** A documentação da Vast diz que, ao parar, a GPU pode ser
    realocada a outro cliente; reiniciar fica em "scheduling" sem prazo até a GPU liberar. O orquestrador atual trata isso
    como falha após 10 minutos, sem plano B. É o maior risco operacional do desenho atual.
@@ -67,7 +67,10 @@
   publicado em jul/2025.
 - Treino com dados **sintéticos** derivados de documentos jurídicos brasileiros, em boa parte perguntas e respostas.
 - Avaliado em BLUEX, ENEM e OAB; no OAB, 0,668 contra 0,533 do modelo base (segundo um guia de 2026, fonte secundária).
-- Pesos em BF16 para `transformers`; os trechos não mencionam GGUF, Ollama nem vLLM; não está em provedores de inferência.
+- **[verificado]** Base `Qwen/Qwen2.5-7B-Instruct` (arquitetura `qwen2`), 4 arquivos `safetensors` (~15 GB), criado em
+  25/07/2025, última alteração 28/07/2025 (**sem atualização desde então**), 136 downloads. **Existem GGUF da comunidade**
+  (`Jurema-7B-Q4_K_M-GGUF`, `Q8_0`), portanto roda no Ollama atual sem mudar o serviço; e há um LoRA e variantes ONNX de
+  terceiros (LGPD). Qualidade dessas quantizações de terceiros: não avaliada.
 - Há uma **API Jurema** hospedada com modelo mais poderoso (detalhes técnicos não encontrados).
 - Aviso dos autores: pode alucinar informação jurídica.
 
@@ -78,7 +81,7 @@
 - **Os benchmarks medem outra coisa.** OAB é prova de múltipla escolha. Escrever uma petição fiel ao contexto recuperado
   depende de **seguir instruções longas, usar o contexto sem inventar e redigir bem** — nada disso é medido por esses testes.
   Um ajuste fino em perguntas e respostas sintéticas pode até piorar a redação longa (**hipótese**, a testar).
-- **Serve-se como o Qwen2.5-7B** (mesma arquitetura), tipicamente com vLLM a partir dos pesos BF16. Como o modelo base tem
+- **Serve-se como o Qwen2.5-7B** (mesma arquitetura): vLLM a partir dos pesos BF16, ou Ollama a partir do GGUF. Como o modelo base tem
   contexto nativo de 32 mil tokens (**[não verificado]**), os 16.384 atuais cabem.
 - **Memória (estimativa, a confirmar):** ~15 GB de pesos em BF16 + cerca de 56 KiB de cache por token de contexto
   (28 camadas × 4 cabeças KV × 128 × 2 bytes × 2) → ~1 GB por sequência de 16 k. Cabe com folga numa GPU de 24 GB.
@@ -118,7 +121,7 @@ Problemas de qualidade já vistos nos arquivos (o pipeline precisa tratá-los, n
 
 | Fonte | O que se sabe | Confiança |
 |---|---|---|
-| **STJ — Dados Abertos** | Portal com cinco grupos (processos, DJe, **jurisprudência**, precedentes, sessões), em CSV/JSON, download em lote, **sem API**, atualização não em tempo real. O plano de dados abertos descreve a base de jurisprudência com **inteiro teor e metadados**; um trabalho acadêmico diz que os conjuntos **não trazem textos integrais**. O termo de uso, segundo um resumo, permite reutilização e redistribuição, **inclusive comercial**. | **[não verificado]** — há afirmações conflitantes; abra o conjunto e o termo |
+| **STJ — Dados Abertos** | **[verificado]** Portal CKAN (`/api/3/action/package_search`). Licença dos conjuntos: **Creative Commons Atribuição** (uso comercial permitido com atribuição). Dois conjuntos relevantes: **(1) "Íntegras de Decisões Terminativas e Acórdãos do DJe"** — texto completo (TXT em ZIP) + JSON de metadados (`processo`, `ministro`, `tipoDocumento`, `teor`, `assuntos` em códigos CNJ, datas), **2.662 arquivos de 04/01/2021 a out/2026, ~10,8 GB compactados, atualização diária** (o último arquivo é de 24/11/2026); **(2) "Espelhos de acórdãos"** por Turma e Seção — só os acórdãos que a Secretaria de Jurisprudência trata documentalmente (os de teses novas), atualização mensal até 31/10/2026. Sem API de busca: é download em lote. **Não há campo de ementa separado nem de status do precedente**: a ementa está dentro do texto e precisa ser extraída. | **verificado** (metadados e dicionário lidos; o termo de uso em PDF não foi relido) |
 | **CNJ BNP/Pangea** | Substituiu o BNPR em 2023; plataforma de pesquisa de **precedentes qualificados**; tribunais são obrigados a alimentá-la (Res. CNJ 444/2022). O `ctresb/leis` já consome um endpoint `api/v1/precedentes`. Não achei documentação pública atual da API. | **[não verificado]** |
 | **STF** | Não pesquisado a fundo (portal bloqueado). | desconhecida |
 | **TJs e TRFs** | Cada tribunal tem seu sistema; coleta costuma ser por varredura do portal, com termos de uso e fragilidade próprios. | desconhecida |
@@ -212,8 +215,11 @@ GPU (geração, embeddings, reranker). Como a porta `ILlmService` já isola o pr
 
 ### 8.2 O risco de parar a instância — **[docs da Vast lidas só por trechos de busca]**
 
-- Parar preserva o disco, mas **a GPU pode ser alugada por outro**; reiniciar fica em `scheduling` sem prazo, e o disco
-  continua sendo cobrado. A própria documentação sugere criar uma nova instância se a GPU não voltar.
+- **[verificado, docs.vast.ai/guides/reference/troubleshooting]** "When you stop an instance, the gpu(s) it was using may
+  get reassigned… If another high priority job is currently using any of the same gpu(s), your instance will be stuck in
+  'scheduling' phase until the conflicting jobs are done… **we recommend not stopping an instance unless you are ok with
+  the risk of waiting a while to restart it.**" Também: saldo zerado para as instâncias automaticamente.
+  Ou seja, o desenho "parar por ociosidade em 10 min" contraria a recomendação do próprio fornecedor.
 - O `GpuOrchestrator` aguarda `StartTimeoutMinutes` (10) e marca **falha**, e a peça falha com `DRAFTING_GPU_UNAVAILABLE`.
   Não há segundo caminho.
 
@@ -271,15 +277,13 @@ exemplos revisados; é trabalho de curadoria jurídica, não de engenharia.
 
 ## 12. O que não foi verificado e decisões suas
 
-**Para conferir (eu não consegui abrir):**
+**Ainda não verificado:**
 
-- Licença e restrições de uso do Jurema-7B no Hugging Face; contexto máximo; existência de versão quantizada e do modelo maior.
-- Dados abertos do STJ: quais arquivos de jurisprudência existem, se há inteiro teor, formato e termo de uso.
-- API do BNP/Pangea: documentação atual, termos e limites.
-- Documentação da Vast: estados de instância, tipos de host e certificações, Vast Serverless, templates de vLLM.
-- Portal do STF e dos tribunais de interesse.
-
-Se você liberar esses domínios na rede do ambiente, eu releio as páginas e fecho cada ponto.
+- Contexto máximo e dados de treino do Jurema-7B (o cartão `README.md` é restrito; só os metadados públicos foram lidos).
+- API do BNP/Pangea (`pangea.cnj.jus.br` não respondeu): documentação, termos e limites.
+- Vast: tipos de host e certificações, Vast Serverless e templates de vLLM (só a página de problemas e a de gerenciamento
+  foram lidas).
+- Portal do STF e dos tribunais de interesse; termo de uso do STJ em PDF.
 
 **Decisões do produto:**
 
