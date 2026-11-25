@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Infrastructure.Persistence.Interceptors;
 using Advocacia.Modules.Legal.Application;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Infrastructure.Integrations;
+using Advocacia.Modules.Legal.Infrastructure.Integrations.Juscraper;
 using Advocacia.Modules.Legal.Infrastructure.Jobs;
 using Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
 using Advocacia.Modules.Legal.Infrastructure.Observability;
@@ -65,8 +66,8 @@ public static class DependencyInjection
         services.AddScoped<CnjCaptureJob>();
 
         // Auto-preenchimento do cadastro de processo. O handler depende da PORTA do módulo
-        // Legal; o DataJud fica atrás deste adaptador (ver ADR-064).
-        services.AddScoped<IConsultaProcessoTribunal, DataJudConsultaProcessoTribunal>();
+        // Legal; atrás dela, o juscraper é a fonte principal e o DataJud o fallback (ADR-075).
+        services.AddConsultaProcessoTribunal(configuration);
 
         // Classificação de publicações por IA (Etapa 3.2 — ver ADR-070). Depende das PORTAS de
         // Integrations.Anthropic.Application (IAnthropicClient, IAnthropicUsageLogger, IAnthropicUsageQuery, IPromptCatalog),

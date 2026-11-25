@@ -5,8 +5,8 @@ namespace Advocacia.Modules.Legal.Application.Abstractions;
 
 /// <summary>
 /// Porta de consulta de METADADOS de um processo no tribunal, usada para auto-preencher o
-/// cadastro. O adaptador atual fala com a API Pública do DataJud (ver
-/// DataJudConsultaProcessoTribunal em Legal.Infrastructure e ADR-064).
+/// cadastro. A implementação registrada é um composto: o juscraper (portais dos tribunais) é a
+/// fonte principal e o DataJud, o fallback (ver ADR-075 e ADR-064).
 ///
 /// A porta é do módulo Legal, e não do módulo de integração, justamente porque a fonte é
 /// provisória: o DataJud proíbe uso comercial, e a ADR-064 já registra que trocar de
@@ -35,6 +35,7 @@ public interface IConsultaProcessoTribunal
 /// <param name="Assuntos">Assuntos da tabela unificada; o primeiro é o principal.</param>
 /// <param name="Movimentos">Andamentos, do mais recente para o mais antigo.</param>
 /// <param name="CodigoMunicipioIbge">Município do órgão julgador, quando o tribunal informa.</param>
+/// <param name="Fonte">De onde vieram os dados: <see cref="FonteConsulta.Juscraper"/> ou <see cref="FonteConsulta.DataJud"/>.</param>
 public sealed record ProcessoTribunal(
     string NumeroProcesso,
     string Tribunal,
@@ -46,7 +47,18 @@ public sealed record ProcessoTribunal(
     string? OrgaoJulgador,
     IReadOnlyList<string> Assuntos,
     IReadOnlyList<MovimentoProcesso> Movimentos,
-    int? CodigoMunicipioIbge = null);
+    int? CodigoMunicipioIbge = null,
+    string? Fonte = null);
+
+/// <summary>Nomes estáveis das fontes de consulta (vão para a resposta da API e para métricas).</summary>
+public static class FonteConsulta
+{
+    /// <summary>Serviço juscraper: consulta direta aos portais públicos dos tribunais (e-SAJ, PJe).</summary>
+    public const string Juscraper = "juscraper";
+
+    /// <summary>API Pública do DataJud (CNJ). Fallback — uso restrito a portfólio (ADR-064).</summary>
+    public const string DataJud = "datajud";
+}
 
 /// <param name="Nome">Descrição do movimento.</param>
 /// <param name="DataHora">Quando ocorreu.</param>
