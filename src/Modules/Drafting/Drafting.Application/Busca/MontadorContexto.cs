@@ -62,7 +62,7 @@ public static class MontadorContexto
                     continue;
                 }
 
-                var custo = TokenEstimator.Estimate(hit.Texto, charsPorToken) + TokensDeCabecalho;
+                var custo = TokenEstimator.EstimarPrompt(hit.Texto, charsPorToken) + TokensDeCabecalho;
                 if (tokens + custo > maxTokens)
                 {
                     cortados++;

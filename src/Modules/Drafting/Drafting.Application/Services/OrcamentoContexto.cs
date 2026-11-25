@@ -25,10 +25,10 @@ public static class OrcamentoContexto
     /// <summary>Tokens que sobram para os trechos recuperados.</summary>
     public static int Disponivel(PecaInput input, JanelaModeloOptions janela, double charsPorToken) =>
         Math.Max(0, janela.NumCtx - janela.NumPredict - Folga
-            - TokenEstimator.Estimate(SystemPrompt.Texto, charsPorToken)
-            - TokenEstimator.Estimate(input.Fatos, charsPorToken)
-            - TokenEstimator.Estimate(input.Pedidos, charsPorToken)
-            - TokenEstimator.Estimate(input.InstrucoesAdicionais ?? string.Empty, charsPorToken));
+            - TokenEstimator.EstimarPrompt(SystemPrompt.Texto, charsPorToken)
+            - TokenEstimator.EstimarPrompt(input.Fatos, charsPorToken)
+            - TokenEstimator.EstimarPrompt(input.Pedidos, charsPorToken)
+            - TokenEstimator.EstimarPrompt(input.InstrucoesAdicionais ?? string.Empty, charsPorToken));
 
     /// <summary>Quantos caracteres a entrada passa do limite; 0 = cabe.</summary>
     public static int ExcessoEmCaracteres(PecaInput input, JanelaModeloOptions janela, double charsPorToken)

@@ -24,10 +24,10 @@ public sealed class RagOptions
     public int MaxTokensContexto { get; set; } = 8000;
 
     /// <summary>
-    /// Estimativa de caracteres por token em português. Aproximação deliberadamente conservadora:
-    /// o tokenizador real do modelo não está disponível aqui, e errar para menos estouraria o contexto.
+    /// LETRAS por token no orçamento do prompt; dígito e pontuação contam à parte (<see cref="TokenEstimator"/>).
+    /// Medido no tokenizador do Qwen2.5; ao trocar de família de modelo, meça de novo: errar para menos estoura a janela.
     /// </summary>
-    public double CharsPorToken { get; set; } = 3.5;
+    public double CharsPorToken { get; set; } = 3.2;
 }
 
 /// <summary>Seção <c>Drafting:Fila</c>: o worker que consome a fila e liga/desliga a GPU.</summary>

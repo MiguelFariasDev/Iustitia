@@ -462,6 +462,16 @@ public class MontadorContextoTests
 
 public class OrcamentoContextoTests
 {
+    /// <summary>Contagens REAIS do tokenizador do Qwen2.5 (base do Jurema-7B): a estimativa não pode ficar abaixo delas.</summary>
+    [Fact]
+    public void EstimativaDoPrompt_NaoFicaAbaixoDoTokenizadorReal()
+    {
+        TokenEstimator.EstimarPrompt(SystemPrompt.Texto, new RagOptions().CharsPorToken).Should().BeInRange(669, 900);
+        TokenEstimator.EstimarPrompt(string.Empty, 3.2).Should().Be(0);
+        TokenEstimator.EstimarPrompt("0000000-00.2026.8.06.0000", 3.2).Should().BeGreaterThanOrEqualTo(25, "cada dígito é um token");
+        TokenEstimator.EstimarPrompt("----------", 3.2).Should().Be(1);
+    }
+
     [Fact]
     public void JanelaDe8192_ComEntradaTipica_DeixaEspacoParaCincoTrechosDe600Tokens()
     {
