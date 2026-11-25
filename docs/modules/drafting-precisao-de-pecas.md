@@ -300,3 +300,19 @@ exemplos revisados; é trabalho de curadoria jurídica, não de engenharia.
 - CNJ: [Banco Nacional de Precedentes](https://www.cnj.jus.br/tecnologia-da-informacao-e-comunicacao/justica-4-0/banco-nacional-de-precedentes-bnp/), [manual do Pangea/BNP](https://www.cnj.jus.br/wp-content/uploads/2023/11/manual-de-usuario-pangea-bnp.pdf).
 - Vast.ai: [solução de problemas ("scheduling")](https://docs.vast.ai/guides/reference/troubleshooting), [gerenciar instâncias](https://docs.vast.ai/guides/instances/manage-instances), [stop instance](https://docs.vast.ai/cli/reference/stop-instance).
 - vLLM: [saídas estruturadas (Red Hat)](https://developers.redhat.com/articles/2025/06/03/structured-outputs-vllm-guiding-ai-responses).
+
+## 13. Modelos candidatos atuais (verificado no Hugging Face em 25/11/2026)
+
+Dados lidos da API pública e dos `config.json`/README oficiais. Benchmarks são **do fornecedor**; nenhum mede redação de peças em português do Brasil.
+
+| Modelo | Licença | Porte | Observações |
+|---|---|---|---|
+| **Qwen3.8-27B** (ago/2026) | Apache 2.0 | denso, 27 B | Contexto nativo 262.144 (até 1 M com YaRN); pensamento ajustável (`reasoning_effort`); atenção híbrida (48 camadas lineares + 16 de atenção plena, 4 cabeças KV, head_dim 256 → cache de ~64 KiB/token, **estimativa nossa**, parecido com o 7 B); FP8 oficial e GGUF amplamente disponíveis; ~6 M de downloads |
+| **Gemma 4 31B / 26B-A4B / 12B** (mar–mai/2026) | Apache 2.0 | denso 31 B; MoE 26 B (4 B ativos); denso 12 B | Versões QAT int4 oficiais (`qat-q4_0-gguf`, `w4a16`). A Gemma 3 tinha licença própria; a 4 é Apache |
+| **GLM-5.3-Flash**, **DeepSeek-V4.1-Flash** | MIT | MoE muito grande | Exigem várias GPUs; fora do alcance de uma instância única no Vast |
+| **Mistral Large 4** | licença própria | 1 T | Inviável e não livre |
+| **Jurema-7B** | Apache 2.0 | 7 B | Sem atualização desde jul/2025 |
+
+**Memória aproximada (estimativa):** 27 B em FP8 ≈ 27 GB de pesos (GPU de 48 GB); em 4 bits ≈ 15 GB (GPU de 24 GB). 
+
+**Fine-tuning × generalista:** adotar o **generalista + RAG + pipeline por seção** primeiro. Fine-tuning de LoRA só depois que a avaliação mostrar lacuna de estilo/rito que a recuperação e os modelos de peça não fecham, e com peças aprovadas do escritório (centenas a milhares), não para "ensinar leis". O ganho do Jurema era conhecimento de prova (OAB), que o RAG fornece e que envelhece em pesos.
