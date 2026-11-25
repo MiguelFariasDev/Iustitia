@@ -2,7 +2,7 @@ import { env } from '@/config/env'
 import { apiClient } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import { alternarTag, criarTag, lerEstadoLocal, removerTag } from './repositorio'
-import type { AlvoTag, EstadoTags, Tag } from './types'
+import { colorirEtiquetas, proximaCor, type AlvoTag, type EstadoTags, type Tag } from './types'
 
 interface TagsDto {
   items: { id: string; name: string; color: string }[]
@@ -25,19 +25,23 @@ export async function listarTags(): Promise<EstadoTags> {
   }
 
   return {
-    tags: data.items.map((t) => ({ id: t.id, nome: t.name, cor: t.color })),
+    tags: colorirEtiquetas(data.items.map((t) => ({ id: t.id, nome: t.name, cor: t.color }))),
     atribuicoes,
   }
 }
 
-/** Cria a tag; se o nome já existe, o servidor devolve a existente. */
-export async function criarTagApi(nome: string): Promise<Tag | null> {
-  if (env.useMocks) return criarTag(nome)
+/**
+ * Cria a etiqueta com uma cor que nenhuma outra usa (`coresEmUso`); se o nome já existe, o servidor
+ * devolve a existente, com a cor dela.
+ */
+export async function criarTagApi(nome: string, coresEmUso: readonly string[] = []): Promise<Tag | null> {
+  const cor = proximaCor(coresEmUso)
+  if (env.useMocks) return criarTag(nome, cor)
   if (!nome.trim()) return null
 
   const { data } = await apiClient.post<{ id: string; name: string; color: string }>(
     endpoints.tags.root,
-    { name: nome.trim() }
+    { name: nome.trim(), color: cor }
   )
 
   return { id: data.id, nome: data.name, cor: data.color }

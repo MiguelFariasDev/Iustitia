@@ -148,7 +148,7 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Tags do processo</span>
+        <span className="text-xs text-muted-foreground">Etiquetas do processo</span>
         <TagsEditor alvo="processo" alvoId={processo.id} rotulo="processo" />
       </div>
 

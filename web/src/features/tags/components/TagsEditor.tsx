@@ -14,11 +14,11 @@ import { TagBadge } from './TagBadge'
 interface TagsEditorProps {
   alvo: AlvoTag
   alvoId: string
-  /** Nome de quem recebe a tag, para o leitor de tela ("Tags do processo"). */
+  /** Nome de quem recebe a etiqueta, para o leitor de tela ("Etiquetas do processo"). */
   rotulo: string
 }
 
-/** Tags aplicadas + um seletor para marcar, criar e apagar tags. */
+/** Etiquetas aplicadas + um seletor para marcar, criar e apagar etiquetas. */
 export function TagsEditor({ alvo, alvoId, rotulo }: TagsEditorProps) {
   const estado = useTagsState()
   const aplicadas = tagsDe(estado, alvo, alvoId)
@@ -41,16 +41,16 @@ export function TagsEditor({ alvo, alvoId, rotulo }: TagsEditorProps) {
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs">
             {aplicadas.length === 0 ? <TagIcon aria-hidden /> : <Plus aria-hidden />}
-            {aplicadas.length === 0 ? 'Adicionar tag' : 'Editar'}
+            {aplicadas.length === 0 ? 'Adicionar etiqueta' : 'Editar'}
             <span className="sr-only"> — {rotulo}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-72 space-y-3">
-          <p className="text-sm font-medium">Tags — {rotulo}</p>
+          <p className="text-sm font-medium">Etiquetas — {rotulo}</p>
 
           {estado.tags.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nenhuma tag criada. Digite um nome abaixo para criar a primeira.
+              Nenhuma etiqueta criada. Digite um nome abaixo para criar a primeira.
             </p>
           ) : (
             <ul className="max-h-48 space-y-1 overflow-y-auto">
@@ -70,7 +70,7 @@ export function TagsEditor({ alvo, alvoId, rotulo }: TagsEditorProps) {
                   <button
                     type="button"
                     onClick={() => void acoes.remover(tag.id)}
-                    aria-label={`Apagar a tag ${tag.nome} de todos os lugares`}
+                    aria-label={`Apagar a etiqueta ${tag.nome} de todos os lugares`}
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" aria-hidden />
@@ -90,16 +90,16 @@ export function TagsEditor({ alvo, alvoId, rotulo }: TagsEditorProps) {
             <Input
               value={nome}
               onChange={(event) => setNome(event.target.value)}
-              placeholder="Nova tag"
+              placeholder="Nova etiqueta"
               maxLength={30}
-              aria-label="Nome da nova tag"
+              aria-label="Nome da nova etiqueta"
             />
             <Button type="submit" size="sm" disabled={nome.trim() === ''}>
               Criar
             </Button>
           </form>
           <p className="text-xs text-muted-foreground">
-            As tags valem para todo o escritório.
+            As etiquetas valem para todo o escritório.
           </p>
         </PopoverContent>
       </Popover>
