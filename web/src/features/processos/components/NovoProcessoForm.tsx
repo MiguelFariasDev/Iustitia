@@ -149,7 +149,7 @@ export function NovoProcessoForm() {
             {!valido
               ? 'Digite os 20 dígitos. Tribunais do Piauí e do Ceará (TJPI, TJCE, TRF5, TRT22, TRT7) e demais tribunais do DataJud são consultados automaticamente.'
               : !atendido
-                ? `${tribunal ?? 'Este tribunal'} não é atendido pela consulta pública do CNJ — preencha manualmente.`
+                ? `${tribunal ?? 'Este tribunal'} não tem consulta automática — preencha manualmente.`
                 : `Será consultado no ${tribunal}.`}
           </p>
         </form>

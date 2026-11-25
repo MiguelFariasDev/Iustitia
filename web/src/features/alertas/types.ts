@@ -1,7 +1,7 @@
 /** Espelha Platform.Domain.Alerts.AlertType. */
-export type AlertType = 'Publication' | 'Task' | 'Birthday' | 'Other'
+export type AlertType = 'Publication' | 'Task' | 'Birthday' | 'Movimentacao' | 'Other'
 
-export const alertTypes: AlertType[] = ['Publication', 'Task', 'Birthday', 'Other']
+export const alertTypes: AlertType[] = ['Publication', 'Task', 'Birthday', 'Movimentacao', 'Other']
 
 export interface Alerta {
   id: string
