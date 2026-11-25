@@ -207,6 +207,16 @@ public static class ErrorCatalog
                 "Não é possível mudar o processo de '{0}' para '{1}'.", 409, ErrorType.Conflict),
             [ErrorCode.PROCESS_CLIENT_NOT_FOUND] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_NOT_FOUND),
                 "O cliente informado para o processo não existe.", 404, ErrorType.NotFound),
+            [ErrorCode.PROCESS_CLIENT_NOTIFICATION_NOT_FOUND] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_NOTIFICATION_NOT_FOUND),
+                "Aviso ao cliente não encontrado.", 404, ErrorType.NotFound),
+            [ErrorCode.PROCESS_CLIENT_NOTIFICATION_NOT_PENDING] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_NOTIFICATION_NOT_PENDING),
+                "Este aviso já foi enviado ou descartado.", 409, ErrorType.Conflict),
+            [ErrorCode.PROCESS_CLIENT_NOTIFICATION_RECIPIENT_UNAVAILABLE] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_NOTIFICATION_RECIPIENT_UNAVAILABLE),
+                "O cliente não pode receber o aviso: sem e-mail cadastrado, inativo ou com os dados anonimizados.", 409, ErrorType.Conflict),
+            [ErrorCode.PROCESS_CLIENT_NOTIFICATION_SEND_FAILED] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_NOTIFICATION_SEND_FAILED),
+                "O e-mail não pôde ser enviado agora. O aviso ficou como falha de envio e pode ser reenviado.", 500, ErrorType.Failure),
+            [ErrorCode.PROCESS_CLIENT_NOTIFICATION_MESSAGE_INVALID] = new(ErrorGroup.Process, nameof(ErrorCode.PROCESS_CLIENT_NOTIFICATION_MESSAGE_INVALID),
+                "A mensagem do aviso não pode ficar vazia nem passar de 8.000 caracteres.", 400, ErrorType.Validation),
 
             // PUBLICATION (módulo Legal — ver docs/modules/legal/publications.md)
             [ErrorCode.PUBLICATION_NOT_FOUND] = new(ErrorGroup.Publication, nameof(ErrorCode.PUBLICATION_NOT_FOUND),
@@ -398,7 +408,7 @@ public static class ErrorCatalog
             [ErrorCode.CNJ_NOT_FOUND] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_NOT_FOUND),
                 "Processo não encontrado no DataJud. Preencha os dados manualmente.", 404, ErrorType.NotFound),
             [ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED] = new(ErrorGroup.Cnj, nameof(ErrorCode.CNJ_TRIBUNAL_NOT_SUPPORTED),
-                "O tribunal '{0}' não é atendido pela consulta pública do DataJud.", 400, ErrorType.Validation),
+                "A consulta automática não está disponível para o tribunal '{0}'. Preencha os dados manualmente.", 400, ErrorType.Validation),
 
             // AI (Anthropic — ver ADR-067 e docs/integrations/anthropic.md)
             [ErrorCode.AI_INVALID_REQUEST] = new(ErrorGroup.Ai, nameof(ErrorCode.AI_INVALID_REQUEST),

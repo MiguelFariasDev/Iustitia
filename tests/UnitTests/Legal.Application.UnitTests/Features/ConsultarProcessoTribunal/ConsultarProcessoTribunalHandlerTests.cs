@@ -35,6 +35,17 @@ public class ConsultarProcessoTribunalHandlerTests
         result.Value.Processo!.Classe.Should().Be("Procedimento do Juizado Especial Cível");
     }
 
+    [Fact]
+    public async Task Handle_InformaAFonteQueRespondeu()
+    {
+        _consulta.ConsultarAsync(Arg.Any<CNJNumber>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success<ProcessoTribunal?>(Processo() with { Fonte = FonteConsulta.Juscraper }));
+
+        var result = await CreateHandler().Handle(new ConsultarProcessoTribunalQuery(CnjValido), CancellationToken.None);
+
+        result.Value.Fonte.Should().Be("juscraper");
+    }
+
     /// <summary>
     /// Não encontrado é SUCESSO com Found=false, não erro: a tela precisa distinguir "o
     /// tribunal não conhece este processo" (preencha manualmente) de "a consulta falhou"

@@ -63,6 +63,7 @@ public sealed class DataJudConsultaProcessoTribunal(IDataJudClient client) : ICo
                 .Take(MaxMovimentos)
                 .Select(movimento => new MovimentoProcesso(movimento.Nome, movimento.DataHora))
                 .ToArray(),
-            processo.OrgaoJulgador?.CodigoMunicipioIBGE);
+            processo.OrgaoJulgador?.CodigoMunicipioIBGE,
+            FonteConsulta.DataJud);
     }
 }

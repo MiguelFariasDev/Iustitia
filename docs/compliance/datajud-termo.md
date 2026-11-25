@@ -94,3 +94,11 @@ Não são exigência do termo, mas são o que torna o uso defensável na prátic
 - API Pública do DataJud: https://api-publica.datajud.cnj.jus.br
 - Wiki do DataJud: https://datajud-wiki.cnj.jus.br/api-publica/
 - ADR-064 — Integração com a API Pública do DataJud (uso portfólio)
+
+## Atualização — DataJud como fallback (ADR-075, 2026-11-25)
+
+O DataJud deixou de ser a fonte principal: a consulta do cadastro e o acompanhamento de andamentos vão primeiro
+aos portais dos tribunais pelo juscraper, e o DataJud só é usado quando o juscraper falha ou não cobre o
+tribunal. O uso diminui, mas **não desaparece** — esta análise continua valendo. Ao comercializar, desligue
+`Juscraper:FallbackDataJud` (ou troque o DataJud por um provedor com contrato).
+

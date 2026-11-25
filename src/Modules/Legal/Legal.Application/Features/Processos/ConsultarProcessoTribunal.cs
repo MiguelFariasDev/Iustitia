@@ -18,10 +18,15 @@ public sealed record ConsultarProcessoTribunalQuery(string CnjNumber) : IQuery<C
 /// <param name="Found">Falso quando o tribunal respondeu, mas não conhece o processo.</param>
 /// <param name="Tribunal">Sigla derivada do número CNJ, útil na tela mesmo sem resultado.</param>
 /// <param name="Processo">Metadados encontrados, ou nulo.</param>
+/// <param name="Fonte">
+/// "juscraper" (portal do tribunal) ou "datajud" (API Pública do CNJ) quando encontrado; nulo no
+/// "não encontrado". Opcional: clientes antigos simplesmente ignoram o campo.
+/// </param>
 public sealed record ConsultarProcessoTribunalResponse(
     bool Found,
     string? Tribunal,
-    ProcessoTribunal? Processo);
+    ProcessoTribunal? Processo,
+    string? Fonte = null);
 
 public sealed class ConsultarProcessoTribunalValidator : AbstractValidator<ConsultarProcessoTribunalQuery>
 {
@@ -59,7 +64,7 @@ public sealed class ConsultarProcessoTribunalHandler(IConsultaProcessoTribunal c
         // Não encontrado devolve SUCESSO com Found=false, não erro: o cadastro manual segue
         // disponível e a tela precisa distinguir "não existe lá" de "a consulta falhou".
         return resultado.Value is { } processo
-            ? new ConsultarProcessoTribunalResponse(Found: true, tribunal, processo)
+            ? new ConsultarProcessoTribunalResponse(Found: true, tribunal, processo, processo.Fonte)
             : new ConsultarProcessoTribunalResponse(Found: false, tribunal, Processo: null);
     }
 }

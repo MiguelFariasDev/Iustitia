@@ -51,6 +51,20 @@ services:
       timeout: 10s
       retries: 10
 
+  # Consulta aos portais dos tribunais (ADR-075, docs/integrations/juscraper.md). Opcional:
+  #   JUSCRAPER_API_KEY=... docker compose -f infra/docker/docker-compose.yml --profile juscraper up -d juscraper
+  # JUSCRAPER_PATH aponta para o checkout do juscraper (padrão: pasta irmã do repositório).
+  # Só em 127.0.0.1: a chave protege o serviço, mas ele não precisa ficar exposto na rede.
+  juscraper:
+    profiles: ["juscraper"]
+    build: ${JUSCRAPER_PATH:-../../../juscraper}
+    container_name: advocacia-juscraper
+    restart: unless-stopped
+    environment:
+      Juscraper__Api__ApiKeys: ${JUSCRAPER_API_KEY:?defina JUSCRAPER_API_KEY (a mesma de Juscraper:ApiKey no user-secrets)}
+    ports:
+      - "127.0.0.1:8000:8080"
+
 volumes:
   advocacia-postgres-data:
   advocacia-redis-data:

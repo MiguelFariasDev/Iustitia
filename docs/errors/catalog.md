@@ -146,6 +146,19 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `CLIENT_HAS_ACTIVE_PROCESSES` | Este cliente tem processos em andamento. Encerre ou arquive os processos antes de anonimizar os dados. | 409 | Conflict | Anonimização pedida com processo ativo ou suspenso (LGPD: o escritório precisa manter os dados do caso em curso). | Encerrar/arquivar os processos e repetir. |
 | `CLIENT_ANONYMIZED` | Os dados deste cliente foram anonimizados e não podem mais ser alterados. | 409 | Conflict | Editar, reativar ou anonimizar de novo um cliente já anonimizado. | Nenhuma: a anonimização é irreversível. |
 
+## Process (1200–1299) — aviso de movimentação ao cliente
+
+Os demais códigos `PROCESS_*` (cadastro de processo) estão em `ErrorCatalog.cs`. Os abaixo são do aviso ao
+cliente gerado pelo acompanhamento de movimentações (ADR-075), que só sai depois da revisão do advogado.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `PROCESS_CLIENT_NOTIFICATION_NOT_FOUND` | Aviso ao cliente não encontrado. | 404 | NotFound | Id inexistente, de outro escritório ou de processo confidencial que o usuário não vê. | Atualizar a fila. |
+| `PROCESS_CLIENT_NOTIFICATION_NOT_PENDING` | Este aviso já foi enviado ou descartado. | 409 | Conflict | Enviar ou descartar um aviso que já saiu da fila. | Nenhuma ação. |
+| `PROCESS_CLIENT_NOTIFICATION_RECIPIENT_UNAVAILABLE` | O cliente não pode receber o aviso: sem e-mail cadastrado, inativo ou com os dados anonimizados. | 409 | Conflict | O cadastro do cliente mudou depois que o rascunho foi criado. | Corrigir o cadastro ou descartar o aviso. |
+| `PROCESS_CLIENT_NOTIFICATION_SEND_FAILED` | O e-mail não pôde ser enviado agora. O aviso ficou como falha de envio e pode ser reenviado. | 500 | Failure | O provedor de e-mail recusou ou estava fora do ar. | Reenviar mais tarde. |
+| `PROCESS_CLIENT_NOTIFICATION_MESSAGE_INVALID` | A mensagem do aviso não pode ficar vazia nem passar de 8.000 caracteres. | 400 | Validation | Mensagem editada vazia ou longa demais. | Ajustar o texto. |
+
 ## Publication (1300–1399)
 
 Módulo Legal — ver `docs/modules/legal/publications.md`.

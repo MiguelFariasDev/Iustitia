@@ -191,6 +191,181 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                     b.ToTable("clientes", (string)null);
                 });
 
+            modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Movimentacoes.NotificacaoCliente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AndamentosDesde")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("andamentos_desde");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("EnviadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enviado_em");
+
+                    b.Property<DateTimeOffset?>("FalhaEnvioEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("falha_envio_em");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("mensagem");
+
+                    b.Property<Guid>("ProcessoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processo_id");
+
+                    b.Property<int>("QuantidadeAndamentos")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantidade_andamentos");
+
+                    b.Property<DateTimeOffset?>("RevisadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revisado_em");
+
+                    b.Property<Guid?>("RevisadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revisado_por");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notificacoes_cliente");
+
+                    b.HasIndex("TenantId", "ProcessoId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_notificacoes_cliente_pendente_por_processo")
+                        .HasFilter("status = 'PendenteRevisao'");
+
+                    b.HasIndex("TenantId", "Status", "CreatedAt")
+                        .HasDatabaseName("ix_notificacoes_cliente_tenant_status_criacao");
+
+                    b.ToTable("notificacoes_cliente", (string)null);
+                });
+
+            modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Movimentacoes.ProcessoMovimentacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CapturadaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("capturada_em");
+
+                    b.Property<string>("Complemento")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("complemento");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("DataHora")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_hora");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("external_id");
+
+                    b.Property<string>("Fonte")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("fonte");
+
+                    b.Property<string>("Instancia")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("instancia");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("nome");
+
+                    b.Property<bool>("PossuiDocumento")
+                        .HasColumnType("boolean")
+                        .HasColumnName("possui_documento");
+
+                    b.Property<Guid>("ProcessoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("processo_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_processo_movimentacoes");
+
+                    b.HasIndex("TenantId", "ProcessoId", "CapturadaEm")
+                        .HasDatabaseName("ix_processo_movimentacoes_tenant_processo_capturada");
+
+                    b.HasIndex("TenantId", "ProcessoId", "DataHora")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_processo_movimentacoes_tenant_processo_data");
+
+                    b.HasIndex("TenantId", "ProcessoId", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_processo_movimentacoes_tenant_processo_external");
+
+                    b.ToTable("processo_movimentacoes", (string)null);
+                });
+
             modelBuilder.Entity("Advocacia.Modules.Legal.Domain.Processos.Processo", b =>
                 {
                     b.Property<Guid>("Id")

@@ -79,7 +79,7 @@ export function ProcessoForm({
   const tituloBotaoConsulta = !isValidCnj(cnjNumber)
     ? 'Informe um número CNJ válido para consultar'
     : !tribunalTemConsultaPublica(tribunal)
-      ? `${tribunal ?? 'Este tribunal'} não é atendido pela consulta pública do CNJ`
+      ? `${tribunal ?? 'Este tribunal'} não tem consulta automática`
       : `Consultar no ${tribunal}`
 
   function consultar() {

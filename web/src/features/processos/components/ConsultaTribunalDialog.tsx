@@ -13,7 +13,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { formatDate } from '@/lib/format'
-import { mensagemConsultaTribunal, type ConsultaTribunalResult, type ProcessoTribunal } from '../datajud'
+import {
+  mensagemConsultaTribunal,
+  rotuloFonte,
+  type ConsultaTribunalResult,
+  type ProcessoTribunal,
+} from '../datajud'
 
 interface ConsultaTribunalDialogProps {
   open: boolean
@@ -65,7 +70,10 @@ export function ConsultaTribunalDialog({
         ) : error ? (
           <ConsultaErro error={error} />
         ) : processo ? (
-          <ProcessoEncontrado processo={processo} />
+          <ProcessoEncontrado
+            processo={processo}
+            origem={rotuloFonte(result?.fonte ?? null, processo.tribunal)}
+          />
         ) : (
           <NaoEncontrado tribunal={result?.tribunal ?? tribunal} />
         )}
@@ -90,9 +98,17 @@ export function ConsultaTribunalDialog({
   )
 }
 
-export function ProcessoEncontrado({ processo }: { processo: ProcessoTribunal }) {
+export function ProcessoEncontrado({
+  processo,
+  origem = null,
+}: {
+  processo: ProcessoTribunal
+  /** "Dados do portal do TJSP" / "Dados do DataJud (CNJ)". */
+  origem?: string | null
+}) {
   return (
     <div className="space-y-4">
+      {origem ? <p className="text-xs text-muted-foreground">{origem}</p> : null}
       {processo.emSegredoDeJustica ? (
         <p className="flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />

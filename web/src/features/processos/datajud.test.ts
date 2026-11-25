@@ -109,3 +109,13 @@ describe('mensagemConsultaTribunal', () => {
     expect(mensagemConsultaTribunal(new Error('x'))).toMatch(/Não foi possível consultar/)
   })
 })
+
+describe('rotuloFonte', () => {
+  it('diz de onde vieram os dados', async () => {
+    const { rotuloFonte } = await import('./datajud')
+
+    expect(rotuloFonte('juscraper', 'TJSP')).toBe('Dados do portal do TJSP')
+    expect(rotuloFonte('datajud', 'TRF1')).toBe('Dados do DataJud (CNJ)')
+    expect(rotuloFonte(null, 'TJSP')).toBeNull()
+  })
+})
