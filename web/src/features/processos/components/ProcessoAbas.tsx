@@ -35,12 +35,19 @@ export function ProcessoAbas({
 }) {
   return (
     <Tabs defaultValue="publicacoes">
-      <TabsList>
-        <TabsTrigger value="publicacoes">Publicações</TabsTrigger>
-        <TabsTrigger value="agenda">Prazos, audiências e eventos</TabsTrigger>
-        <TabsTrigger value="movimentos">Movimentos</TabsTrigger>
-        <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
-      </TabsList>
+      {/* No celular as quatro abas não cabem: a faixa rola sozinha, sem empurrar a página para
+          os lados, e "Prazos, audiências e eventos" vira "Agenda". */}
+      <div className="-mx-1 max-w-full overflow-x-auto px-1">
+        <TabsList className="w-max">
+          <TabsTrigger value="publicacoes">Publicações</TabsTrigger>
+          <TabsTrigger value="agenda">
+            <span className="sm:hidden">Agenda</span>
+            <span className="hidden sm:inline">Prazos, audiências e eventos</span>
+          </TabsTrigger>
+          <TabsTrigger value="movimentos">Movimentos</TabsTrigger>
+          <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+        </TabsList>
+      </div>
       <TabsContent value="agenda">
         <CompromissosDoProcesso processoId={processo.id} clienteNome={clienteNome} />
       </TabsContent>

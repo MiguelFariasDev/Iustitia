@@ -82,7 +82,11 @@ export function NovoProcessoForm() {
         ) : (
           <p className="text-sm text-muted-foreground">
             Preenchimento manual.{' '}
-            <button type="button" className="underline" onClick={trocarNumero}>
+            <button
+              type="button"
+              className="inline-flex min-h-10 items-center underline underline-offset-4"
+              onClick={trocarNumero}
+            >
               Buscar por outro número
             </button>
           </p>
@@ -121,7 +125,10 @@ export function NovoProcessoForm() {
           }}
         >
           <Label htmlFor="cnj-busca">Número do processo (CNJ)</Label>
-          <div className="flex gap-2">
+          {/* No celular, campo e botão empilhados: o número tem 25 caracteres e, dividindo a
+              linha com o botão, aparecia cortado. A fonte fica em 16 px (abaixo disso o iPhone
+              dá zoom ao focar o campo). */}
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               id="cnj-busca"
               inputMode="numeric"
@@ -136,7 +143,11 @@ export function NovoProcessoForm() {
                 if (consulta.data || consulta.error) consulta.reset()
               }}
             />
-            <Button type="submit" disabled={!valido || !atendido || consulta.isPending}>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={!valido || !atendido || consulta.isPending}
+            >
               {consulta.isPending ? (
                 <Loader2 className="animate-spin" aria-hidden />
               ) : (
@@ -166,16 +177,17 @@ export function NovoProcessoForm() {
           </p>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={!valido}
             onClick={() => abrirFormulario(null)}
           >
             Preencher manualmente
           </Button>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" className="w-full sm:w-auto" asChild>
             <Link href={routes.processes as never}>Cancelar</Link>
           </Button>
         </div>
