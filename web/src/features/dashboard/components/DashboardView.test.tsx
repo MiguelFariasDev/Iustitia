@@ -4,6 +4,8 @@ import * as agendaApi from '@/features/agenda/api'
 import type { AgendaEvento } from '@/features/agenda/types'
 import * as processosApi from '@/features/processos/api'
 import * as publicationsApi from '@/features/publicacoes/api'
+import * as settingsApi from '@/features/settings/api'
+import * as tarefasApi from '@/features/tarefas/api'
 import type { Publication } from '@/features/publicacoes/types'
 import { useNow } from '@/hooks/useNow'
 import { mockUser } from '@/lib/auth/mockAuth'
@@ -20,6 +22,8 @@ vi.mock('@/hooks/useNow', () => ({ useNow: vi.fn() }))
 vi.mock('@/features/agenda/api')
 vi.mock('@/features/publicacoes/api')
 vi.mock('@/features/processos/api')
+vi.mock('@/features/tarefas/api')
+vi.mock('@/features/settings/api')
 vi.mock('@/lib/notify', () => ({
   notify: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }))
@@ -92,6 +96,31 @@ beforeEach(() => {
   useTenantStore.setState({ featureFlags: { 'ai.classification': true } })
   vi.mocked(useNow).mockReturnValue(NOW)
   vi.mocked(agendaApi.listEventos).mockResolvedValue(eventos)
+  vi.mocked(settingsApi.listUsers).mockResolvedValue([])
+  vi.mocked(tarefasApi.listarTarefas).mockResolvedValue([
+    {
+      id: 't-atrasada',
+      titulo: 'Protocolar contrarrazões',
+      processo: '',
+      processoId: null,
+      responsavel: '',
+      responsavelId: null,
+      coluna: 'andamento',
+      prazo: '2026-11-03',
+      criadaEm: '2026-10-20T12:00:00Z',
+    },
+    {
+      id: 't-em-dia',
+      titulo: 'Ligar para o cliente',
+      processo: '',
+      processoId: null,
+      responsavel: '',
+      responsavelId: null,
+      coluna: 'afazer',
+      prazo: '2026-11-05',
+      criadaEm: '2026-10-20T12:00:00Z',
+    },
+  ])
   vi.mocked(publicationsApi.getPublications).mockResolvedValue({
     items: [revisao],
     page: 1,
@@ -153,8 +182,15 @@ describe('DashboardView — advogado(a), variação A', () => {
 
     const indicadores = screen.getByRole('region', { name: 'Indicadores' })
     expect(within(indicadores).getByText('Tarefas atrasadas')).toBeInTheDocument()
-    // Sem módulo de tarefas não há número: "—" e a explicação, nunca um zero que pareça verdade.
-    expect(within(indicadores).getByText(/disponível com o módulo de tarefas/)).toBeInTheDocument()
+    // Conta só as tarefas reais com prazo vencido (vencer hoje ainda não é atraso).
+    const atrasadas = await within(indicadores).findByRole('link', { name: /Tarefas atrasadas/ })
+    await waitFor(() => expect(within(atrasadas).getByText('1')).toBeInTheDocument())
+    expect(atrasadas).toHaveAttribute('href', '/tarefas')
+    expect(
+      await screen.findByRole('heading', { name: /Tarefas em atraso/ })
+    ).toBeInTheDocument()
+    expect(screen.getByText('Protocolar contrarrazões')).toBeInTheDocument()
+    expect(screen.queryByText('Ligar para o cliente')).toBeNull()
     await waitFor(() =>
       expect(within(indicadores).getByText('próximo às 16:00')).toBeInTheDocument()
     )
@@ -325,13 +361,13 @@ describe('DashboardView — perfis', () => {
     }
   )
 
-  it('sócio só busca a agenda: não monta fila (sem publicações nem processos)', async () => {
+  it('sócio não monta fila de publicações, mas vê as tarefas em atraso do escritório', async () => {
     entrar('Owner')
     render()
     await screen.findByText('Contestação Souza')
 
     expect(publicationsApi.getPublications).not.toHaveBeenCalled()
-    expect(processosApi.listProcessos).not.toHaveBeenCalled()
+    expect(await screen.findByText('Protocolar contrarrazões')).toBeInTheDocument()
   })
 
   it('financeiro: sem valores consolidados até haver servidor', () => {

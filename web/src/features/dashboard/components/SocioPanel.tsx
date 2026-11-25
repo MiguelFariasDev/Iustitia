@@ -4,6 +4,9 @@ import { KpiCard } from '@/components/shared/KpiCard'
 import { UrgencyBadge } from '@/components/shared/UrgencyBadge'
 import { formatHora } from '@/features/agenda/dates'
 import { routes } from '@/config/routes'
+import { TarefasEmAtraso } from '@/features/tarefas/components/TarefasEmAtraso'
+import { useTarefasComEstado } from '@/features/tarefas/hooks'
+import { tarefasAtrasadas } from '@/features/tarefas/kanban'
 import { prazosDaSemana, urgencyOf } from '../workQueue'
 import type { useDashboardWork } from '../hooks'
 import { DemoSection } from './DemoSection'
@@ -18,6 +21,8 @@ export function SocioPanel({
   now: Date | null
 }) {
   const prazos = now ? prazosDaSemana(work.eventos, now) : []
+  const tarefas = useTarefasComEstado()
+  const atrasadas = now ? tarefasAtrasadas(tarefas.tarefas, now) : []
 
   return (
     <div className="space-y-6">
@@ -34,12 +39,28 @@ export function SocioPanel({
           hrefLabel="Prazos na semana — abrir a agenda"
         />
         <KpiCard
+          label="Tarefas em atraso"
+          value={tarefas.isPending || tarefas.isError || !now ? null : atrasadas.length}
+          hint={tarefas.isError ? 'não foi possível carregar' : 'do escritório inteiro'}
+          tone="danger"
+          href={routes.tasks}
+          hrefLabel="Tarefas em atraso — abrir o quadro de tarefas"
+        />
+        <KpiCard
           label="Prazos cumpridos"
           value={null}
           hint="disponível com o módulo de tarefas"
           tone="neutral"
         />
       </section>
+
+      <TarefasEmAtraso
+        tarefas={tarefas.tarefas}
+        agora={now}
+        isPending={tarefas.isPending}
+        isError={tarefas.isError}
+        onRetry={() => void tarefas.refetch()}
+      />
 
       <DemoSection id="riscos-titulo" title="Riscos de prazo">
         {work.isPending ? (

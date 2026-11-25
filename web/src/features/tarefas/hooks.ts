@@ -11,11 +11,20 @@ const CHAVE = ['tarefas'] as const
 
 /** Tarefas com o número do processo e o nome do responsável já preenchidos. */
 export function useTarefas(): Tarefa[] {
-  const { data } = useQuery({ queryKey: CHAVE, queryFn: listarTarefas, staleTime: 30_000 })
+  return useTarefasComEstado().tarefas
+}
+
+/** Como `useTarefas`, com o estado da consulta: para não mostrar "0 atrasadas" enquanto carrega. */
+export function useTarefasComEstado() {
+  const { data, isPending, isError, refetch } = useQuery({
+    queryKey: CHAVE,
+    queryFn: listarTarefas,
+    staleTime: 30_000,
+  })
   const { data: processos } = useQuery(processosQuery({ pageSize: 100 }))
   const { data: usuarios } = useQuery({ queryKey: queryKeys.users.list(), queryFn: listUsers })
 
-  return (data ?? []).map((tarefa) => ({
+  const tarefas: Tarefa[] = (data ?? []).map((tarefa) => ({
     ...tarefa,
     processo:
       tarefa.processo ||
@@ -23,6 +32,8 @@ export function useTarefas(): Tarefa[] {
     responsavel:
       tarefa.responsavel || (usuarios?.find((u) => u.id === tarefa.responsavelId)?.name ?? ''),
   }))
+
+  return { tarefas, isPending, isError, refetch }
 }
 
 export function useTarefaActions() {
