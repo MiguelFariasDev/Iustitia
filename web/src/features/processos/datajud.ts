@@ -1,3 +1,4 @@
+import { ApiError } from '@/lib/api/errors'
 import { apiClient } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import type { ProcessoFormValues } from './schemas'
@@ -156,4 +157,26 @@ function montarObservacoes(processo: ProcessoTribunal): string {
   }
 
   return linhas.join('\n')
+}
+
+/**
+ * Mensagem da consulta ao tribunal (DataJud/CNJ). Os códigos CNJ_* vêm com o texto da captura
+ * de publicações ("a captura será retomada"), que não serve para quem está consultando um
+ * processo: aqui a pessoa precisa saber se espera, tenta de novo ou preenche à mão.
+ */
+export function mensagemConsultaTribunal(error: unknown): string {
+  const codigo = error instanceof ApiError ? error.code : undefined
+  switch (codigo) {
+    case 'CNJ_RATE_LIMITED':
+      return 'A base pública do CNJ atingiu o limite de consultas. Tente de novo em alguns minutos ou preencha os dados manualmente.'
+    case 'CNJ_TIMEOUT':
+      return 'A base pública do CNJ demorou demais para responder. Tente de novo ou preencha os dados manualmente.'
+    case 'CNJ_UNAVAILABLE':
+    case 'CNJ_INVALID_RESPONSE':
+      return 'A base pública do CNJ está fora do ar agora. Tente mais tarde ou preencha os dados manualmente.'
+    default:
+      return error instanceof ApiError && error.message
+        ? error.message
+        : 'Não foi possível consultar o tribunal agora. Tente de novo ou preencha manualmente.'
+  }
 }
