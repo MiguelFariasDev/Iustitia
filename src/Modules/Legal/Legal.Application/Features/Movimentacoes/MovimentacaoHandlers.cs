@@ -163,7 +163,7 @@ public sealed class ListMovimentacoesHandler(
     public async Task<Result<ListMovimentacoesResponse>> Handle(ListMovimentacoesQuery request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure<ListMovimentacoesResponse>(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }

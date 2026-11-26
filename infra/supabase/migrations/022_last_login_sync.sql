@@ -25,17 +25,28 @@ begin
 end;
 $$;
 
-drop trigger if exists on_auth_user_signed_in on auth.users;
-create trigger on_auth_user_signed_in
-  after update of last_sign_in_at on auth.users
-  for each row
-  when (new.last_sign_in_at is not null)
-  execute function public.sync_last_login();
+-- O schema "auth" é do Supabase: num Postgres puro (testes de integração, desenvolvimento sem Supabase) ele não
+-- existe e o trigger/backfill são simplesmente pulados.
+do $$
+begin
+  if to_regclass('auth.users') is null then
+    raise notice 'auth.users ausente (Postgres sem Supabase): trigger de último acesso não criado.';
+    return;
+  end if;
 
--- Backfill: quem já entrou e ficou com NULL.
-update public.users u
-   set last_login_at = a.last_sign_in_at
-  from auth.users a
- where a.id = u.id
-   and u.last_login_at is null
-   and a.last_sign_in_at is not null;
+  drop trigger if exists on_auth_user_signed_in on auth.users;
+  create trigger on_auth_user_signed_in
+    after update of last_sign_in_at on auth.users
+    for each row
+    when (new.last_sign_in_at is not null)
+    execute function public.sync_last_login();
+
+  -- Backfill: quem já entrou e ficou com NULL.
+  update public.users u
+     set last_login_at = a.last_sign_in_at
+    from auth.users a
+   where a.id = u.id
+     and u.last_login_at is null
+     and a.last_sign_in_at is not null;
+end;
+$$;

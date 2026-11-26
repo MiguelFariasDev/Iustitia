@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.Modules.Legal.Domain.Processos;
 
@@ -11,8 +12,10 @@ namespace Advocacia.Modules.Legal.Application.Authorization;
 /// </summary>
 internal static class ProcessoAcesso
 {
-    internal static bool PodeVer(Processo processo, ICurrentUser user) =>
-        !processo.Confidencial || EhSociedade(user) || (user.UserId is { } id && processo.TemAdvogado(id));
+    /// <summary>Processo inexistente (null) também é "não pode ver": quem chama devolve o mesmo "não encontrado".</summary>
+    internal static bool PodeVer([NotNullWhen(true)] Processo? processo, ICurrentUser user) =>
+        processo is not null
+        && (!processo.Confidencial || EhSociedade(user) || (user.UserId is { } id && processo.TemAdvogado(id)));
 
     /// <summary>
     /// Para listagens: o id do usuário a restringir, ou null quando ele vê tudo (sociedade).

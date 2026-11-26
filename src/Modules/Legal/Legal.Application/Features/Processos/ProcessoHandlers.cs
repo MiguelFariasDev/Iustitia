@@ -4,6 +4,7 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Application.Authorization;
+using Advocacia.Modules.Legal.Application.Avisos;
 using Advocacia.Modules.Legal.Domain.Clientes;
 using Advocacia.Modules.Legal.Domain.Processos;
 using Advocacia.Modules.Legal.Domain.Shared;
@@ -110,7 +111,7 @@ public sealed class UpdateProcessoHandler(
         }
 
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -170,7 +171,7 @@ public sealed class ChangeProcessoStatusHandler(
     public async Task<Result> Handle(ChangeProcessoStatusCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -201,7 +202,7 @@ public sealed class ArchiveProcessoHandler(
     public async Task<Result> Handle(ArchiveProcessoCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -227,7 +228,7 @@ public sealed class SetProcessoConfidencialHandler(
     public async Task<Result> Handle(SetProcessoConfidencialCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -247,7 +248,7 @@ public sealed class GetProcessoByIdHandler(IProcessoRepository processoRepositor
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
 
-        return processo is null || !ProcessoAcesso.PodeVer(processo, currentUser)
+        return !ProcessoAcesso.PodeVer(processo, currentUser)
             ? Result.Failure<ProcessoResponse>(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND))
             : Result.Success(processo.ToResponse());
     }

@@ -68,7 +68,7 @@ public sealed class EnviarNotificacaoClienteHandler(
         var processo = notificacao is null
             ? null
             : await processoRepository.GetByIdAsync(ProcessoId.From(notificacao.ProcessoId), cancellationToken);
-        if (notificacao is null || processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (notificacao is null || !ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure<NotificacaoClienteResponse>(ErrorFactory.From(ErrorCode.PROCESS_CLIENT_NOTIFICATION_NOT_FOUND));
         }
@@ -134,7 +134,7 @@ public sealed class DescartarNotificacaoClienteHandler(
         var processo = notificacao is null
             ? null
             : await processoRepository.GetByIdAsync(ProcessoId.From(notificacao.ProcessoId), cancellationToken);
-        if (notificacao is null || processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (notificacao is null || !ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure<NotificacaoClienteResponse>(ErrorFactory.From(ErrorCode.PROCESS_CLIENT_NOTIFICATION_NOT_FOUND));
         }

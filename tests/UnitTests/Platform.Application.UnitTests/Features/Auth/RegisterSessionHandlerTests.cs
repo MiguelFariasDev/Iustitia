@@ -67,7 +67,7 @@ public class RegisterSessionHandlerTests
 
         result.IsFailure.Should().BeTrue();
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-        await _auditService.DidNotReceiveWithAnyArgs().RecordAsync(default, default!, default, default, default, default, default, default, default);
+        await _auditService.DidNotReceiveWithAnyArgs().RecordAsync(default, string.Empty, string.Empty);
     }
 
     [Fact]

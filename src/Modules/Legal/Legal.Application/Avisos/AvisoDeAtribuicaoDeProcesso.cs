@@ -2,7 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.Modules.Legal.Domain.Processos;
 using Microsoft.Extensions.Logging;
 
-namespace Advocacia.Modules.Legal.Application.Features.Processos;
+namespace Advocacia.Modules.Legal.Application.Avisos;
 
 /// <summary>
 /// Avisa cada advogado de que um processo foi atribuído a ele (cadastro, ou ao ser incluído na equipe do
