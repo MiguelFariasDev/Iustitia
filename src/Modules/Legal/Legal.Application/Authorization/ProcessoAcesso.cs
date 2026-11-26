@@ -5,14 +5,14 @@ namespace Advocacia.Modules.Legal.Application.Authorization;
 
 /// <summary>
 /// Regra de visibilidade de processo dentro do escritório. Processo comum é visível a quem tem
-/// acesso ao módulo; processo CONFIDENCIAL só ao responsável e à sociedade (Owner/Partner).
+/// acesso ao módulo; processo CONFIDENCIAL só aos advogados do processo e à sociedade (Owner/Partner).
 /// Quem não pode ver recebe "não encontrado" (nunca "proibido"), para não confirmar que o
 /// processo existe.
 /// </summary>
 internal static class ProcessoAcesso
 {
     internal static bool PodeVer(Processo processo, ICurrentUser user) =>
-        !processo.Confidencial || EhSociedade(user) || user.UserId == processo.ResponsavelUserId;
+        !processo.Confidencial || EhSociedade(user) || (user.UserId is { } id && processo.TemAdvogado(id));
 
     /// <summary>
     /// Para listagens: o id do usuário a restringir, ou null quando ele vê tudo (sociedade).

@@ -7,6 +7,10 @@ public sealed class CreateProcessoValidator : AbstractValidator<CreateProcessoCo
 {
     public CreateProcessoValidator()
     {
+        RuleFor(command => command.AdvogadosAdicionaisUserIds)
+            .Must(ids => ids is null || ids.Count <= Processo.MaxAdvogadosAdicionais)
+            .WithMessage($"Informe no máximo {Processo.MaxAdvogadosAdicionais} advogados adicionais.");
+
         RuleFor(command => command.CnjNumber)
             .NotEmpty()
             .WithMessage("O número do processo é obrigatório.");
@@ -31,6 +35,10 @@ public sealed class UpdateProcessoValidator : AbstractValidator<UpdateProcessoCo
 {
     public UpdateProcessoValidator()
     {
+        RuleFor(command => command.AdvogadosAdicionaisUserIds)
+            .Must(ids => ids is null || ids.Count <= Processo.MaxAdvogadosAdicionais)
+            .WithMessage($"Informe no máximo {Processo.MaxAdvogadosAdicionais} advogados adicionais.");
+
         RuleFor(command => command.ProcessoId).NotEmpty();
         RuleFor(command => command.ClienteId).NotEmpty();
         RuleFor(command => command.ResponsavelUserId).NotEmpty();

@@ -2,6 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Application.Messaging;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
+using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Workflow.Application.Abstractions;
 using Advocacia.Modules.Workflow.Domain.Calendar;
 
@@ -107,6 +108,37 @@ public sealed class RescheduleCalendarEventHandler(
         if (result.IsFailure)
         {
             return result;
+        }
+
+        repository.Update(calendarEvent);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
+}
+
+/// <summary>Baixa e reabertura. Quem pode ver o evento pode dar baixa: a agenda é do time todo.</summary>
+public sealed class SetCalendarEventDoneHandler(
+    ICalendarEventRepository repository,
+    IWorkflowUnitOfWork unitOfWork,
+    ICurrentUser currentUser,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<SetCalendarEventDoneCommand>
+{
+    public async Task<Result> Handle(SetCalendarEventDoneCommand request, CancellationToken cancellationToken)
+    {
+        var calendarEvent = await repository.GetByIdAsync(CalendarEventId.From(request.EventId), cancellationToken);
+        if (calendarEvent is null)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.CALENDAR_EVENT_NOT_FOUND));
+        }
+
+        if (request.Done)
+        {
+            calendarEvent.MarkDone(dateTimeProvider.UtcNow, currentUser.UserId);
+        }
+        else
+        {
+            calendarEvent.Reopen();
         }
 
         repository.Update(calendarEvent);

@@ -33,6 +33,9 @@ public sealed record RescheduleCalendarEventCommand(
     DateTimeOffset? EndAt = null,
     bool? AllDay = null) : ICommand;
 
+/// <summary>Dá baixa (<c>Done = true</c>) ou reabre (<c>false</c>) o compromisso.</summary>
+public sealed record SetCalendarEventDoneCommand(Guid EventId, bool Done) : ICommand;
+
 public sealed record DeleteCalendarEventCommand(Guid EventId) : ICommand;
 
 public sealed record GetCalendarEventByIdQuery(Guid EventId) : IQuery<CalendarEventResponse>;
@@ -54,6 +57,7 @@ public sealed record CalendarEventResponse(
     bool AllDay,
     string? Location,
     Guid? ProcessId,
-    Guid? AssignedUserId);
+    Guid? AssignedUserId,
+    DateTimeOffset? CompletedAt = null);
 
 public sealed record ListCalendarEventsResponse(IReadOnlyList<CalendarEventResponse> Items);

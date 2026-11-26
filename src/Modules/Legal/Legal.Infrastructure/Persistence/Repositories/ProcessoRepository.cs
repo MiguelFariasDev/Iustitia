@@ -87,9 +87,11 @@ public sealed class ProcessoRepository(LegalDbContext dbContext)
         string? tribunal, DateOnly? distribuicaoDe, DateOnly? distribuicaoAte, Guid? restritoAoUsuario) =>
         DbSet.Where(processo =>
             processo.TenantId == tenantId
-            && (restritoAoUsuario == null || !processo.Confidencial || processo.ResponsavelUserId == restritoAoUsuario)
+            && (restritoAoUsuario == null || !processo.Confidencial || processo.ResponsavelUserId == restritoAoUsuario
+                || processo.AdvogadosAdicionais.Contains(restritoAoUsuario.Value))
             && (clienteId == null || processo.ClienteId == clienteId)
-            && (responsavelUserId == null || processo.ResponsavelUserId == responsavelUserId)
+            && (responsavelUserId == null || processo.ResponsavelUserId == responsavelUserId
+                || processo.AdvogadosAdicionais.Contains(responsavelUserId.Value))
             && (area == null || processo.Area == area)
             && (status == null || processo.Status == status)
             && (tribunal == null || processo.Foro.Tribunal == tribunal)

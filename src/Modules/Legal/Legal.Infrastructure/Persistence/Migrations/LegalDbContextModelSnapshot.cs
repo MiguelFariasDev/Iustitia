@@ -372,6 +372,13 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.PrimitiveCollection<Guid[]>("AdvogadosAdicionais")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("advogados_adicionais")
+                        .HasDefaultValueSql("'{}'::uuid[]");
+
                     b.Property<string>("Area")
                         .IsRequired()
                         .HasMaxLength(30)

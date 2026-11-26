@@ -22,7 +22,8 @@ internal static class ProcessoMapping
         processo.Observacoes,
         processo.GeraCaptura,
         processo.CreatedAt,
-        processo.Confidencial);
+        processo.Confidencial,
+        processo.AdvogadosAdicionais);
 
     internal static ProcessoListItem ToListItem(this Processo processo) => new(
         processo.Id.Value,

@@ -14,5 +14,6 @@ internal static class CalendarMapping
         calendarEvent.AllDay,
         calendarEvent.Location,
         calendarEvent.ProcessId,
-        calendarEvent.AssignedUserId);
+        calendarEvent.AssignedUserId,
+        calendarEvent.CompletedAt);
 }

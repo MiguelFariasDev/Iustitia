@@ -71,7 +71,7 @@ public static class ProcessosEndpoints
                     new UpdateProcessoCommand(
                         id, request.ClienteId, request.ResponsavelUserId, request.Area, request.Foro,
                         request.Assunto, request.ParteContraria, request.ValorCausa,
-                        request.DataDistribuicao, request.Observacoes),
+                        request.DataDistribuicao, request.Observacoes, request.AdvogadosAdicionaisUserIds),
                     cancellationToken)).ToHttpResult())
             .WithName("UpdateProcesso")
             .WithSummary("Atualiza os dados do processo. O número CNJ não é alterável.")
@@ -122,7 +122,8 @@ public sealed record UpdateProcessoRequest(
     string? ParteContraria,
     decimal? ValorCausa,
     DateOnly? DataDistribuicao,
-    string? Observacoes);
+    string? Observacoes,
+    IReadOnlyList<Guid>? AdvogadosAdicionaisUserIds = null);
 
 public sealed record ChangeProcessoStatusRequest(string Status);
 

@@ -43,6 +43,17 @@ public sealed class CalendarEvent : AggregateRoot<CalendarEventId>, IAuditable, 
     /// </summary>
     public Guid? SourcePublicationId { get; private set; }
 
+    /// <summary>
+    /// Baixa: quando o compromisso foi dado como cumprido (prazo protocolado, audiência realizada…). Nulo = em aberto.
+    /// Evento baixado não gera mais lembretes (<see cref="MarkDone"/>); reabrir (<see cref="Reopen"/>) volta ao normal.
+    /// </summary>
+    public DateTimeOffset? CompletedAt { get; private set; }
+
+    /// <summary>Quem deu a baixa (usuário do escritório, por id).</summary>
+    public Guid? CompletedByUserId { get; private set; }
+
+    public bool IsDone => CompletedAt is not null;
+
     public DateTimeOffset? OneDayReminderSentAt { get; private set; }
 
     public DateTimeOffset? OneHourReminderSentAt { get; private set; }
@@ -168,6 +179,24 @@ public sealed class CalendarEvent : AggregateRoot<CalendarEventId>, IAuditable, 
         AllDay = allDay ?? AllDay;
 
         return Result.Success();
+    }
+
+    /// <summary>Dá baixa. Repetir é inofensivo: mantém a primeira baixa (quem e quando).</summary>
+    public void MarkDone(DateTimeOffset at, Guid? byUserId)
+    {
+        if (IsDone)
+        {
+            return;
+        }
+
+        CompletedAt = at;
+        CompletedByUserId = byUserId;
+    }
+
+    public void Reopen()
+    {
+        CompletedAt = null;
+        CompletedByUserId = null;
     }
 
     public void MarkReminderSent(ReminderKind kind, DateTimeOffset sentAt)

@@ -58,6 +58,12 @@ public static class CalendarEndpoints
             .WithSummary("Muda só data/hora do evento (arrastar e soltar). Zera os lembretes já enviados.")
             .RequireAuthorization();
 
+        group.MapPatch("/{id:guid}/baixa", async (Guid id, SetCalendarEventDoneRequest request, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new SetCalendarEventDoneCommand(id, request.Done), cancellationToken)).ToHttpResult())
+            .WithName("SetCalendarEventDone")
+            .WithSummary("Dá baixa no compromisso (cumprido) ou o reabre. Evento baixado não gera mais lembretes.")
+            .RequireAuthorization();
+
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(new DeleteCalendarEventCommand(id), cancellationToken)).ToHttpResult())
             .WithName("DeleteCalendarEvent")
@@ -85,5 +91,7 @@ public sealed record UpdateCalendarEventRequest(
     string? Location = null,
     Guid? ProcessId = null,
     Guid? AssignedUserId = null);
+
+public sealed record SetCalendarEventDoneRequest(bool Done);
 
 public sealed record RescheduleCalendarEventRequest(DateTimeOffset StartAt, DateTimeOffset? EndAt = null, bool? AllDay = null);

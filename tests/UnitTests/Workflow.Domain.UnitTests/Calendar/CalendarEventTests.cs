@@ -79,4 +79,33 @@ public class CalendarEventTests
 
         calendarEvent.OneDayReminderSentAt.Should().NotBeNull();
     }
+
+    [Fact]
+    public void MarkDone_RegistraQuandoEQuem_ERepetirMantemAPrimeiraBaixa()
+    {
+        var evento = Create();
+        var primeiro = Guid.NewGuid();
+        var quando = new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero);
+
+        evento.IsDone.Should().BeFalse();
+        evento.MarkDone(quando, primeiro);
+        evento.MarkDone(quando.AddHours(5), Guid.NewGuid());
+
+        evento.IsDone.Should().BeTrue();
+        evento.CompletedAt.Should().Be(quando);
+        evento.CompletedByUserId.Should().Be(primeiro);
+    }
+
+    [Fact]
+    public void Reopen_VoltaParaEmAberto()
+    {
+        var evento = Create();
+        evento.MarkDone(Start, Guid.NewGuid());
+
+        evento.Reopen();
+
+        evento.IsDone.Should().BeFalse();
+        evento.CompletedAt.Should().BeNull();
+        evento.CompletedByUserId.Should().BeNull();
+    }
 }

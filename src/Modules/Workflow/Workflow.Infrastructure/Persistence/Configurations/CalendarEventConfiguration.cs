@@ -24,6 +24,10 @@ public sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Calend
         builder.Property(calendarEvent => calendarEvent.AllDay).IsRequired();
         builder.Property(calendarEvent => calendarEvent.Location).HasMaxLength(300);
 
+        // Baixa (compromisso cumprido). Colunas nulas: em aberto.
+        builder.Property(calendarEvent => calendarEvent.CompletedAt);
+        builder.Property(calendarEvent => calendarEvent.CompletedByUserId);
+
         builder.Property(calendarEvent => calendarEvent.CreatedAt).IsRequired();
         builder.Property(calendarEvent => calendarEvent.CreatedBy).HasMaxLength(100);
         builder.Property(calendarEvent => calendarEvent.UpdatedBy).HasMaxLength(100);
@@ -46,7 +50,7 @@ public sealed class CalendarEventConfiguration : IEntityTypeConfiguration<Calend
 
         // Varredura do job de lembretes: só eventos com algum aviso ainda pendente.
         builder.HasIndex(calendarEvent => calendarEvent.StartAt)
-            .HasFilter("is_deleted = false AND assigned_user_id IS NOT NULL AND (one_day_reminder_sent_at IS NULL OR one_hour_reminder_sent_at IS NULL)")
+            .HasFilter("is_deleted = false AND assigned_user_id IS NOT NULL AND completed_at IS NULL AND (one_day_reminder_sent_at IS NULL OR one_hour_reminder_sent_at IS NULL)")
             .HasDatabaseName("ix_calendar_events_pending_reminders");
     }
 }

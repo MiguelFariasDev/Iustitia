@@ -42,6 +42,14 @@ public sealed class ProcessoConfiguration : IEntityTypeConfiguration<Processo>
         builder.Property(processo => processo.ClienteId).IsRequired();
         builder.Property(processo => processo.ResponsavelUserId).IsRequired();
 
+        // Demais advogados do processo: uuid[] na própria linha (sem tabela de junção nem RLS extra) —
+        // a lista é curta, sempre lida junto com o processo e protegida pela RLS dele.
+        builder.Property(processo => processo.AdvogadosAdicionais)
+            .HasColumnName("advogados_adicionais")
+            .HasColumnType("uuid[]")
+            .HasDefaultValueSql("'{}'::uuid[]")
+            .IsRequired();
+
         builder.Property(processo => processo.Area)
             .HasConversion<string>()
             .HasMaxLength(30)

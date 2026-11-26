@@ -141,4 +141,50 @@ public class ProcessoTests
         propriedades.Should().Contain("CnjNumber");
         propriedades.Should().NotContain(["ParteContraria", "ValorCausa", "Observacoes"]);
     }
+
+    [Fact]
+    public void Advogados_SemRepetidosSemVaziosESemOResponsavel()
+    {
+        var responsavel = Guid.NewGuid();
+        var outro = Guid.NewGuid();
+
+        var processo = Processo.Create(
+            Guid.NewGuid(), CNJNumber.Create(CnjValido).Value, Guid.NewGuid(), responsavel, AreaDireito.Civel,
+            advogadosAdicionais: [outro, outro, Guid.Empty, responsavel]).Value;
+
+        processo.AdvogadosAdicionais.Should().Equal(outro);
+        processo.TodosOsAdvogados.Should().Equal(responsavel, outro);
+        processo.TemAdvogado(outro).Should().BeTrue();
+        processo.TemAdvogado(Guid.NewGuid()).Should().BeFalse();
+        processo.TemAdvogado(Guid.Empty).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Update_SemListaMantemOsAdvogados_ENovoResponsavelSaiDaLista()
+    {
+        var antigo = Guid.NewGuid();
+        var coAdvogado = Guid.NewGuid();
+        var processo = Processo.Create(
+            Guid.NewGuid(), CNJNumber.Create(CnjValido).Value, Guid.NewGuid(), antigo, AreaDireito.Civel,
+            advogadosAdicionais: [coAdvogado]).Value;
+
+        var resultado = processo.Update(
+            processo.ClienteId, coAdvogado, AreaDireito.Civel, DadosForo.Vazio, null, null, null, null, null);
+
+        resultado.IsSuccess.Should().BeTrue();
+        processo.ResponsavelUserId.Should().Be(coAdvogado);
+        processo.AdvogadosAdicionais.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Advogados_AcimaDoLimite_Falha()
+    {
+        var muitos = Enumerable.Range(0, Processo.MaxAdvogadosAdicionais + 1).Select(_ => Guid.NewGuid()).ToList();
+
+        var resultado = Processo.Create(
+            Guid.NewGuid(), CNJNumber.Create(CnjValido).Value, Guid.NewGuid(), Guid.NewGuid(), AreaDireito.Civel,
+            advogadosAdicionais: muitos);
+
+        resultado.IsFailure.Should().BeTrue();
+    }
 }
