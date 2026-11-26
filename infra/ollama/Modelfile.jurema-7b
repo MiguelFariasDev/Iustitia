@@ -1,0 +1,30 @@
+# Jurema-7B (NeuralMind, https://huggingface.co/Jurema-br/Jurema-7B) para o Ollama.
+#
+# O modelo não está na biblioteca do Ollama: `ollama pull jurema-7b` não funciona. O repositório oficial
+# exige aceite dos termos no Hugging Face e publica safetensors (BF16). O Ollama atual NÃO quantiza para
+# q4_K_M no `create`: gere o GGUF uma vez com o llama.cpp (passo a passo em docs/modules/drafting.md),
+# copie-o para o caminho do FROM e crie o modelo:
+#
+#   ollama create jurema-7b -f Modelfile.jurema-7b
+#
+# Os GGUF prontos no Hugging Face são de terceiros, não da NeuralMind: confira a procedência antes de usá-los.
+FROM /root/modelos/jurema-7b-q4_K_M.gguf
+
+# Formato ChatML, herdado do Qwen2.5-7B-Instruct (modelo-base). O card não publica um formato próprio:
+# confira com `ollama show jurema-7b --template` depois de criar.
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{- range .Messages }}{{- if ne .Role "system" }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}{{- end }}<|im_start|>assistant
+"""
+
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+
+# A aplicação envia temperature, top_p, num_ctx e num_predict em cada chamada; estes são só o padrão.
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER num_ctx 8192
+
+# Sem SYSTEM aqui: o system prompt é da aplicação, versionado e protegido por teste.

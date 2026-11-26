@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Cake, ClipboardList, Newspaper, X, type LucideIcon } from 'lucide-react'
+import { Bell, Cake, ClipboardList, Gavel, Newspaper, X, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ export const alertTypeMeta: Record<AlertType, { label: string; icon: LucideIcon 
   Publication: { label: 'Publicação', icon: Newspaper },
   Task: { label: 'Tarefa', icon: ClipboardList },
   Birthday: { label: 'Aniversário', icon: Cake },
+  Movimentacao: { label: 'Movimentação', icon: Gavel },
   Other: { label: 'Outros', icon: Bell },
 }
 

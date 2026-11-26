@@ -12,6 +12,7 @@ export interface CalendarEventDto {
   location: string | null
   processId: string | null
   assignedUserId: string | null
+  completedAt?: string | null
 }
 
 export interface ListCalendarEventsDto {
@@ -36,6 +37,7 @@ export function toAgendaEvento(dto: CalendarEventDto): AgendaEvento {
     local: dto.location,
     processoId: dto.processId,
     responsavelId: dto.assignedUserId,
+    concluidoEm: dto.completedAt ?? null,
   }
 }
 

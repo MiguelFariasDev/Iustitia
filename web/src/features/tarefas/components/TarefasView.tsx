@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -11,8 +11,11 @@ import { cn } from '@/lib/utils'
 import {
   colunas,
   colunaVizinha,
+  diasDeAtraso,
+  estaAtrasada,
   progresso,
   rotuloColuna,
+  tarefasAtrasadas,
   type Coluna,
   type Tarefa,
 } from '../kanban'
@@ -25,12 +28,16 @@ interface CartaoProps {
   agora: Date | null
   onMover: (destino: Coluna) => void
   onRemover: () => void
+  /** Na coluna "Em atraso": mostra em que etapa a tarefa está e há quantos dias venceu. */
+  atrasada?: boolean
 }
 
-function Cartao({ tarefa, agora, onMover, onRemover }: CartaoProps) {
+function Cartao({ tarefa, agora, onMover, onRemover, atrasada = false }: CartaoProps) {
   const esquerda = colunaVizinha(tarefa.coluna, -1)
   const direita = colunaVizinha(tarefa.coluna, 1)
   const prog = agora ? progresso(tarefa, agora) : { pct: 0, tom: 'ok' as const, rotulo: '…' }
+
+  const concluida = tarefa.coluna === 'concluido'
 
   return (
     <article
@@ -42,9 +49,26 @@ function Cartao({ tarefa, agora, onMover, onRemover }: CartaoProps) {
       className="cursor-grab space-y-3 rounded-[10px] border bg-card p-3.5 shadow-sm active:cursor-grabbing"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[17px] leading-snug font-medium">{tarefa.titulo}</h3>
+        <h3
+          className={cn(
+            'text-[17px] leading-snug font-medium',
+            concluida && 'text-muted-foreground line-through'
+          )}
+        >
+          {tarefa.titulo}
+        </h3>
         <AnelPrazo progresso={prog} />
       </div>
+      {atrasada && agora ? (
+        <p className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-sm bg-destructive/10 px-1.5 py-0.5 font-medium text-destructive">
+            {diasDeAtraso(tarefa, agora) === 1
+              ? 'venceu ontem'
+              : `venceu há ${diasDeAtraso(tarefa, agora)} dias`}
+          </span>
+          <span className="text-muted-foreground">Etapa: {rotuloColuna(tarefa.coluna)}</span>
+        </p>
+      ) : null}
       {tarefa.processo ? (
         <p className="font-mono text-xs text-muted-foreground">{tarefa.processo}</p>
       ) : null}
@@ -64,6 +88,26 @@ function Cartao({ tarefa, agora, onMover, onRemover }: CartaoProps) {
           )}
         </span>
         <span className="flex gap-1">
+          {/* Concluir direto, de qualquer coluna (inclusive "Em atraso"): sem isto era preciso levar o
+              cartão etapa por etapa até "Concluído", o que no celular, sem arrastar, são três toques. */}
+          <button
+            type="button"
+            onClick={() => onMover(concluida ? 'afazer' : 'concluido')}
+            aria-label={concluida ? `Reabrir “${tarefa.titulo}”` : `Concluir “${tarefa.titulo}”`}
+            className={cn(
+              'inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              concluida
+                ? 'hover:bg-accent'
+                : 'border-success/40 text-success hover:bg-success-soft'
+            )}
+          >
+            {concluida ? (
+              <RotateCcw className="size-3.5" aria-hidden />
+            ) : (
+              <Check className="size-3.5" aria-hidden />
+            )}
+            {concluida ? 'Reabrir' : 'Concluir'}
+          </button>
           <button
             type="button"
             onClick={onRemover}
@@ -104,7 +148,8 @@ function Cartao({ tarefa, agora, onMover, onRemover }: CartaoProps) {
 
 /**
  * Kanban de equipe. Mover um cartão: botões ‹ › (caminho por teclado e leitor de tela) ou arrastar
- * e soltar. Sem módulo de tarefas no servidor ainda: as tarefas ficam neste navegador.
+ * e soltar. A coluna "Em atraso" vem primeiro e reúne as tarefas não concluídas com prazo vencido;
+ * elas saem da coluna da etapa para não aparecerem duas vezes, e voltam ao serem concluídas.
  */
 export function TarefasView() {
   const tarefas = useTarefas()
@@ -114,13 +159,18 @@ export function TarefasView() {
   const agora = useNow()
   const [sobre, setSobre] = useState<Coluna | null>(null)
   const [aviso, setAviso] = useState('')
+  const atrasadas = agora ? tarefasAtrasadas(tarefas, agora) : []
 
   function moverPara(id: string, destino: Coluna) {
     const tarefa = tarefas.find((t) => t.id === id)
     if (!tarefa || tarefa.coluna === destino) return
     void mover(id, destino)
     // Leitor de tela: o cartão some de uma coluna e aparece em outra; sem isto ninguém é avisado.
-    setAviso(`“${tarefa.titulo}” movida para ${rotuloColuna(destino)}.`)
+    setAviso(
+      destino === 'concluido'
+        ? `“${tarefa.titulo}” concluída.`
+        : `“${tarefa.titulo}” movida para ${rotuloColuna(destino)}.`
+    )
   }
 
   return (
@@ -146,9 +196,42 @@ export function TarefasView() {
         {aviso}
       </p>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <section
+          aria-label={`Em atraso, ${atrasadas.length} tarefas`}
+          className="min-h-40 space-y-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3"
+        >
+          <header className="flex items-center justify-between px-1">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-destructive">
+              <AlertTriangle className="size-4" aria-hidden />
+              Em atraso
+            </h2>
+            <span className="font-mono text-xs text-destructive" aria-hidden>
+              {atrasadas.length}
+            </span>
+          </header>
+          <ul className="space-y-3">
+            {atrasadas.map((tarefa) => (
+              <li key={tarefa.id}>
+                <Cartao
+                  tarefa={tarefa}
+                  agora={agora}
+                  atrasada
+                  onMover={(destino) => moverPara(tarefa.id, destino)}
+                  onRemover={() => void remover(tarefa.id)}
+                />
+              </li>
+            ))}
+          </ul>
+          {atrasadas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Nada em atraso.</p>
+          ) : null}
+        </section>
+
         {colunas.map((coluna) => {
-          const cartoes = tarefas.filter((t) => t.coluna === coluna.id)
+          const cartoes = tarefas.filter(
+            (t) => t.coluna === coluna.id && !(agora && estaAtrasada(t, agora))
+          )
 
           return (
             <section

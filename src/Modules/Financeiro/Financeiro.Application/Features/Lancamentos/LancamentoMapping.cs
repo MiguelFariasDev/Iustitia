@@ -15,5 +15,9 @@ internal static class LancamentoMapping
         lancamento.Vencimento,
         lancamento.EstaAtrasado(hoje) ? "Atrasado" : lancamento.Status.ToString(),
         lancamento.PagoEm,
-        lancamento.CreatedAt);
+        lancamento.CreatedAt,
+        lancamento.Recorrencia.ToString(),
+        lancamento.SerieId,
+        lancamento.Parcela,
+        lancamento.TotalParcelas);
 }

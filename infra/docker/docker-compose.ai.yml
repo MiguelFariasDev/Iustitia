@@ -1,0 +1,48 @@
+# Infraestrutura de IA local (módulo Drafting): Qdrant e, opcionalmente, Ollama.
+#
+#   docker compose -f infra/docker/docker-compose.ai.yml up -d qdrant
+#   docker compose -f infra/docker/docker-compose.ai.yml --profile ollama up -d
+#
+# Tudo escuta só em 127.0.0.1: nem o Qdrant nem o Ollama podem ficar expostos na rede. Em produção o
+# Qdrant roda num host SEMPRE LIGADO (não na instância de GPU, que é parada) com TLS e API key.
+name: advocacia-ai
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    container_name: advocacia-qdrant
+    restart: unless-stopped
+    environment:
+      # Sem valor = repassa a variável do shell só se existir. Definida como "" o Qdrant recusa tudo (401).
+      # Desenvolvimento: não exporte. Qualquer outro ambiente: exporte e use o mesmo valor em Qdrant__ApiKey.
+      QDRANT__SERVICE__API_KEY:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    ports:
+      - "127.0.0.1:6333:6333" # REST / painel
+      - "127.0.0.1:6334:6334" # gRPC (o que a aplicação usa)
+    # A carga em massa abre muitos segmentos: com o limite padrão o Qdrant falha com "Too many open files".
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - advocacia-qdrant-data:/qdrant/storage
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    container_name: advocacia-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 10m
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "2" # jurema-7b + bge-m3
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - advocacia-ollama-data:/root/.ollama
+      - ../ollama:/modelfiles:ro
+
+volumes:
+  advocacia-qdrant-data:
+  advocacia-ollama-data:

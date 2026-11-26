@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +25,10 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Integrations\Integrations.CNJ\Integrations.CNJ.Application\Integrations.CNJ.Application.csproj" />
     <ProjectReference Include="..\..\Integrations\Integrations.Anthropic\Integrations.Anthropic.Application\Integrations.Anthropic.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Legal.Infrastructure.UnitTests" />
   </ItemGroup>
 
 </Project>

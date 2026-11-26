@@ -21,10 +21,12 @@
     <PackageReference Include="Qdrant.Client" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="MimeKitLite" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Advocacia.Modules.Drafting.Infrastructure.UnitTests" />
+    <InternalsVisibleTo Include="Advocacia.Modules.Drafting.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

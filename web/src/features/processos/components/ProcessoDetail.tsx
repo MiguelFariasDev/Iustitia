@@ -1,13 +1,12 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ListChecks, Lock, LockOpen, Pencil } from 'lucide-react'
+import { Archive, Lock, LockOpen, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { AgendarNoProcessoButton } from '@/features/agenda/components/AgendarNoProcessoButton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -27,6 +26,7 @@ import { formatCurrency, formatDate } from '@/lib/format'
 import { useAuthStore } from '@/stores/authStore'
 import { useArchiveProcesso, useChangeProcessoStatus, useSetProcessoConfidencial } from '../hooks'
 import { processoQuery } from '../queries'
+import { NovoNoProcessoMenu } from './NovoNoProcessoMenu'
 import { ProcessoAbas } from './ProcessoAbas'
 import {
   areaDireitoLabels,
@@ -119,12 +119,11 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
             </Button>
           ) : null}
 
-          <AgendarNoProcessoButton processoId={processo.id} />
-
-          <Button variant="outline" size="sm" onClick={() => setTarefaAberta(true)}>
-            <ListChecks aria-hidden />
-            Nova tarefa
-          </Button>
+          <NovoNoProcessoMenu
+            processoId={processo.id}
+            cnjNumber={processo.cnjNumber}
+            clienteNome={cliente?.nome ?? null}
+          />
 
           <Button variant="outline" size="sm" asChild>
             <Link href={`${routes.processes}/${processo.id}/editar` as never}>
@@ -148,7 +147,7 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Tags do processo</span>
+        <span className="text-xs text-muted-foreground">Etiquetas do processo</span>
         <TagsEditor alvo="processo" alvoId={processo.id} rotulo="processo" />
       </div>
 
@@ -183,6 +182,15 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
                   />
                 </span>
               </Field>
+              {(processo.advogadosAdicionaisUserIds ?? []).length > 0 ? (
+                <Field label="Outros advogados">
+                  <ul className="flex flex-col gap-1">
+                    {(processo.advogadosAdicionaisUserIds ?? []).map((id) => (
+                      <li key={id}>{usuarios?.find((u) => u.id === id)?.name ?? 'Advogado'}</li>
+                    ))}
+                  </ul>
+                </Field>
+              ) : null}
               <Field label="Distribuição">
                 {processo.dataDistribuicao ? formatDate(processo.dataDistribuicao) : null}
               </Field>
@@ -226,7 +234,11 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
         </Card>
       </div>
 
-      <ProcessoAbas processo={processo} onNovaTarefa={() => setTarefaAberta(true)} />
+      <ProcessoAbas
+        processo={processo}
+        clienteNome={cliente?.nome ?? null}
+        onNovaTarefa={() => setTarefaAberta(true)}
+      />
 
       <NovaTarefaDialog
         open={tarefaAberta}

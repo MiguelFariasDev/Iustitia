@@ -92,7 +92,7 @@ export function onlyDigits(value: string) {
 }
 
 /** UFs na ordem dos códigos TR 01..27 da Resolução CNJ nº 65/2008. */
-const UNIDADES_FEDERACAO = [
+export const UNIDADES_FEDERACAO = [
   'AC',
   'AL',
   'AP',

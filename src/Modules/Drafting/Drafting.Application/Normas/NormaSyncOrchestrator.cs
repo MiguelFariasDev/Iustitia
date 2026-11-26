@@ -33,7 +33,7 @@ public sealed class NormaSyncOrchestrator(
         var jobStore = jobScope.ServiceProvider.GetRequiredService<INormaStore>();
 
         var job = jobId is { } id ? await jobStore.ObterJobAsync(id, cancellationToken) : null;
-        var escopo = string.Join(", ", settings.PastasIncluidas);
+        var escopo = string.Join(", ", settings.Incluidas);
         if (job is null)
         {
             job = new IngestaoJob(tipo, escopo, clock.UtcNow);

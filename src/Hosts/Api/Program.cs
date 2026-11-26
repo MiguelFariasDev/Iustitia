@@ -135,6 +135,7 @@ app.UseMiddleware<IdempotencyMiddleware>();
 app.MapPlatformEndpoints();
 app.MapClientesEndpoints();
 app.MapProcessosEndpoints();
+app.MapMovimentacoesEndpoints();
 app.MapPublicationsEndpoints();
 app.MapPrazosEndpoints();
 app.MapContactsEndpoints();
@@ -144,7 +145,7 @@ app.MapFinanceiroEndpoints();
 app.MapAtendimentosEndpoints();
 app.MapBotEndpoints();
 app.MapPecasEndpoints();
-app.MapDocumentosEndpoints();
+app.MapCasosEndpoints();
 app.MapNormasEndpoints();
 
 var hangfireOptions = app.Services.GetRequiredService<IOptions<HangfireOptions>>().Value;

@@ -5,14 +5,12 @@ const dateTimeFormatter = new Intl.DateTimeFormat(locale, {
   dateStyle: 'short',
   timeStyle: 'short',
 })
-const timeFormatter = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' })
 const numberFormatter = new Intl.NumberFormat(locale)
 const relativeFormatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
 const currencyFormatter = new Intl.NumberFormat(locale, { style: 'currency', currency: 'BRL' })
 
 export const formatDate = (value: string | Date) => dateFormatter.format(new Date(value))
 export const formatDateTime = (value: string | Date) => dateTimeFormatter.format(new Date(value))
-export const formatTime = (value: string | Date) => timeFormatter.format(new Date(value))
 export const formatNumber = (value: number) => numberFormatter.format(value)
 
 /** Valor monetário em reais (valor da causa, honorários). */

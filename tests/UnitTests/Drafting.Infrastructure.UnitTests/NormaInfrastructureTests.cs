@@ -2,7 +2,12 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Advocacia.BuildingBlocks.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Busca;
+using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Application.Normas;
+using Advocacia.Modules.Drafting.Domain.Casos;
+using Advocacia.Modules.Drafting.Infrastructure.Storage;
 using Advocacia.Modules.Drafting.Domain.Normas;
 using Advocacia.Modules.Drafting.Infrastructure.Normas;
 using Advocacia.Modules.Drafting.Infrastructure.Persistence;
@@ -17,63 +22,62 @@ namespace Advocacia.Modules.Drafting.Infrastructure.UnitTests;
 
 public class NormaQdrantStoreTests
 {
-    private static NormaPayload Payload(string? uf = "CE") => new(
+    private static NormaPayload Payload(string? uf = null) => new(
         Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), "urn:lex:br:federal:lei:2002-01-10;10406", "Lei nº 10.406 de 10/01/2002",
-        "Lei Ordinária", "10406", new DateOnly(2002, 1, 10), "Vigente", false, "compilada", 3, "estadual", uf, null, "civel", null,
-        ["responsabilidade civil", "dano moral"], Colecoes.LegislacaoEstadual, "juridico/markdown/estaduais/CE/x.md",
+        "Lei Ordinária", "10406", new DateOnly(2002, 1, 10), "Vigente", false, "compilada", 3, "federal", uf, null, "civel", null,
+        ["responsabilidade civil", "dano moral"], Colecoes.LeisFederais, "federal/leis-ordinarias/2002/lei-10406-2002-01-10.md",
         "https://normas.leg.br/x", null, "TÍTULO I > CAPÍTULO II", "186", "§ 1º", "I", "hash1", "Art. 186. Aquele que...");
 
     [Fact]
-    public void Filtro_Padrao_NaoRestringeNada_NemExcluiRevogadas()
-    {
+    public void Filtro_Padrao_NaoRestringeNada_NemExcluiRevogadas() =>
         NormaQdrantStore.BuildFilter(new NormaFiltro()).Must.Should().BeEmpty();
-    }
 
     [Fact]
-    public void Filtro_ExcluirRevogadasUfMunicipioETipo_SaoCondicoesObrigatorias()
+    public void Filtro_VigenciaTipoDataEUf_SaoCondicoesObrigatorias()
     {
         var filter = NormaQdrantStore.BuildFilter(new NormaFiltro(
-            Tipos: ["Lei Ordinária"], Ufs: ["ce"], Municipios: ["Fortaleza"], IncluirRevogadas: false,
-            DataDe: new DateOnly(2000, 1, 1)));
+            Tipos: ["Lei Ordinária"], Ufs: ["ce"], IncluirRevogadas: false, DataDe: new DateOnly(2000, 1, 1)));
 
-        filter.Must.Should().Contain(c => c.Field != null && c.Field.Key == "revogada");
-        filter.Must.Should().Contain(c => c.Field != null && c.Field.Key == "tipo");
-        filter.Must.Should().Contain(c => c.Field != null && c.Field.Key == "data");
-
-        // UF e município são OU aninhado: "tem a UF pedida" OU "a esfera não tem UF/município" (federal segue valendo).
-        var aninhados = filter.Must.Where(c => c.Filter != null).Select(c => c.Filter).ToList();
-        aninhados.Should().HaveCount(2).And.OnlyContain(f => f.Should.Count == 2);
-        aninhados.SelectMany(f => f.Should).Select(c => c.Field.Key).Should().Contain(["uf", "municipio", "esfera"]);
+        filter.Must.Where(c => c.Field != null).Select(c => c.Field.Key).Should().Contain(["revogada", "tipo", "data"]);
+        filter.Must.Where(c => c.Filter != null).Should().ContainSingle().Which.Filter.Should.Select(c => c.Field.Key).Should().BeEquivalentTo("uf", "esfera");
     }
 
     [Fact]
-    public void Filtro_AreaSoRestringeQuandoEstrita_PorqueOYamlNaoTemArea()
+    public void Filtro_Area_AceitaAsCompativeis_EOTrechoSemArea()
     {
-        NormaQdrantStore.BuildFilter(new NormaFiltro(Area: "civel")).Must.Should().BeEmpty();
-        NormaQdrantStore.BuildFilter(new NormaFiltro(Area: "civel", AreaEstrita: true)).Must
-            .Should().ContainSingle(c => c.Field != null && c.Field.Key == "area");
+        var area = NormaQdrantStore.BuildFilter(new NormaFiltro(Areas: AreaMapper.Compativeis("consumidor"))).Must.Should().ContainSingle().Subject.Filter;
+
+        area.Should.Should().HaveCount(2).And.Contain(c => c.IsEmpty != null && c.IsEmpty.Key == "area");
+        area.Should.First(c => c.Field != null).Field.Match.Keywords.Strings.Should().Contain(["consumidor", "civel", "constitucional", "processual"]);
     }
 
     [Fact]
-    public void PayloadCompleto_IdaEVolta_ComTodosOsCamposExigidos()
+    public async Task ColecaoDeAnexos_NuncaEAcessadaPorEstaClasse_QueNaoTemFiltroDeTenant()
+    {
+        using var conexao = new QdrantConexao(
+            Options.Create(new QdrantOptions { BaseUrl = "http://localhost:1" }), Microsoft.Extensions.Logging.Abstractions.NullLogger<QdrantConexao>.Instance);
+        var store = new NormaQdrantStore(conexao);
+
+        await ((Func<Task>)(() => store.BuscarDensoAsync(Colecoes.DocumentosCaso, new NormaFiltro(), [0f], 1))).Should().ThrowAsync<ArgumentException>();
+        await ((Func<Task>)(() => store.UpsertAsync(Colecoes.DocumentosCaso, []))).Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public void PayloadCompleto_IdaEVolta()
     {
         var id = Guid.NewGuid();
-        var point = NormaQdrantStore.ToPoint(new NormaVectorPoint(id, [0.1f, 0.2f], Payload()));
+        var point = NormaQdrantStore.ToPoint(new NormaVectorPoint(id, [0.1f, 0.2f], Bm25.Documento("ato ilícito"), Payload()));
 
-        foreach (var chave in new[]
-                 {
-                     "normaJuridicaId", "urn", "titulo", "tipo", "numero", "data", "situacao", "revogada", "versaoTexto", "esfera", "uf",
-                     "area", "assuntos", "arquivoMarkdownPath", "secao", "artigo", "paragrafo", "inciso", "hashConteudo", "texto", "versao",
-                     "fonteOficialUrl", "colecao",
-                 })
-        {
-            point.Payload.Should().ContainKey(chave);
-        }
-
+        point.Payload.Keys.Should().Contain(
+        [
+            "fonte", "normaJuridicaId", "urn", "titulo", "tipo", "numero", "ano", "data", "situacao", "revogada", "versaoTexto", "esfera",
+            "area", "assuntos", "arquivo", "secao", "artigo", "paragrafo", "inciso", "hashConteudo", "texto", "versao", "fonteOficialUrl", "colecao",
+        ]);
+        point.Payload["fonte"].StringValue.Should().Be("ctb_leis");
+        point.Payload["ano"].IntegerValue.Should().Be(2002);
         point.Payload["data"].StringValue.Should().Be("2002-01-10T00:00:00Z");
-        point.Payload["revogada"].BoolValue.Should().BeFalse();
-        point.Payload["versao"].IntegerValue.Should().Be(3);
-        point.Payload.Should().NotContainKey("municipio", "campo nulo não vai ao payload");
+        point.Payload.Should().NotContainKey("uf", "campo nulo não vai ao payload");
+        point.Vectors.Vectors_.Vectors.Keys.Should().BeEquivalentTo(QdrantConexao.Denso, QdrantConexao.Esparso);
 
         var scored = new ScoredPoint { Id = id, Score = 0.77f };
         foreach (var (key, value) in point.Payload)
@@ -82,27 +86,97 @@ public class NormaQdrantStoreTests
         }
 
         var hit = NormaQdrantStore.ToHit(scored);
-
-        hit.PointId.Should().Be(id.ToString());
-        hit.Score.Should().BeApproximately(0.77, 0.001);
-        hit.Texto.Should().Be("Art. 186. Aquele que...");
-        var norma = hit.Meta.Norma!;
-        norma.Titulo.Should().Be("Lei nº 10.406 de 10/01/2002");
-        norma.Artigo.Should().Be("186");
-        norma.Paragrafo.Should().Be("§ 1º");
-        norma.Inciso.Should().Be("I");
-        norma.VersaoNumero.Should().Be(3);
-        norma.Uf.Should().Be("CE");
-        norma.Urn.Should().Contain("10406");
-        norma.ArquivoMarkdownPath.Should().Be("juridico/markdown/estaduais/CE/x.md");
+        hit.Meta.Norma.Should().BeEquivalentTo(new
+        {
+            Titulo = "Lei nº 10.406 de 10/01/2002", Artigo = "186", Paragrafo = "§ 1º", Inciso = "I", VersaoNumero = 3, Colecao = Colecoes.LeisFederais,
+            ArquivoMarkdownPath = "federal/leis-ordinarias/2002/lei-10406-2002-01-10.md",
+        });
         hit.Meta.UrlOrigem.Should().Be("https://normas.leg.br/x");
         hit.Meta.Tags.Should().Equal("responsabilidade civil", "dano moral");
     }
+}
+
+public class CasoQdrantStoreTests
+{
+    private static readonly Guid Tenant = Guid.NewGuid();
+    private static readonly Guid Caso = Guid.NewGuid();
+    private static readonly Guid Usuario = Guid.NewGuid();
+
+    private static IEnumerable<string> Chaves(Filter filtro) => filtro.Must.Where(c => c.Field != null).Select(c => c.Field.Key);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TodaBusca_TemTenantECasoComoCondicaoObrigatoria(bool veRestritos)
+    {
+        var filtro = CasoQdrantStore.Filtro(new FiltroCaso(Tenant, Caso, Usuario, veRestritos));
+
+        Chaves(filtro).Should().Contain([CasoQdrantStore.TenantKey, CasoQdrantStore.CasoKey]);
+        filtro.Must.First(c => c.Field?.Key == CasoQdrantStore.CasoKey).Field.Match.Keyword.Should().Be(Caso.ToString());
+        filtro.MustNot.Should().ContainSingle().Which.Field.Key.Should().Be("suspeito");
+        filtro.Should.Should().BeEmpty("um OU no nível de cima anularia o isolamento");
+    }
 
     [Fact]
-    public void PayloadSemUf_NaoGravaUf()
+    public void SemVerRestritos_SoOAbertoAoCasoOuOProprio()
     {
-        NormaQdrantStore.ToPoint(new NormaVectorPoint(Guid.NewGuid(), [0.1f], Payload(uf: null))).Payload.Should().NotContainKey("uf");
+        var aninhado = CasoQdrantStore.Filtro(new FiltroCaso(Tenant, Caso, Usuario, false)).Must.Should().ContainSingle(c => c.Filter != null).Subject.Filter;
+
+        aninhado.Should.Select(c => c.Field.Key).Should().BeEquivalentTo("permissao", "usuarioIdResponsavel");
+    }
+
+    [Fact]
+    public void ExclusaoSemTenantOuCaso_NemMontaFiltro()
+    {
+        ((Action)(() => CasoQdrantStore.Base(Guid.Empty, Caso))).Should().Throw<ArgumentException>();
+        ((Action)(() => CasoQdrantStore.Base(Tenant, Guid.Empty))).Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Payload_TemTudoQueOIsolamentoExige_EVoltaIgual()
+    {
+        var caso = new CasoRef(Tenant, Caso, Guid.NewGuid(), Guid.NewGuid(), Usuario, OrigemTexto.Ocr, 0.71, "Cláusula 5", true, false);
+        var ponto = CasoQdrantStore.ToPoint(new CasoVectorPoint(
+            Guid.NewGuid(), [0.1f], Bm25.Documento("multa"), "Multa de 10%.",
+            new ChunkMetadata(caso.DocumentoId, "contrato.pdf", 4, "contrato", "civel", null, new DateOnly(2024, 3, 10), null, "h", Caso: caso),
+            DateTimeOffset.UtcNow));
+
+        ponto.Payload.Keys.Should().Contain(
+            ["tenantId", "casoId", "clienteId", "usuarioIdResponsavel", "documentoId", "hash", "origem", "dataUpload", "permissao", "texto"]);
+
+        var lido = new ScoredPoint { Id = ponto.Id, Score = 0.5f };
+        foreach (var (chave, valor) in ponto.Payload)
+        {
+            lido.Payload[chave] = valor;
+        }
+
+        var hit = CasoQdrantStore.ToHit(lido);
+        hit.Meta.Caso.Should().Be(caso);
+        hit.Meta.Pagina.Should().Be(4);
+        hit.Meta.DataPublicacao.Should().Be(new DateOnly(2024, 3, 10));
+    }
+
+    [Fact]
+    public void PayloadSemIdentificacao_ViraIdentidadeVazia_QueAConferenciaRecusa()
+    {
+        var hit = CasoQdrantStore.ToHit(new ScoredPoint { Id = Guid.NewGuid() });
+
+        hit.Meta.Caso!.TenantId.Should().Be(Guid.Empty);
+        hit.Meta.Caso.Restrito.Should().BeTrue("sem permissão explícita, o padrão é o mais fechado");
+    }
+}
+
+public class ReferenciaSqlTests
+{
+    [Fact]
+    public void Sql_ParametrizaNumeroArtigoETribunal_ESeparaLeiDeSumula()
+    {
+        var (sql, parametros) = NormaRepository.MontarSqlReferencias(
+            ExtratorReferencias.Extrair("art. 186 do Código Civil, art. 5º da Constituição Federal e Súmula 297 do STJ"), 30);
+
+        sql.Should().Contain($"n.colecao = '{Colecoes.LeisFederais}'").And.Contain($"n.colecao = '{Colecoes.ConstituicaoFederal}'")
+            .And.Contain("n.tipo NOT ILIKE '%vinculante%'").And.Contain("NOT ILIKE 'ATO DAS%'").And.NotContain("10406").And.NotContain("'STJ'");
+        parametros.Select(p => p.Value).Should().Contain(["10406", "186", "5", "297", "STJ"]);
     }
 }
 
@@ -145,7 +219,7 @@ public class GitSparseRepositorySyncTests
         var padroes = GitSparseRepositorySync.PadroesSparse(new NormasIngestaoOptions());
         var linhas = padroes.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-        linhas.Should().Contain(["/constituicao.md", "/federal/", "/jurisprudencia/", "/tratados/", "/reguladores/", "/estaduais/CE/", "/municipais/CE/fortaleza/"]);
+        linhas.Should().Contain(["/constituicao.md", "/federal/", "/jurisprudencia/", "!estaduais/", "!municipais/", "!reguladores/", "!tratados/"]);
         linhas.Should().Contain(["!_*", "!_fonte/", "!scripts/", "!*.json", "!*.jsonl", "!*.gz", "!*.zst", "!*.pdf", "!*.html"]);
         linhas.Should().NotContain(l => l.Contains(".git"));
         linhas.Should().NotContain("/_fonte/", "originais só sob demanda");
@@ -159,6 +233,68 @@ public class GitSparseRepositorySyncTests
             .Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
         linhas[^1].Should().Be("/_fonte/");
+    }
+}
+
+public class LocalDirectoryRepositorySyncTests : IDisposable
+{
+    private readonly string _dir = Directory.CreateTempSubdirectory("acervo-").FullName;
+
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
+
+    private void Escrever(string relativo)
+    {
+        var caminho = Path.Combine(_dir, relativo);
+        Directory.CreateDirectory(Path.GetDirectoryName(caminho)!);
+        File.WriteAllText(caminho, "# x");
+    }
+
+    private Task<RepoSnapshot> Sincronizar(Action<NormasIngestaoOptions>? ajuste = null)
+    {
+        var opcoes = new NormasIngestaoOptions { DiretorioLocal = _dir, SomenteAltaUtilizacao = false };
+        ajuste?.Invoke(opcoes);
+
+        return new LocalDirectoryRepositorySync(
+            Options.Create(opcoes), Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalDirectoryRepositorySync>.Instance).SincronizarAsync();
+    }
+
+    [Fact]
+    public async Task ListaSoOEscopo_SemEntrarNasPastasExcluidas_ESemEscreverNada()
+    {
+        foreach (var f in new[]
+                 {
+                     "constituicao.md", "federal/leis-ordinarias/2002/lei-1.md", "federal/_fonte/lixo.md", "federal/_lotes/lixo.md", "federal/scripts/x.md",
+                     "jurisprudencia/stf/sumulas/s.md", "estaduais/CE/lei.md", "README.md", "federal/dados.json",
+                 })
+        {
+            Escrever(f);
+        }
+
+        var antes = Directory.GetFiles(_dir, "*", SearchOption.AllDirectories).Length;
+        var snapshot = await Sincronizar();
+
+        snapshot.Arquivos.Select(a => a.CaminhoRelativo).Should()
+            .BeEquivalentTo("constituicao.md", "federal/leis-ordinarias/2002/lei-1.md", "jurisprudencia/stf/sumulas/s.md");
+        snapshot.Commit.Should().Be("local");
+        Directory.GetFiles(_dir, "*", SearchOption.AllDirectories).Should().HaveCount(antes);
+    }
+
+    [Fact]
+    public async Task CommitDoClone_ELidoSemExecutarGit()
+    {
+        Escrever("constituicao.md");
+        Directory.CreateDirectory(Path.Combine(_dir, ".git", "refs", "heads"));
+        File.WriteAllText(Path.Combine(_dir, ".git", "HEAD"), "ref: refs/heads/main\n");
+        File.WriteAllText(Path.Combine(_dir, ".git", "refs", "heads", "main"), "abc123\n");
+
+        (await Sincronizar()).Commit.Should().Be("abc123");
+    }
+
+    [Fact]
+    public async Task PastaInexistenteOuForaDoDiretorio_EErroClaro()
+    {
+        await ((Func<Task>)(() => Sincronizar(o => o.DiretorioLocal = _dir + "/nao-existe"))).Should().ThrowAsync<InvalidOperationException>();
+        await ((Func<Task>)(() => Sincronizar(o => o.PastasIncluidas = ["../fora"]))).Should().ThrowAsync<InvalidOperationException>();
     }
 }
 
@@ -187,6 +323,9 @@ public class ObjectStorageTests : IDisposable
         Encoding.UTF8.GetString((await storage.GetAsync("juridico/versoes/x/h.md"))!).Should().Be("olá");
         (await storage.ExistsAsync("juridico/markdown/federal/a.md")).Should().BeTrue();
         (await storage.GetAsync("juridico/nao-existe.md")).Should().BeNull();
+        await storage.DeleteAsync("juridico/markdown/federal/a.md");
+        await storage.DeleteAsync("juridico/markdown/federal/a.md");
+        (await storage.ExistsAsync("juridico/markdown/federal/a.md")).Should().BeFalse("apagar é idempotente");
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using Advocacia.Modules.Drafting.Application.Busca;
+
 namespace Advocacia.Modules.Drafting.Application.Normas;
 
 /// <summary>
@@ -23,13 +25,14 @@ public static class NormaFilePolicy
                 return false;
             }
 
-            if (opcoes.PastasExcluidas.Any(excluida => string.Equals(excluida.Trim('/'), segmento, StringComparison.OrdinalIgnoreCase)))
+            if (opcoes.Excluidas.Any(excluida => string.Equals(excluida.Trim('/'), segmento, StringComparison.OrdinalIgnoreCase)))
             {
                 return false;
             }
         }
 
-        return opcoes.PastasIncluidas.Any(pasta => DentroDe(caminho, pasta));
+        return opcoes.Incluidas.Any(pasta => DentroDe(caminho, pasta))
+            && (!opcoes.SomenteAltaUtilizacao || NormasConhecidas.AltaUtilizacao(caminho));
     }
 
     /// <summary>Ordem de ingestão: o que mais pesa numa minuta primeiro, o volume enorme por último.</summary>
@@ -40,15 +43,13 @@ public static class NormaFilePolicy
         return c switch
         {
             "constituicao.md" => 0,
+            _ when NormasConhecidas.Todas.Any(n => n.CaminhosRepo.Any(p => c.StartsWith(p, StringComparison.Ordinal))) => 0,
             _ when c.StartsWith("federal/leis-complementares/", StringComparison.Ordinal)
                 || c.StartsWith("federal/leis-ordinarias/", StringComparison.Ordinal)
                 || c.StartsWith("federal/decretos-lei/", StringComparison.Ordinal) => 1,
-            _ when c.Contains("/sumulas/", StringComparison.Ordinal) => 2,
+            _ when c.Contains("/sumulas", StringComparison.Ordinal) => 2,
             _ when c.StartsWith("jurisprudencia/", StringComparison.Ordinal) => 3,
-            _ when c.StartsWith("tratados/", StringComparison.Ordinal) => 4,
-            _ when c.StartsWith("federal/", StringComparison.Ordinal) => 5,
-            _ when c.StartsWith("estaduais/", StringComparison.Ordinal) || c.StartsWith("municipais/", StringComparison.Ordinal) => 6,
-            _ => 7,
+            _ => 4,
         };
     }
 

@@ -36,6 +36,14 @@ namespace Advocacia.Modules.Workflow.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("assigned_user_id");
 
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid?>("CompletedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("completed_by_user_id");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -122,7 +130,7 @@ namespace Advocacia.Modules.Workflow.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("StartAt")
                         .HasDatabaseName("ix_calendar_events_pending_reminders")
-                        .HasFilter("is_deleted = false AND assigned_user_id IS NOT NULL AND (one_day_reminder_sent_at IS NULL OR one_hour_reminder_sent_at IS NULL)");
+                        .HasFilter("is_deleted = false AND assigned_user_id IS NOT NULL AND completed_at IS NULL AND (one_day_reminder_sent_at IS NULL OR one_hour_reminder_sent_at IS NULL)");
 
                     b.HasIndex("TenantId", "ProcessId")
                         .HasDatabaseName("ix_calendar_events_tenant_process")

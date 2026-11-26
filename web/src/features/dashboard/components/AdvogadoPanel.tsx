@@ -4,6 +4,10 @@ import { routes } from '@/config/routes'
 import { useTenantStore } from '@/stores/tenantStore'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { formatHora } from '@/features/agenda/dates'
+import { estaConcluido } from '@/features/agenda/types'
+import { TarefasEmAtraso } from '@/features/tarefas/components/TarefasEmAtraso'
+import { useTarefasComEstado } from '@/features/tarefas/hooks'
+import { tarefasAtrasadas } from '@/features/tarefas/kanban'
 import { isSameDay } from '../time'
 import { buildQueue, prazosDoDia } from '../workQueue'
 import type { DashboardSummary } from '../types'
@@ -46,6 +50,18 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
       })
     : []
   const paraRevisar = metrics.pendingReviews.value
+  const tarefas = useTarefasComEstado()
+  const atrasadas = now ? tarefasAtrasadas(tarefas.tarefas, now) : []
+  const tarefasProntas = !tarefas.isPending && !tarefas.isError && now !== null
+  const emAtraso = (
+    <TarefasEmAtraso
+      tarefas={tarefas.tarefas}
+      agora={now}
+      isPending={tarefas.isPending}
+      isError={tarefas.isError}
+      onRetry={() => void tarefas.refetch()}
+    />
+  )
 
   const queue = (
     <WorkQueue
@@ -60,9 +76,19 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
     <KpiCard
       key="atrasadas"
       label="Tarefas atrasadas"
-      value={null}
-      hint="disponível com o módulo de tarefas"
+      value={tarefasProntas ? atrasadas.length : null}
+      hint={
+        tarefas.isPending
+          ? 'carregando…'
+          : tarefas.isError
+            ? 'não foi possível carregar'
+            : atrasadas.length === 0
+              ? 'nenhuma em atraso'
+              : 'prazo vencido'
+      }
       tone="danger"
+      href={routes.tasks}
+      hrefLabel="Tarefas atrasadas — abrir o quadro de tarefas"
       compact={variant === 'B'}
     />,
     <KpiCard
@@ -107,6 +133,7 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
           {kpis}
         </section>
         {queue}
+        {emAtraso}
       </div>
     )
   }
@@ -142,7 +169,10 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
       </section>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
-        {queue}
+        <div className="space-y-8">
+          {queue}
+          {emAtraso}
+        </div>
         <section aria-labelledby="agenda-hoje-titulo" className="space-y-3">
           <h2 id="agenda-hoje-titulo" className="text-lg font-semibold">
             Agenda de hoje
@@ -152,7 +182,14 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
           ) : (
             <ul className="space-y-2">
               {hojeDaAgenda.map((evento) => (
-                <li key={evento.id} className="flex gap-3 text-sm">
+                <li
+                  key={evento.id}
+                  className={
+                    estaConcluido(evento)
+                      ? 'flex gap-3 text-sm text-muted-foreground line-through'
+                      : 'flex gap-3 text-sm'
+                  }
+                >
                   <span
                     className={
                       evento.tipo === 'Prazo'

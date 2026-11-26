@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { formatHora } from '../dates'
-import { tipoEventoClasses, tipoEventoLabels, type AgendaEvento } from '../types'
+import { estaConcluido, tipoEventoClasses, tipoEventoLabels, type AgendaEvento } from '../types'
 
 interface EventoChipProps {
   evento: AgendaEvento
@@ -19,6 +19,7 @@ interface EventoChipProps {
  */
 export function EventoChip({ evento, onSelect, showTime = true }: EventoChipProps) {
   const hora = showTime && !evento.diaInteiro ? `${formatHora(evento.inicio)} ` : ''
+  const concluido = estaConcluido(evento)
 
   return (
     <button
@@ -29,11 +30,12 @@ export function EventoChip({ evento, onSelect, showTime = true }: EventoChipProp
         event.dataTransfer.effectAllowed = 'move'
       }}
       onClick={() => onSelect(evento)}
-      aria-label={`${tipoEventoLabels[evento.tipo]}: ${evento.titulo}${hora ? `, às ${formatHora(evento.inicio)}` : ''}`}
+      aria-label={`${tipoEventoLabels[evento.tipo]}: ${evento.titulo}${hora ? `, às ${formatHora(evento.inicio)}` : ''}${concluido ? ', concluído' : ''}`}
       className={cn(
         'w-full cursor-grab truncate rounded border px-1.5 py-0.5 text-left text-xs font-medium',
         'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing',
-        tipoEventoClasses[evento.tipo]
+        tipoEventoClasses[evento.tipo],
+        concluido && 'line-through opacity-60'
       )}
     >
       {hora}

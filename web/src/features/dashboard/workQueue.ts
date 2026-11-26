@@ -1,4 +1,4 @@
-import type { AgendaEvento, TipoEvento } from '@/features/agenda/types'
+import { estaConcluido, type AgendaEvento, type TipoEvento } from '@/features/agenda/types'
 import { addDays, isSameDay, startOfDay } from './time'
 
 /**
@@ -6,10 +6,8 @@ import { addDays, isSameDay, startOfDay } from './time'
  * publicações que a IA leu e esperam revisão do advogado.
  *
  * Só entra o que existe de verdade: os prazos vêm da agenda e as revisões, das publicações.
- * NÃO há "Atrasado": a agenda não guarda se um compromisso foi cumprido, então um prazo de
- * ontem sem baixa seria indistinguível de um prazo que o escritório perdeu — e classificar tudo
- * que passou como atrasado inventaria um alarme. O nível `overdue` existe para quando houver
- * módulo de tarefas com conclusão.
+ * O que já foi concluído (prazo cumprido, audiência realizada) sai da fila e dos contadores. Ainda NÃO
+ * há "Atrasado" nesta fila: ela só olha de hoje em diante; o atraso das tarefas tem painel próprio.
  */
 export type QueueUrgency = 'overdue' | 'today' | 'tomorrow' | 'week' | 'review'
 
@@ -21,6 +19,8 @@ export interface QueueItem {
   processLabel: string | null
   /** ISO do compromisso; `null` na revisão de publicação, que não tem data própria. */
   due: string | null
+  /** Id do compromisso da agenda quando o item é um (permite concluir direto da fila); ausente na revisão. */
+  eventoId?: string
   urgency: QueueUrgency
   /**
    * A IA está envolvida na revisão (flag `ai.classification` do escritório): recebe o selo ✨. A API
@@ -72,10 +72,11 @@ export function buildQueue(input: {
   const dated: QueueItem[] = events
     .filter((evento) => {
       const inicio = new Date(evento.inicio)
-      return inicio >= from && inicio < to
+      return !estaConcluido(evento) && inicio >= from && inicio < to
     })
     .map((evento) => ({
       id: `evento-${evento.id}`,
+      eventoId: evento.id,
       kind: evento.tipo,
       title: evento.titulo,
       processLabel: evento.processoId ? (processNumbers.get(evento.processoId) ?? null) : null,
@@ -114,7 +115,10 @@ export function filterQueue(items: readonly QueueItem[], filter: QueueFilter): Q
 /** Prazos (tipo Prazo) que vencem no dia de `now`. */
 export function prazosDoDia(events: readonly AgendaEvento[], now: Date): AgendaEvento[] {
   return events
-    .filter((evento) => evento.tipo === 'Prazo' && isSameDay(new Date(evento.inicio), now))
+    .filter(
+      (evento) =>
+        evento.tipo === 'Prazo' && !estaConcluido(evento) && isSameDay(new Date(evento.inicio), now)
+    )
     .sort((a, b) => a.inicio.localeCompare(b.inicio))
 }
 
@@ -126,7 +130,7 @@ export function prazosDaSemana(events: readonly AgendaEvento[], now: Date): Agen
   return events
     .filter((evento) => {
       const inicio = new Date(evento.inicio)
-      return evento.tipo === 'Prazo' && inicio >= from && inicio < to
+      return evento.tipo === 'Prazo' && !estaConcluido(evento) && inicio >= from && inicio < to
     })
     .sort((a, b) => a.inicio.localeCompare(b.inicio))
 }

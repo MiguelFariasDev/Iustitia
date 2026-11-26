@@ -12,9 +12,8 @@ import { ProcessoForm } from './ProcessoForm'
 export function EditarProcessoForm({ processoId }: { processoId: string }) {
   const { data: processo, isPending } = useQuery(processoQuery(processoId))
 
-  // O responsável não é editável nesta tela (a troca de responsável é uma ação própria, que
-  // chega com a gestão de equipe) — mas o backend exige o campo no update, então o valor
-  // atual é repassado em vez de ser perdido.
+  // O backend exige o responsável no update: se o formulário não o trouxe (escritório sem equipe
+  // não vê o campo), o valor atual é repassado em vez de ser perdido.
   const { mutate, isPending: isSubmitting } = useUpdateProcesso(
     processoId,
     processo?.responsavelUserId ?? ''
@@ -56,5 +55,7 @@ function toFormValues(processo: Processo): ProcessoFormValues {
       processo.valorCausa === null ? '' : processo.valorCausa.toFixed(2).replace('.', ','),
     dataDistribuicao: processo.dataDistribuicao?.slice(0, 10) ?? '',
     observacoes: processo.observacoes ?? '',
+    responsavelUserId: processo.responsavelUserId,
+    advogadosAdicionais: processo.advogadosAdicionaisUserIds ?? [],
   }
 }

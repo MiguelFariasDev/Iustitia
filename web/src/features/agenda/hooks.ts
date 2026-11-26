@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { handleApiError } from '@/lib/api/toastHandler'
 import { notify } from '@/lib/notify'
 import { queryKeys } from '@/lib/query/queryKeys'
-import { createEvento, deleteEvento, rescheduleEvento, updateEvento } from './api'
+import { concluirEvento, createEvento, deleteEvento, rescheduleEvento, updateEvento } from './api'
 import { agendaQuery } from './queries'
 import type { EventoFormValues } from './schemas'
 import type { AgendaEvento, AgendaPeriodo } from './types'
@@ -67,6 +67,44 @@ export function useDeleteEvento(onDone?: () => void) {
       onDone?.()
     },
     onError: (error) => handleApiError(error),
+  })
+}
+
+/**
+ * Concluir/reabrir um prazo, audiência etc. OTIMISTA: o item muda na hora em todas as janelas em cache
+ * (agenda, painel, aba do processo) e volta se o servidor recusar.
+ */
+export function useConcluirEvento() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, concluido }: { id: string; concluido: boolean }) =>
+      concluirEvento(id, concluido),
+    onMutate: async ({ id, concluido }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.agenda.all })
+      const snapshot = queryClient.getQueriesData<AgendaEvento[]>({
+        queryKey: queryKeys.agenda.all,
+      })
+      const quando = concluido ? new Date().toISOString() : null
+
+      queryClient.setQueriesData<AgendaEvento[]>({ queryKey: queryKeys.agenda.all }, (current) =>
+        Array.isArray(current)
+          ? current.map((evento) => (evento.id === id ? { ...evento, concluidoEm: quando } : evento))
+          : current
+      )
+
+      return { snapshot }
+    },
+    onError: (error, _variables, context) => {
+      context?.snapshot.forEach(([key, data]) => queryClient.setQueryData(key, data))
+      handleApiError(error)
+    },
+    onSuccess: (_data, { concluido }) => {
+      notify.success(concluido ? 'Marcado como concluído.' : 'Reaberto.')
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.agenda.all })
+    },
   })
 }
 

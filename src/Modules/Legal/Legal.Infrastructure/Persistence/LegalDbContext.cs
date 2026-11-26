@@ -2,6 +2,7 @@ using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.DbContext;
 using Advocacia.BuildingBlocks.Infrastructure.Persistence.Outbox;
 using Advocacia.Modules.Legal.Domain.Clientes;
+using Advocacia.Modules.Legal.Domain.Movimentacoes;
 using Advocacia.Modules.Legal.Domain.Processos;
 using Advocacia.Modules.Legal.Domain.Publications;
 using Advocacia.Modules.Legal.Domain.Suggestions;
@@ -30,6 +31,10 @@ public sealed class LegalDbContext(DbContextOptions<LegalDbContext> options, ITe
     public DbSet<Publication> Publications => Set<Publication>();
 
     public DbSet<PublicationSuggestion> PublicationSuggestions => Set<PublicationSuggestion>();
+
+    public DbSet<ProcessoMovimentacao> ProcessoMovimentacoes => Set<ProcessoMovimentacao>();
+
+    public DbSet<NotificacaoCliente> NotificacoesCliente => Set<NotificacaoCliente>();
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 }

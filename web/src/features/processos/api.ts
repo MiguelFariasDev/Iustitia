@@ -42,6 +42,9 @@ export async function createProcesso(values: ProcessoFormValues): Promise<Proces
     ...toCommonPayload(values),
     // O backend espera o número sem máscara.
     cnjNumber: onlyDigits(values.cnjNumber),
+    // Vazio = quem está cadastrando; só o escritório com equipe escolhe outro.
+    responsavelUserId: values.responsavelUserId || undefined,
+    advogadosAdicionaisUserIds: values.advogadosAdicionais,
   })
 
   return toProcesso(data)
@@ -56,7 +59,9 @@ export async function updateProcesso(
   // publicações já capturadas foram vinculadas (ver Processo.Update).
   await apiClient.put(endpoints.processos.byId(id), {
     ...toCommonPayload(values),
-    responsavelUserId,
+    responsavelUserId: values.responsavelUserId || responsavelUserId,
+    // Ausente = o servidor mantém a lista; presente (mesmo vazia) = é a lista completa.
+    advogadosAdicionaisUserIds: values.advogadosAdicionais,
   })
 }
 

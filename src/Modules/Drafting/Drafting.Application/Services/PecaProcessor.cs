@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Drafting.Application.Abstractions;
 using Advocacia.Modules.Drafting.Application.Models;
-using Advocacia.Modules.Drafting.Application.Normas;
+using Advocacia.Modules.Drafting.Application.Validacao;
+using Advocacia.Modules.Drafting.Domain.Casos;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 using Microsoft.Extensions.Logging;
@@ -14,8 +14,8 @@ using Microsoft.Extensions.Options;
 namespace Advocacia.Modules.Drafting.Application.Services;
 
 /// <summary>
-/// Processa UMA solicitação da fila, de ponta a ponta: contexto (RAG) → prompt → geração em
-/// streaming → conferência das citações → persistência. Roda no worker, com o tenant da
+/// Processa UMA solicitação da fila, de ponta a ponta: consulta estruturada → anexos do caso → base jurídica →
+/// contexto → prompt → geração em streaming → conferência das citações → persistência. Roda no worker, com o tenant da
 /// solicitação definido e a GPU já pronta.
 ///
 /// Durante a geração o texto PARCIAL é gravado a cada <see cref="FilaOptions.ParcialIntervaloMs"/>:
@@ -33,11 +33,13 @@ public sealed class PecaProcessor(
     IRagService rag,
     IPromptBuilder promptBuilder,
     ILlmService llm,
-    IDraftingAuditService audit,
+    IAuditoriaIaService audit,
     INotificacaoService notificacao,
     IOptions<FilaOptions> filaOptions,
-    ILogger<PecaProcessor> logger,
-    NormaCitationService? normaCitations = null) : IQueueWorkHandler
+    ICasoRepository casos,
+    ICasoDocumentoRepository anexos,
+    IValidacaoCitacaoService validacao,
+    ILogger<PecaProcessor> logger) : IQueueWorkHandler
 {
     /// <summary>Tamanho típico de uma minuta, só para a barra de progresso (40–90%).</summary>
     private const int TokensEsperados = 2500;
@@ -65,7 +67,7 @@ public sealed class PecaProcessor(
         }
 
         await documents.SetStageAsync(
-            request, LegalDocumentStatus.PreparandoGpu, "Preparando o ambiente de IA", 15, cancellationToken);
+            request, LegalDocumentStatus.PreparandoGpu, PecaMensagens.Para(LegalDocumentStatus.PreparandoGpu), 15, cancellationToken);
     }
 
     public async Task AoFaltarInfraAsync(Guid referenciaId, string motivo, CancellationToken cancellationToken = default)
@@ -126,20 +128,56 @@ public sealed class PecaProcessor(
 
     private async Task<WorkOutcome> RunAsync(LegalDocumentRequest request, RunState state, CancellationToken ct)
     {
-        await documents.SetStageAsync(
-            request, LegalDocumentStatus.BuscandoContexto, "Buscando fundamentos no acervo", 35, ct);
+        var caso = request.CasoId is { } casoId ? await casos.ObterAsync(CasoId.From(casoId), ct) : null;
+        if (caso is null)
+        {
+            // Solicitação anterior ao isolamento por caso (ou caso apagado): sem caso não há o que a IA possa ler.
+            throw new InvalidOperationException("Solicitação sem caso: refaça o pedido a partir de um caso.");
+        }
 
-        var context = await rag.RetrieveAsync(
-            new RagQuery(
-                request.TenantId, request.TipoPeca, request.Area, request.Fatos, request.Pedidos,
-                ParseDocumentos(request.DocumentosIdsJson), request.UsuarioId),
-            ct);
+        var input = new PecaInput(
+            request.TipoPeca, request.Area, request.Fatos, request.Pedidos, request.InstrucoesAdicionais,
+            ParseDocumentos(request.DocumentosIdsJson), null, caso.Id.Value, caso.ClienteId, request.DataFatos);
+
+        await documents.SetStageAsync(
+            request, LegalDocumentStatus.BuscandoDocumentosCaso, PecaMensagens.Para(LegalDocumentStatus.BuscandoDocumentosCaso), 25, ct);
+
+        // O que a pessoa que PEDIU pode ver no caso — o worker não tem usuário próprio. O acesso é reavaliado
+        // aqui: quem o perdeu entre o pedido e a geração não recebe trecho restrito.
+        var veRestritos = caso.UsuarioIdResponsavel == request.UsuarioId;
+        var documentos = (await anexos.ListarAsync(caso.Id, ct))
+            .Where(d => !d.Restrito || veRestritos || d.UsuarioIdResponsavel == request.UsuarioId)
+            .ToList();
+        var consulta = await rag.PrepararAsync(input, caso, documentos, ct);
+        await documents.SetConsultaAsync(request, JsonSerializer.Serialize(consulta.Estruturada), ct);
+
+        var filtro = new FiltroCaso(request.TenantId, caso.Id.Value, request.UsuarioId, veRestritos, input.DocumentosIds);
+        var doCaso = await rag.BuscarCasoAsync(filtro, consulta, ct);
+        if (await IsCancelledAsync(request, ct))
+        {
+            return new WorkOutcome(WorkOutcomeKind.Cancelado);
+        }
+
+        await documents.SetStageAsync(
+            request, LegalDocumentStatus.BuscandoJuridico, PecaMensagens.Para(LegalDocumentStatus.BuscandoJuridico), 35, ct);
+        var juridico = await rag.BuscarJuridicoAsync(consulta, ct);
+
+        var context = rag.Montar(input, doCaso, juridico);
         state.Chunks = context.Chunks;
 
         await audit.RecordAsync(
             request,
             "ContextoRecuperado",
-            new { trechos = context.Chunks.Count, tokensAproximados = context.TokensAproximados, descartados = context.Descartados },
+            new
+            {
+                consulta = consulta.Estruturada.Metodo,
+                candidatosCaso = doCaso.Count,
+                candidatosJuridicos = juridico.Count,
+                trechos = context.Chunks.Count,
+                tokensAproximados = context.TokensAproximados,
+                descartados = context.Descartados,
+                cortados = context.Cortados,
+            },
             ct);
 
         if (await IsCancelledAsync(request, ct))
@@ -147,13 +185,10 @@ public sealed class PecaProcessor(
             return new WorkOutcome(WorkOutcomeKind.Cancelado);
         }
 
-        var input = new PecaInput(
-            request.TipoPeca, request.Area, request.Fatos, request.Pedidos, request.InstrucoesAdicionais,
-            ParseDocumentos(request.DocumentosIdsJson), null);
-        var prompt = promptBuilder.Build(input, context.Chunks);
+        var prompt = promptBuilder.Build(input, context);
 
         await documents.StartGenerationAsync(request, prompt.Versao, llm.ModelName, ct);
-        await documents.SetStageAsync(request, LegalDocumentStatus.Gerando, "Gerando a minuta", 40, ct);
+        await documents.SetStageAsync(request, LegalDocumentStatus.Gerando, PecaMensagens.Para(LegalDocumentStatus.Gerando), 40, ct);
         await audit.RecordAsync(request, "GeracaoIniciada", new { modelo = llm.ModelName, prompt = prompt.Versao }, ct);
 
         state.Clock.Start();
@@ -200,34 +235,35 @@ public sealed class PecaProcessor(
             throw new TransientGenerationException("O modelo terminou sem devolver texto.");
         }
 
-        await documents.SetStageAsync(request, LegalDocumentStatus.Salvando, "Salvando a minuta", 95, ct);
+        await documents.SetStageAsync(
+            request, LegalDocumentStatus.Validando, PecaMensagens.Para(LegalDocumentStatus.Validando), 93, ct);
         if (await IsCancelledAsync(request, ct))
         {
             return new WorkOutcome(WorkOutcomeKind.Cancelado);
         }
 
-        var caseText = $"{request.Fatos}\n{request.Pedidos}\n{request.InstrucoesAdicionais}";
-        var report = CitationVerifier.Verify(text, context.Chunks, caseText);
-        var avisos = BuildWarnings(text, context, report);
-        var validacao = normaCitations is null
-            ? NormaCitationValidator.Validar(text, context.Chunks, caseText)
-            : await normaCitations.ValidarAsync(text, context.Chunks, caseText, ct);
-        avisos.AddRange(CitationWarnings(validacao, report));
-        var fontes = context.Chunks.Select(chunk => (chunk, CitationVerifier.WasCited(chunk, report))).ToList();
+        var textoDoCaso = $"{request.Fatos}\n{request.Pedidos}\n{request.InstrucoesAdicionais}";
+        var conferencia = await validacao.ValidarAsync(
+            text, new ContextoValidacao(context.Chunks, textoDoCaso, request.DataFatos), ct);
+        var avisos = Avisos(text, context, conferencia, documentos, consulta.Estruturada.Lacunas);
+        var fontes = context.Chunks.Select(chunk => (chunk, conferencia.Cita(chunk))).ToList();
 
+        await documents.SetStageAsync(request, LegalDocumentStatus.Salvando, PecaMensagens.Para(LegalDocumentStatus.Salvando), 97, ct);
         await documents.CompleteAsync(
-            request, text, state.Clock.ElapsedMilliseconds, state.PromptTokens, state.OutputTokens, fontes, avisos, ct);
+            request, text, state.Clock.ElapsedMilliseconds, state.PromptTokens, state.OutputTokens, fontes, avisos,
+            conferencia.Itens, ct);
         await audit.RecordAsync(
             request,
             "GeracaoConcluida",
             new
             {
+                modelo = llm.ModelName,
                 tempoMs = state.Clock.ElapsedMilliseconds,
                 tokensEntrada = state.PromptTokens,
                 tokensSaida = state.OutputTokens,
                 fontesCitadas = fontes.Count(f => f.Item2),
-                citacoesDesconhecidas = report.UnknownCitations.Count,
-                referenciasSemFonte = report.UnsupportedReferences.Count,
+                citacoes = conferencia.Itens.GroupBy(i => i.Status).ToDictionary(g => g.Key.ToString(), g => g.Count()),
+                bloqueada = conferencia.ExportacaoBloqueada,
             },
             ct);
         await notificacao.NotificarConclusaoAsync(request, ct);
@@ -334,56 +370,73 @@ public sealed class PecaProcessor(
         }
     }
 
-    /// <summary>
-    /// Avisos da validação de citações que o <see cref="CitationVerifier"/> ainda não deu (revogada, conflito
-    /// de versão, tribunal divergente, aspas inexistentes, URN) + a trava de exportação.
-    /// </summary>
-    internal static IEnumerable<string> CitationWarnings(ValidacaoCitacoes validacao, CitationReport report)
-    {
-        var jaAvisadas = report.UnknownCitations.Concat(report.UnsupportedReferences).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var item in validacao.Problemas.Where(i => !jaAvisadas.Contains(i.Texto)).Take(20))
-        {
-            yield return $"[{item.Status}] {item.Texto}: {item.Detalhe}";
-        }
-
-        if (validacao.ExportacaoBloqueada)
-        {
-            yield return $"{NormaCitationValidator.MarcadorBloqueio}: há citações pendentes de verificação ou possivelmente inventadas. A exportação final exige revisão humana.";
-        }
-    }
-
-    internal static List<string> BuildWarnings(string text, RagContext context, CitationReport report)
+    internal static List<string> Avisos(
+        string texto, RagContext contexto, ValidacaoCitacoes conferencia, IReadOnlyList<CasoDocumento> documentos,
+        IReadOnlyList<string> lacunas)
     {
         var avisos = new List<string>();
 
-        if (context.Chunks.Count == 0)
+        if (contexto.DoGrupo(GrupoContexto.DocumentosDoCaso).FirstOrDefault() is null)
         {
-            avisos.Add("Nenhum trecho relevante foi recuperado do acervo do escritório: a minuta não tem base documental e os fundamentos jurídicos precisam ser pesquisados.");
+            avisos.Add("Nenhum trecho dos anexos do caso entrou na minuta: ela se apoia só nos fatos que você escreveu.");
         }
 
-        if (context.Chunks.Count > 0 && report.CitedLabels.Count == 0)
+        if (contexto.Chunks.All(c => c.Meta.Norma is null))
         {
-            avisos.Add("A minuta não cita nenhuma das fontes recuperadas no formato [ARQUIVO, p. X]. Confira os fundamentos.");
+            avisos.Add("Nenhuma norma ou decisão foi recuperada do acervo: os fundamentos jurídicos precisam ser pesquisados.");
         }
 
-        if (report.UnknownCitations.Count > 0)
+        if (contexto.Cortados > 0)
         {
-            avisos.Add($"A minuta cita fontes que não constam do contexto recuperado: {string.Join("; ", report.UnknownCitations)}. Não confie nessas citações.");
+            avisos.Add($"{contexto.Cortados} trecho(s) relevante(s) não couberam na janela do modelo. Reduzir os fatos ou selecionar anexos abre espaço.");
         }
 
-        if (report.UnsupportedReferences.Count > 0)
+        var emProcessamento = documentos.Count(d => d.EmProcessamento);
+        if (emProcessamento > 0)
         {
-            avisos.Add($"Referências legais sem respaldo nas fontes nem nos dados do caso: {string.Join("; ", report.UnsupportedReferences)}. Verifique se existem e se dizem o que a minuta afirma.");
+            avisos.Add($"{emProcessamento} anexo(s) ainda estavam sendo processados e não foram considerados.");
         }
 
-        if (!text.Contains("FONTES UTILIZADAS", StringComparison.OrdinalIgnoreCase)
-            || !text.Contains("PONTOS PARA REVISÃO HUMANA", StringComparison.OrdinalIgnoreCase))
+        var comFalha = documentos.Count(d => d.Status == CasoDocumentoStatus.Falhou);
+        if (comFalha > 0)
         {
-            avisos.Add("A minuta não trouxe as seções finais exigidas (FONTES UTILIZADAS e PONTOS PARA REVISÃO HUMANA). Revise com mais atenção.");
+            avisos.Add($"{comFalha} anexo(s) não puderam ser lidos e não foram considerados.");
         }
 
-        if (text.Contains("pronta para protocolo", StringComparison.OrdinalIgnoreCase)
-            || text.Contains("pronto para protocolo", StringComparison.OrdinalIgnoreCase))
+        if (contexto.Chunks.Any(c => c.Meta.Caso is { RevisaoPendente: true }))
+        {
+            avisos.Add("Há trechos de documentos com leitura de baixa confiança (OCR/transcrição) ainda não conferidos: revise-os no original.");
+        }
+
+        if (documentos.Any(d => d.InjecaoSuspeita))
+        {
+            avisos.Add("Um anexo contém texto que tenta dar instruções à IA. Esses trechos foram excluídos da geração; verifique o documento.");
+        }
+
+        var bloqueantes = conferencia.Itens.Count(i => i.Status is CitacaoStatus.PossivelAlucinacao or CitacaoStatus.PendenteDeVerificacao);
+        if (bloqueantes > 0)
+        {
+            avisos.Add($"{bloqueantes} citação(ões) ou fato(s) precisam de conferência. A exportação final fica bloqueada até a revisão humana.");
+        }
+
+        foreach (var item in conferencia.Problemas.Take(20))
+        {
+            avisos.Add($"[{item.Status}] {item.Texto}: {item.Detalhe}");
+        }
+
+        foreach (var lacuna in lacunas.Take(5))
+        {
+            avisos.Add($"Informação possivelmente ausente: {lacuna}");
+        }
+
+        if (!texto.Contains("FONTES UTILIZADAS", StringComparison.OrdinalIgnoreCase)
+            || !texto.Contains("PONTOS PARA REVISÃO HUMANA", StringComparison.OrdinalIgnoreCase))
+        {
+            avisos.Add("A minuta não trouxe as seções finais exigidas (FONTES UTILIZADAS e PONTOS PARA REVISÃO HUMANA): pode ter sido interrompida pelo limite do modelo.");
+        }
+
+        if (texto.Contains("pronta para protocolo", StringComparison.OrdinalIgnoreCase)
+            || texto.Contains("pronto para protocolo", StringComparison.OrdinalIgnoreCase))
         {
             avisos.Add("O texto afirma estar pronto para protocolo. Isso é falso: a minuta exige revisão e validação por profissional habilitado.");
         }

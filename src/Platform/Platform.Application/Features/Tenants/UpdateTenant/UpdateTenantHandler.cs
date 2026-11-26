@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Application.Messaging;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Platform.Application.Abstractions;
+using Advocacia.Platform.Application.Common;
 using Advocacia.Platform.Domain.Auditing;
 using Advocacia.Platform.Domain.Tenancy;
 
@@ -33,7 +34,12 @@ public sealed class UpdateTenantHandler(
 
         var before = new { tenant.Name, tenant.LogoUrl };
 
-        var updateResult = tenant.Update(request.Name, request.LogoUrl, request.AddressJson);
+        // Campo ausente (null) = manter; texto em branco = limpar. Quem só renomeia o escritório não
+        // pode apagar logo e endereço sem querer.
+        var updateResult = tenant.Update(
+            request.Name,
+            CampoOpcional.Resolver(request.LogoUrl, tenant.LogoUrl),
+            CampoOpcional.Resolver(request.AddressJson, tenant.AddressJson));
         if (updateResult.IsFailure)
         {
             return Result.Failure<UpdateTenantResponse>(updateResult.Error);

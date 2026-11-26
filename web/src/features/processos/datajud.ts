@@ -1,3 +1,4 @@
+import { ApiError } from '@/lib/api/errors'
 import { apiClient } from '@/lib/api/client'
 import { endpoints } from '@/lib/api/endpoints'
 import type { ProcessoFormValues } from './schemas'
@@ -7,6 +8,8 @@ import type { AreaDireito } from './types'
 interface ConsultaTribunalDto {
   found: boolean
   tribunal: string | null
+  /** "juscraper" (portal do tribunal) ou "datajud" (API Pública do CNJ); ausente em respostas antigas. */
+  fonte?: string | null
   processo: {
     numeroProcesso: string
     tribunal: string
@@ -41,14 +44,26 @@ export interface ProcessoTribunal {
   codigoMunicipioIbge: number | null
 }
 
+/** De onde vieram os dados: portal do tribunal (juscraper) ou API Pública do CNJ (DataJud). */
+export type FonteConsulta = 'juscraper' | 'datajud'
+
 export interface ConsultaTribunalResult {
   found: boolean
   tribunal: string | null
   processo: ProcessoTribunal | null
+  fonte: FonteConsulta | null
+}
+
+/** "Dados do portal do TJSP" ou "Dados do DataJud (CNJ)"; nulo quando a fonte não veio. */
+export function rotuloFonte(fonte: FonteConsulta | null, tribunal: string | null): string | null {
+  if (fonte === 'juscraper') return `Dados do portal do ${tribunal ?? 'tribunal'}`
+  if (fonte === 'datajud') return 'Dados do DataJud (CNJ)'
+  return null
 }
 
 /**
- * Consulta os metadados do processo no tribunal (DataJud, via nosso backend).
+ * Consulta os metadados do processo no tribunal, via nosso backend: o portal do tribunal
+ * (juscraper) e, quando ele não cobre o tribunal ou falha, a API Pública do CNJ (DataJud).
  *
  * `found: false` NÃO é erro: o tribunal respondeu e não conhece o processo. Só o que
  * impede o cadastro — número inválido, tribunal fora do DataJud, serviço fora do ar —
@@ -67,6 +82,7 @@ export async function consultarProcessoTribunal(
   return {
     found: data.found,
     tribunal: data.tribunal,
+    fonte: data.fonte === 'juscraper' || data.fonte === 'datajud' ? data.fonte : null,
     processo: data.processo
       ? {
           ...data.processo,
@@ -156,4 +172,26 @@ function montarObservacoes(processo: ProcessoTribunal): string {
   }
 
   return linhas.join('\n')
+}
+
+/**
+ * Mensagem da consulta ao tribunal (DataJud/CNJ). Os códigos CNJ_* vêm com o texto da captura
+ * de publicações ("a captura será retomada"), que não serve para quem está consultando um
+ * processo: aqui a pessoa precisa saber se espera, tenta de novo ou preenche à mão.
+ */
+export function mensagemConsultaTribunal(error: unknown): string {
+  const codigo = error instanceof ApiError ? error.code : undefined
+  switch (codigo) {
+    case 'CNJ_RATE_LIMITED':
+      return 'A base pública do CNJ atingiu o limite de consultas. Tente de novo em alguns minutos ou preencha os dados manualmente.'
+    case 'CNJ_TIMEOUT':
+      return 'A base pública do CNJ demorou demais para responder. Tente de novo ou preencha os dados manualmente.'
+    case 'CNJ_UNAVAILABLE':
+    case 'CNJ_INVALID_RESPONSE':
+      return 'A base pública do CNJ está fora do ar agora. Tente mais tarde ou preencha os dados manualmente.'
+    default:
+      return error instanceof ApiError && error.message
+        ? error.message
+        : 'Não foi possível consultar o tribunal agora. Tente de novo ou preencha manualmente.'
+  }
 }

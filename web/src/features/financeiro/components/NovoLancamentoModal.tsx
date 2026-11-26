@@ -32,9 +32,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { formatCurrency, formatDate } from '@/lib/format'
 import { useCreateLancamento } from '../hooks'
-import { lancamentoFormDefaults, lancamentoFormSchema, type LancamentoFormValues } from '../schemas'
-import { tiposLancamento, tipoLancamentoLabels } from '../types'
+import {
+  lancamentoFormDefaults,
+  lancamentoFormSchema,
+  previaSerie,
+  vencimentoDaParcela,
+  type LancamentoFormValues,
+} from '../schemas'
+import {
+  MAX_PARCELAS,
+  recorrenciaLabels,
+  recorrenciasLancamento,
+  tiposLancamento,
+  tipoLancamentoLabels,
+} from '../types'
 
 /**
  * Registra o lançamento no servidor: ele aparece na lista e nos totais para todo o escritório
@@ -52,7 +65,19 @@ export function NovoLancamentoModal() {
   })
 
   const tipo = useWatch({ control: form.control, name: 'tipo' })
+  const recorrencia = useWatch({ control: form.control, name: 'recorrencia' })
+  const parcelas = useWatch({ control: form.control, name: 'parcelas' })
+  const valorInformado = useWatch({ control: form.control, name: 'valor' })
+  const vencimentoInformado = useWatch({ control: form.control, name: 'vencimento' })
   const rotuloPessoa = tipo === 'ContaPagar' ? 'Fornecedor' : 'Cliente'
+  const emSerie = recorrencia !== 'Unica'
+  const rotuloValor =
+    recorrencia === 'Parcelado' ? 'Valor total' : recorrencia === 'Mensal' ? 'Valor mensal' : 'Valor'
+  const previa = previaSerie(recorrencia, valorInformado, parcelas)
+  const ultimoVencimento =
+    emSerie && vencimentoInformado && parcelas >= 2
+      ? vencimentoDaParcela(vencimentoInformado, parcelas)
+      : null
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -122,13 +147,71 @@ export function NovoLancamentoModal() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="Pendente">Pendente</SelectItem>
-                        <SelectItem value="Pago">Pago</SelectItem>
+                        <SelectItem value="Pago">
+                          {emSerie ? 'Primeira já paga' : 'Pago'}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="recorrencia"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Forma de cobrança</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {recorrenciasLancamento.map((valor) => (
+                          <SelectItem key={valor} value={valor}>
+                            {recorrenciaLabels[valor]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {emSerie ? (
+                <FormField
+                  control={form.control}
+                  name="parcelas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {recorrencia === 'Mensal' ? 'Quantos meses' : 'Número de parcelas'}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={2}
+                          max={MAX_PARCELAS}
+                          step={1}
+                          name={field.name}
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                          value={Number.isFinite(field.value) ? field.value : ''}
+                          onChange={(event) => field.onChange(event.target.valueAsNumber)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
             </div>
 
             <FormField
@@ -179,7 +262,7 @@ export function NovoLancamentoModal() {
                 name="valor"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor</FormLabel>
+                    <FormLabel>{rotuloValor}</FormLabel>
                     <FormControl>
                       <CurrencyInput
                         value={field.value}
@@ -199,7 +282,7 @@ export function NovoLancamentoModal() {
                 name="vencimento"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Vencimento</FormLabel>
+                    <FormLabel>{emSerie ? 'Primeiro vencimento' : 'Vencimento'}</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -208,6 +291,27 @@ export function NovoLancamentoModal() {
                 )}
               />
             </div>
+
+            {previa ? (
+              <p role="status" className="rounded-lg border bg-muted/50 px-3 py-2 text-sm">
+                {recorrencia === 'Mensal' ? (
+                  <>
+                    {parcelas} cobranças mensais de <strong>{formatCurrency(previa.valorParcela)}</strong>{' '}
+                    (total {formatCurrency(previa.total)})
+                  </>
+                ) : (
+                  <>
+                    {parcelas}x de <strong>{formatCurrency(previa.valorParcela)}</strong>
+                    {previa.valorUltima !== previa.valorParcela
+                      ? ` (a última de ${formatCurrency(previa.valorUltima)})`
+                      : ''}
+                  </>
+                )}
+                {ultimoVencimento ? `, a última vencendo em ${formatDate(ultimoVencimento)}` : ''}
+                . Cada {recorrencia === 'Mensal' ? 'mês' : 'parcela'} vira um lançamento próprio, que
+                pode ser pago separadamente.
+              </p>
+            ) : null}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>

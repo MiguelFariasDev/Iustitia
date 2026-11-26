@@ -1,212 +1,80 @@
-using System.Globalization;
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Busca;
 using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Application.Normas;
-using Grpc.Core;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Qdrant.Client;
 using Qdrant.Client.Grpc;
 
 namespace Advocacia.Modules.Drafting.Infrastructure.Qdrant;
 
 /// <summary>
-/// Banco vetorial do acervo normativo PÚBLICO: uma coleção por tipo de conteúdo, vetores BGE-M3 em disco,
-/// quantização escalar int8 (vetores quantizados ficam na RAM; originais no disco) e índices de payload
-/// para todos os filtros. Sem filtro de tenant — o acervo é compartilhado e nunca contém dado de cliente;
-/// documentos de cliente ficam em <see cref="QdrantService"/>, que SEMPRE filtra por tenant.
+/// Coleções do acervo normativo PÚBLICO (constituicao_federal, leis_federais, jurisprudencia). Sem filtro de
+/// tenant — o acervo é compartilhado e nunca contém dado de cliente; anexos ficam em
+/// <see cref="CasoQdrantStore"/>, que SEMPRE filtra por tenant e caso.
 /// </summary>
-public sealed class NormaQdrantStore : INormaVectorStore, IDisposable
+public sealed class NormaQdrantStore(QdrantConexao conexao) : INormaVectorStore
 {
-    private static readonly string[] EsferasNaoEstaduais = ["federal", "regulador", "jurisprudencia", "internacional"];
-    private static readonly string[] EsferasNaoMunicipais = ["federal", "estadual", "regulador", "jurisprudencia", "internacional"];
+    private const int Lote = 64;
 
-    private readonly QdrantClient _client;
-    private readonly ILogger<NormaQdrantStore> _logger;
-    private readonly SemaphoreSlim _ensureLock = new(1, 1);
-    private bool _ensured;
+    private static readonly string[] EsferasSemUf = ["federal", "jurisprudencia"];
 
-    public NormaQdrantStore(IOptions<QdrantOptions> options, ILogger<NormaQdrantStore> logger)
+    public async Task UpsertAsync(string colecao, IReadOnlyList<NormaVectorPoint> points, CancellationToken cancellationToken = default)
     {
-        _logger = logger;
-        var settings = options.Value;
-        var problem = settings.Validate();
-        if (problem is not null)
+        Publica(colecao);
+        for (var inicio = 0; inicio < points.Count; inicio += Lote)
         {
-            throw new InvalidOperationException(problem);
-        }
-
-        var uri = new Uri(settings.BaseUrl);
-        _client = new QdrantClient(
-            uri.Host,
-            uri.Port,
-            uri.Scheme == Uri.UriSchemeHttps,
-            string.IsNullOrWhiteSpace(settings.ApiKey) ? null : settings.ApiKey,
-            TimeSpan.FromSeconds(settings.TimeoutSegundos));
-    }
-
-    public async Task EnsureCollectionsAsync(int dimensions, CancellationToken cancellationToken = default)
-    {
-        if (_ensured)
-        {
-            return;
-        }
-
-        await _ensureLock.WaitAsync(cancellationToken);
-        try
-        {
-            if (_ensured)
-            {
-                return;
-            }
-
-            await Guarded(async () =>
-            {
-                foreach (var colecao in Colecoes.Publicas.Append(Colecoes.ModelosDePeca))
-                {
-                    await EnsureOneAsync(colecao, dimensions, cancellationToken);
-                }
-
-                return 0;
-            });
-            _ensured = true;
-        }
-        finally
-        {
-            _ensureLock.Release();
+            var lote = points.Skip(inicio).Take(Lote).Select(ToPoint).ToList();
+            await conexao.ExecutarAsync(c => c.UpsertAsync(colecao, lote, wait: true, cancellationToken: cancellationToken));
         }
     }
-
-    private async Task EnsureOneAsync(string colecao, int dimensions, CancellationToken cancellationToken)
-    {
-        if (await _client.CollectionExistsAsync(colecao, cancellationToken))
-        {
-            return;
-        }
-
-        await _client.CreateCollectionAsync(
-            colecao,
-            new VectorParams { Size = (ulong)dimensions, Distance = Distance.Cosine, OnDisk = true },
-            onDiskPayload: true,
-            quantizationConfig: new QuantizationConfig
-            {
-                Scalar = new ScalarQuantization { Type = QuantizationType.Int8, Quantile = 0.99f, AlwaysRam = true },
-            },
-            cancellationToken: cancellationToken);
-
-        foreach (var campo in new[]
-                 {
-                     "normaJuridicaId", "urn", "tipo", "numero", "situacao", "versaoTexto", "esfera", "uf", "municipio",
-                     "area", "tribunal", "assuntos", "artigo", "hashConteudo",
-                 })
-        {
-            await _client.CreatePayloadIndexAsync(colecao, campo, PayloadSchemaType.Keyword, cancellationToken: cancellationToken);
-        }
-
-        await _client.CreatePayloadIndexAsync(colecao, "revogada", PayloadSchemaType.Bool, cancellationToken: cancellationToken);
-        await _client.CreatePayloadIndexAsync(colecao, "versao", PayloadSchemaType.Integer, cancellationToken: cancellationToken);
-        await _client.CreatePayloadIndexAsync(colecao, "data", PayloadSchemaType.Datetime, cancellationToken: cancellationToken);
-
-        _logger.LogInformation("Qdrant: coleção '{Colecao}' criada ({Dim} dimensões, int8, vetores em disco).", colecao, dimensions);
-    }
-
-    public Task UpsertAsync(string colecao, IReadOnlyList<NormaVectorPoint> points, CancellationToken cancellationToken = default) =>
-        Guarded(async () =>
-        {
-            const int batch = 64;
-            for (var offset = 0; offset < points.Count; offset += batch)
-            {
-                var pontos = points.Skip(offset).Take(batch).Select(ToPoint).ToList();
-                await _client.UpsertAsync(colecao, pontos, wait: true, cancellationToken: cancellationToken);
-            }
-
-            return 0;
-        });
 
     public Task DeleteAsync(string colecao, Guid normaId, int? manterVersao, CancellationToken cancellationToken = default) =>
-        Guarded(async () =>
+        conexao.ExecutarAsync(async c =>
         {
-            if (!await _client.CollectionExistsAsync(colecao, cancellationToken))
+            Publica(colecao);
+            if (!await c.CollectionExistsAsync(colecao, cancellationToken))
             {
-                return 0;
+                return true;
             }
 
-            var filter = new Filter();
-            filter.Must.Add(Conditions.MatchKeyword("normaJuridicaId", normaId.ToString()));
+            var filtro = new Filter();
+            filtro.Must.Add(Conditions.MatchKeyword("normaJuridicaId", normaId.ToString()));
             if (manterVersao is { } versao)
             {
-                filter.MustNot.Add(Conditions.Match("versao", (long)versao));
+                filtro.MustNot.Add(Conditions.Match("versao", (long)versao));
             }
 
-            await _client.DeleteAsync(colecao, filter, wait: true, cancellationToken: cancellationToken);
-
-            return 0;
-        });
-
-    public Task<IReadOnlyList<VectorHit>> SearchAsync(
-        NormaFiltro filtro, float[] vetor, int limit, CancellationToken cancellationToken = default) =>
-        Guarded(async () =>
-        {
-            var qdrantFilter = BuildFilter(filtro);
-            var hits = new List<VectorHit>();
-
-            // Coleções são independentes: busca em todas as pedidas e funde pelo score (mesma métrica: cosseno).
-            foreach (var colecao in filtro.ColecoesEfetivas)
-            {
-                try
-                {
-                    var results = await _client.SearchAsync(
-                        colecao,
-                        vetor,
-                        filter: qdrantFilter,
-                        limit: (ulong)Math.Max(1, limit),
-                        payloadSelector: new WithPayloadSelector { Enable = true },
-                        cancellationToken: cancellationToken);
-                    hits.AddRange(results.Select(ToHit));
-                }
-                catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
-                {
-                    // Coleção ainda não criada (nada ingerido nesse tipo): sem resultados, não é erro.
-                }
-            }
-
-            return (IReadOnlyList<VectorHit>)hits.OrderByDescending(h => h.Score).Take(limit).ToList();
-        });
-
-    public async Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            await _client.HealthAsync(cancellationToken);
+            await c.DeleteAsync(colecao, filtro, wait: true, cancellationToken: cancellationToken);
 
             return true;
-        }
-        catch (Exception exception) when (exception is RpcException or HttpRequestException or TimeoutException)
-        {
-            return false;
-        }
-    }
+        });
 
-    public void Dispose()
+    public async Task<IReadOnlyList<VectorHit>> BuscarDensoAsync(
+        string colecao, NormaFiltro filtro, float[] vetor, int limite, CancellationToken cancellationToken = default)
     {
-        _client.Dispose();
-        _ensureLock.Dispose();
+        Publica(colecao);
+
+        return (await conexao.BuscarAsync(colecao, vetor, QdrantConexao.Denso, BuildFilter(filtro), limite, cancellationToken))
+            .Select(ToHit).ToList();
     }
 
-    private async Task<T> Guarded<T>(Func<Task<T>> action)
+    public async Task<IReadOnlyList<VectorHit>> BuscarBm25Async(
+        string colecao, NormaFiltro filtro, VetorEsparso consulta, int limite, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await action();
-        }
-        catch (RpcException exception)
-        {
-            _logger.LogWarning("Qdrant (acervo): falha gRPC ({Status}).", exception.StatusCode);
-            throw new VectorStoreException($"O Qdrant respondeu {exception.StatusCode}.", exception);
-        }
+        Publica(colecao);
+
+        return (await conexao.BuscarAsync(
+                colecao, (consulta.Valores, consulta.Indices), QdrantConexao.Esparso, BuildFilter(filtro), limite, cancellationToken))
+            .Select(ToHit).ToList();
     }
 
-    private async Task Guarded(Func<Task<int>> action) => await Guarded<int>(action);
+    /// <summary>Esta classe não tem filtro de tenant; por isso não pode nem por engano tocar na coleção de anexos.</summary>
+    private static void Publica(string colecao)
+    {
+        if (!Colecoes.Publicas.Contains(colecao, StringComparer.Ordinal))
+        {
+            throw new ArgumentException($"'{colecao}' não é uma coleção pública.", nameof(colecao));
+        }
+    }
 
     internal static Filter BuildFilter(NormaFiltro f)
     {
@@ -229,24 +97,22 @@ public sealed class NormaQdrantStore : INormaVectorStore, IDisposable
 
         if (f.Ufs is { Count: > 0 } ufs)
         {
-            // Restringe só o que TEM UF (estadual/municipal); federal, tribunais e reguladores continuam valendo.
+            // Restringe só o que TEM UF; federal e tribunais nacionais continuam valendo.
             var uf = new Filter();
             uf.Should.Add(Conditions.Match("uf", ufs.Select(u => u.ToUpperInvariant()).ToList()));
-            uf.Should.Add(Conditions.Match("esfera", EsferasNaoEstaduais.ToList()));
+            uf.Should.Add(Conditions.Match("esfera", EsferasSemUf.ToList()));
             filter.Must.Add(Conditions.Filter(uf));
         }
 
-        if (f.Municipios is { Count: > 0 } municipios)
-        {
-            var municipio = new Filter();
-            municipio.Should.Add(Conditions.Match("municipio", municipios.ToList()));
-            municipio.Should.Add(Conditions.Match("esfera", EsferasNaoMunicipais.ToList()));
-            filter.Must.Add(Conditions.Filter(municipio));
-        }
+        AddAny(filter, "municipio", f.Municipios);
 
-        if (f.AreaEstrita && !string.IsNullOrWhiteSpace(f.Area))
+        if (f.Areas is { Count: > 0 } areas)
         {
-            filter.Must.Add(Conditions.MatchKeyword("area", f.Area));
+            // Sem área no payload = área desconhecida, não "outra área": passa.
+            var area = new Filter();
+            area.Should.Add(Conditions.Match("area", areas.ToList()));
+            area.Should.Add(Conditions.IsEmpty("area"));
+            filter.Must.Add(Conditions.Filter(area));
         }
 
         if (f.DataDe is not null || f.DataAte is not null)
@@ -271,31 +137,33 @@ public sealed class NormaQdrantStore : INormaVectorStore, IDisposable
     internal static PointStruct ToPoint(NormaVectorPoint point)
     {
         var p = point.Payload;
-        var result = new PointStruct { Id = point.Id, Vectors = point.Vector };
+        var result = new PointStruct { Id = point.Id, Vectors = QdrantConexao.Vetores(point.Vector, point.Esparso) };
 
-        result.Payload["normaJuridicaId"] = Text(p.NormaJuridicaId.ToString());
-        result.Payload["titulo"] = Text(p.Titulo);
-        result.Payload["tipo"] = Text(p.Tipo);
-        result.Payload["situacao"] = Text(p.Situacao);
-        result.Payload["versaoTexto"] = Text(p.VersaoTexto);
-        result.Payload["esfera"] = Text(p.Esfera);
-        result.Payload["colecao"] = Text(p.Colecao);
-        result.Payload["arquivoMarkdownPath"] = Text(p.ArquivoMarkdownPath);
-        result.Payload["fonteOficialUrl"] = Text(p.FonteOficialUrl);
-        result.Payload["hashConteudo"] = Text(p.HashConteudo);
-        result.Payload["texto"] = Text(p.Texto);
+        result.Payload["fonte"] = QdrantConexao.Texto("ctb_leis");
+        result.Payload["normaJuridicaId"] = QdrantConexao.Texto(p.NormaJuridicaId.ToString());
+        result.Payload["titulo"] = QdrantConexao.Texto(p.Titulo);
+        result.Payload["tipo"] = QdrantConexao.Texto(p.Tipo);
+        result.Payload["situacao"] = QdrantConexao.Texto(p.Situacao);
+        result.Payload["versaoTexto"] = QdrantConexao.Texto(p.VersaoTexto);
+        result.Payload["esfera"] = QdrantConexao.Texto(p.Esfera);
+        result.Payload["colecao"] = QdrantConexao.Texto(p.Colecao);
+        result.Payload["arquivo"] = QdrantConexao.Texto(p.ArquivoMarkdownPath);
+        result.Payload["fonteOficialUrl"] = QdrantConexao.Texto(p.FonteOficialUrl);
+        result.Payload["hashConteudo"] = QdrantConexao.Texto(p.HashConteudo);
+        result.Payload["texto"] = QdrantConexao.Texto(p.Texto);
         result.Payload["revogada"] = new Value { BoolValue = p.Revogada };
         result.Payload["versao"] = new Value { IntegerValue = p.VersaoNumero };
-        SetIf(result, "urn", p.Urn);
-        SetIf(result, "numero", p.Numero);
-        SetIf(result, "uf", p.Uf);
-        SetIf(result, "municipio", p.Municipio);
-        SetIf(result, "area", p.Area);
-        SetIf(result, "tribunal", p.Tribunal?.ToUpperInvariant());
-        SetIf(result, "secao", p.Secao);
-        SetIf(result, "artigo", p.Artigo);
-        SetIf(result, "paragrafo", p.Paragrafo);
-        SetIf(result, "inciso", p.Inciso);
+        QdrantConexao.Definir(result, "urn", p.Urn);
+        QdrantConexao.Definir(result, "numero", p.Numero);
+        QdrantConexao.Definir(result, "uf", p.Uf);
+        QdrantConexao.Definir(result, "municipio", p.Municipio);
+        QdrantConexao.Definir(result, "area", p.Area);
+        QdrantConexao.Definir(result, "tribunal", p.Tribunal?.ToUpperInvariant());
+        QdrantConexao.Definir(result, "secao", p.Secao);
+        QdrantConexao.Definir(result, "artigo", p.Artigo);
+        QdrantConexao.Definir(result, "paragrafo", p.Paragrafo);
+        QdrantConexao.Definir(result, "inciso", p.Inciso);
+        QdrantConexao.Definir(result, "data", p.Data?.Rfc3339());
 
         if (p.Pagina is { } pagina)
         {
@@ -304,18 +172,13 @@ public sealed class NormaQdrantStore : INormaVectorStore, IDisposable
 
         if (p.Data is { } data)
         {
-            result.Payload["data"] = Text(
-                data.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
+            result.Payload["ano"] = new Value { IntegerValue = data.Year };
         }
 
         if (p.Assuntos.Count > 0)
         {
             var list = new ListValue();
-            foreach (var assunto in p.Assuntos)
-            {
-                list.Values.Add(Text(assunto));
-            }
-
+            list.Values.AddRange(p.Assuntos.Select(QdrantConexao.Texto));
             result.Payload["assuntos"] = new Value { ListValue = list };
         }
 
@@ -324,58 +187,39 @@ public sealed class NormaQdrantStore : INormaVectorStore, IDisposable
 
     internal static VectorHit ToHit(ScoredPoint point)
     {
-        var payload = point.Payload;
-        string? Get(string key) => payload.TryGetValue(key, out var v) && v.KindCase == Value.KindOneofCase.StringValue ? v.StringValue : null;
-        long? GetInt(string key) => payload.TryGetValue(key, out var v) && v.KindCase == Value.KindOneofCase.IntegerValue ? v.IntegerValue : null;
-        bool GetBool(string key) => payload.TryGetValue(key, out var v) && v.KindCase == Value.KindOneofCase.BoolValue && v.BoolValue;
-
-        DateOnly? data = DateTime.TryParse(
-            Get("data"), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed)
-            ? DateOnly.FromDateTime(parsed)
-            : null;
-
-        IReadOnlyList<string> assuntos = payload.TryGetValue("assuntos", out var a) && a.KindCase == Value.KindOneofCase.ListValue
+        var p = point.Payload;
+        IReadOnlyList<string> assuntos = p.TryGetValue("assuntos", out var a) && a.KindCase == Value.KindOneofCase.ListValue
             ? a.ListValue.Values.Where(v => v.KindCase == Value.KindOneofCase.StringValue).Select(v => v.StringValue).ToList()
             : [];
 
-        var normaPayload = new NormaPayload(
-            Guid.TryParse(Get("normaJuridicaId"), out var normaId) ? normaId : Guid.Empty,
-            Get("urn"),
-            Get("titulo") ?? "norma",
-            Get("tipo") ?? "Norma",
-            Get("numero"),
-            data,
-            Get("situacao") ?? "Não informada",
-            GetBool("revogada"),
-            Get("versaoTexto") ?? "Não informada",
-            (int)(GetInt("versao") ?? 1),
-            Get("esfera") ?? "federal",
-            Get("uf"),
-            Get("municipio"),
-            Get("area"),
-            Get("tribunal"),
+        var payload = new NormaPayload(
+            p.Id("normaJuridicaId") ?? Guid.Empty,
+            p.Str("urn"),
+            p.Str("titulo") ?? "norma",
+            p.Str("tipo") ?? "Norma",
+            p.Str("numero"),
+            p.Data("data"),
+            p.Str("situacao") ?? "Não informada",
+            p.Bool("revogada"),
+            p.Str("versaoTexto") ?? "Não informada",
+            (int)(p.Int("versao") ?? 1),
+            p.Str("esfera") ?? "federal",
+            p.Str("uf"),
+            p.Str("municipio"),
+            p.Str("area"),
+            p.Str("tribunal"),
             assuntos,
-            Get("colecao") ?? string.Empty,
-            Get("arquivoMarkdownPath") ?? string.Empty,
-            Get("fonteOficialUrl") ?? string.Empty,
-            (int?)GetInt("pagina"),
-            Get("secao"),
-            Get("artigo"),
-            Get("paragrafo"),
-            Get("inciso"),
-            Get("hashConteudo") ?? string.Empty,
-            Get("texto") ?? string.Empty);
+            p.Str("colecao") ?? string.Empty,
+            p.Str("arquivo") ?? string.Empty,
+            p.Str("fonteOficialUrl") ?? string.Empty,
+            (int?)p.Int("pagina"),
+            p.Str("secao"),
+            p.Str("artigo"),
+            p.Str("paragrafo"),
+            p.Str("inciso"),
+            p.Str("hashConteudo") ?? string.Empty,
+            p.Str("texto") ?? string.Empty);
 
-        return normaPayload.ToHit(point.Id.Uuid, point.Score);
-    }
-
-    private static Value Text(string value) => new() { StringValue = value };
-
-    private static void SetIf(PointStruct point, string key, string? value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            point.Payload[key] = Text(value);
-        }
+        return payload.ToHit(point.Id.Uuid, point.Score);
     }
 }

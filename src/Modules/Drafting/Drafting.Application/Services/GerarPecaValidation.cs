@@ -58,6 +58,11 @@ public static class GerarPecaValidation
             }
         }
 
+        if (request.CasoId is not { } casoId || casoId == Guid.Empty)
+        {
+            return Result.Failure<PecaInput>(ErrorFactory.From(ErrorCode.DRAFTING_FIELD_REQUIRED, "casoId"));
+        }
+
         var documentos = (request.DocumentosIds ?? []).Where(id => id != Guid.Empty).Distinct().ToList();
         if (documentos.Count > DocumentosMax)
         {
@@ -65,6 +70,7 @@ public static class GerarPecaValidation
         }
 
         return Result.Success(new PecaInput(
-            tipo, area, fatos, pedidos, instrucoes.Length == 0 ? null : instrucoes, documentos, null));
+            tipo, area, fatos, pedidos, instrucoes.Length == 0 ? null : instrucoes, documentos, null,
+            CasoId: casoId, DataFatos: request.DataFatos));
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -20,6 +21,15 @@ public sealed class IdempotencyMiddleware(RequestDelegate next)
     private static readonly string[] CriticalPathSuffixes = ["/tenants", "/users/invite", "/users/accept-invite"];
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(24);
 
+    /// <summary>
+    /// Requisições EM ANDAMENTO por chave. A resposta só vai para o cache quando a primeira termina;
+    /// sem esta trava, um reenvio com a mesma chave que chegasse antes disso (o cadastro de
+    /// escritório leva segundos, e navegador ou proxy podem reenviar o POST) executava de novo e
+    /// voltava "este e-mail já está cadastrado" — com a conta recém-criada pela primeira.
+    /// Vale por instância da API: entre réplicas, a proteção continua sendo o cache.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> EmAndamento = new();
+
     public async Task InvokeAsync(HttpContext context, ICacheService cacheService)
     {
         if (!ShouldApply(context))
@@ -39,6 +49,25 @@ public sealed class IdempotencyMiddleware(RequestDelegate next)
         var requestHash = await ComputeRequestHashAsync(context.Request);
         var cacheKey = $"idempotency:{idempotencyKey}";
 
+        var trava = EmAndamento.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        await trava.WaitAsync(context.RequestAborted);
+        try
+        {
+            await ProcessAsync(context, cacheService, cacheKey, requestHash);
+        }
+        finally
+        {
+            trava.Release();
+            // Remove só se ninguém mais estiver esperando nesta chave.
+            if (trava.CurrentCount == 1)
+            {
+                EmAndamento.TryRemove(new KeyValuePair<string, SemaphoreSlim>(cacheKey, trava));
+            }
+        }
+    }
+
+    private async Task ProcessAsync(HttpContext context, ICacheService cacheService, string cacheKey, string requestHash)
+    {
         var existing = await cacheService.GetAsync<IdempotencyRecord>(cacheKey, context.RequestAborted);
         if (existing is not null)
         {

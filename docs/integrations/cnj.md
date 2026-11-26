@@ -9,7 +9,7 @@ Confundi-las é fácil e caro, então a distinção vem antes de tudo:
 | Traz | **Texto** das publicações do diário | **Metadados** do processo |
 | Autenticação | nenhuma | `Authorization: APIKey …` |
 | Formato | REST, query string | Elasticsearch Query DSL (POST) |
-| Quem consome | `CnjCaptureJob` (Worker, diário) | Formulário de cadastro (sob demanda) |
+| Quem consome | `CnjCaptureJob` (Worker, diário) | Fallback do juscraper: cadastro e acompanhamento (ADR-075, [`juscraper.md`](juscraper.md)) |
 | Porta | `ICnjClient` | `IConsultaProcessoTribunal` (módulo Legal) |
 | Uso comercial | ver termo próprio | **proibido** — ver ADR-064 |
 

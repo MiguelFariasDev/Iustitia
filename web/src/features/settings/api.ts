@@ -71,10 +71,10 @@ export async function updateProfile(values: ProfileValues): Promise<Profile> {
     throw new Error('Sessão sem usuário identificado.')
   }
 
+  // Especialidade e avatar NÃO vão no corpo: o formulário não os edita e, no servidor, campo ausente
+  // significa "manter" (enviar null os apagava a cada salvamento).
   await apiClient.put(endpoints.users.byId(me.userId), {
     name: values.name,
-    specialty: null,
-    avatarUrl: null,
     phone: values.phone,
   })
 
@@ -117,10 +117,9 @@ export async function updateTenantProfile(values: TenantProfileValues): Promise<
     throw new Error('Sessão sem escritório identificado.')
   }
 
+  // Logo e endereço NÃO vão no corpo: campo ausente = manter (enviar null os apagava ao renomear).
   await apiClient.put(endpoints.tenants.byId(me.tenantId), {
     name: values.name,
-    logoUrl: null,
-    addressJson: null,
   })
 
   return getTenantProfile()

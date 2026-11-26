@@ -1,6 +1,6 @@
 # ADR-072 — Geração de peças com RAG, Ollama na Vast.ai e GPU sob demanda
 
-Status: proposto (código não compilado nem executado).
+Status: aceito, com partes substituídas pela [ADR-074](074-casos-busca-hibrida-e-revisao-humana.md) (documentos por caso, modelo, busca e contexto).
 
 ## Contexto
 Escritórios precisam de minutas assistidas por IA com fundamentação em acervo próprio, custo controlado e sigilo.
@@ -21,5 +21,4 @@ Chamada síncrona na API (GPU ligada ou requisição longa); Redis/Hangfire dedi
 - Dados do cliente passam por host de terceiro: exige avaliação LGPD/OAB e contrato.
 - Latência de partida fria (minutos) — mitigada com status por etapas.
 - Modelo 8B pode alucinar: revisão humana obrigatória e verificação de citações.
-- `NumCtx` precisa ser ≥ 16384 (8192 truncaria o prompt).
-- Código não verificado por compilador/teste; migração EF pendente.
+- `NumCtx` de 8192 truncaria o prompt de então; a ADR-074 calcula o contexto a partir da janela.

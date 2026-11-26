@@ -27,6 +27,32 @@ public sealed class CreateLancamentoHandler(
         }
 
         var agora = clock.UtcNow;
+        var recorrencia = RecorrenciaLancamento.Unica;
+        if (request.Recorrencia is not null && !Enum.TryParse(request.Recorrencia, ignoreCase: true, out recorrencia))
+        {
+            return Result.Failure<LancamentoResponse>(ErrorFactory.From(ErrorCode.VALIDATION_INVALID_ENUM, nameof(request.Recorrencia)));
+        }
+
+        if (recorrencia != RecorrenciaLancamento.Unica)
+        {
+            var serie = Lancamento.CriarSerie(
+                tenantId, tipo, recorrencia, request.Parcelas, request.Descricao, request.Pessoa, request.Processo,
+                request.Valor, request.Vencimento, request.JaPago, agora);
+            if (serie.IsFailure)
+            {
+                return Result.Failure<LancamentoResponse>(serie.Error);
+            }
+
+            foreach (var parcela in serie.Value)
+            {
+                repository.Add(parcela);
+            }
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return Result.Success(serie.Value[0].ToResponse(RelogioBrasil.Hoje(agora)));
+        }
+
         var lancamento = Lancamento.Create(
             tenantId, tipo, request.Descricao, request.Pessoa, request.Processo, request.Valor, request.Vencimento, request.JaPago, agora);
         if (lancamento.IsFailure)

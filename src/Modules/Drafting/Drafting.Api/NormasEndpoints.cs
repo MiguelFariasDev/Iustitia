@@ -35,6 +35,12 @@ public static class NormasEndpoints
             .WithSummary("Histórico das sincronizações do acervo (processados, ignorados, erros).")
             .RequireAuthorization(Policies.PartnerOrAbove);
 
+        group.MapGet("/admin/colecoes", async (INormaAdminService service, CancellationToken cancellationToken) =>
+                (await service.ColecoesAsync(cancellationToken)).ToHttpResult())
+            .WithName("ColecoesVetoriais")
+            .WithSummary("As cinco coleções do índice vetorial e quantos trechos cada uma tem.")
+            .RequireAuthorization(Policies.PartnerOrAbove);
+
         group.MapGet("/{id:guid}", async (Guid id, INormaAdminService service, CancellationToken cancellationToken) =>
                 (await service.ObterNormaAsync(id, cancellationToken)).ToHttpResult())
             .WithName("ObterNorma")

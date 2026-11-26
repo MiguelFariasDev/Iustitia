@@ -15,7 +15,17 @@ public sealed class CreateLancamentoValidator : AbstractValidator<CreateLancamen
         RuleFor(command => command.Pessoa).MaximumLength(Lancamento.PessoaMaxLength);
         RuleFor(command => command.Processo).MaximumLength(Lancamento.ProcessoMaxLength);
         RuleFor(command => command.Valor).GreaterThan(0).LessThanOrEqualTo(Lancamento.ValorMaximo);
+        RuleFor(command => command.Recorrencia)
+            .Must(recorrencia => recorrencia is null || Enum.TryParse<RecorrenciaLancamento>(recorrencia, ignoreCase: true, out _))
+            .WithMessage("Recorrência inválida. Valores aceitos: Unica, Parcelado, Mensal.");
+        RuleFor(command => command.Parcelas)
+            .InclusiveBetween(2, Lancamento.MaxParcelas)
+            .When(command => EhSerie(command.Recorrencia))
+            .WithMessage($"Informe de 2 a {Lancamento.MaxParcelas} parcelas (ou meses de cobrança).");
     }
+
+    internal static bool EhSerie(string? recorrencia) =>
+        Enum.TryParse<RecorrenciaLancamento>(recorrencia, ignoreCase: true, out var valor) && valor != RecorrenciaLancamento.Unica;
 }
 
 public sealed class ListLancamentosValidator : AbstractValidator<ListLancamentosQuery>

@@ -29,6 +29,7 @@ export interface ProcessoDto {
   createdAt: string
   /** Sigilo interno: só o responsável e a sociedade enxergam. Ausente em servidores antigos. */
   confidencial?: boolean
+  advogadosAdicionaisUserIds?: string[]
 }
 
 /** ProcessoListItem (Legal.Application.Features.Processos). */

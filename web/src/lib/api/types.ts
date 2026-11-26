@@ -25,8 +25,3 @@ export interface PagedList<T> {
   hasNextPage: boolean
 }
 
-export interface PageRequest {
-  page?: number
-  pageSize?: number
-  search?: string
-}

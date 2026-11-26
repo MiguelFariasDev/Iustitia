@@ -8,6 +8,8 @@ export const endpoints = {
     login: '/auth/login',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
+    /** POST — registra o login de quem entrou direto no Supabase (último acesso + auditoria). */
+    session: '/auth/session',
   },
   tenants: {
     create: '/tenants',
@@ -61,6 +63,8 @@ export const endpoints = {
     eventos: '/agenda/eventos',
     eventoById: (id: string) => `/agenda/eventos/${id}`,
     reschedule: (id: string) => `/agenda/eventos/${id}/reschedule`,
+    /** PATCH { done } — conclui ou reabre o compromisso. */
+    baixa: (id: string) => `/agenda/eventos/${id}/baixa`,
   },
   /** Criação de peças com IA (Drafting). A geração é assíncrona: enfileira e se acompanha por status. */
   pecas: {
@@ -68,11 +72,19 @@ export const endpoints = {
     status: (id: string) => `/pecas/${id}/status`,
     byId: (id: string) => `/pecas/${id}`,
     cancelar: (id: string) => `/pecas/${id}/cancelar`,
+    citacao: (id: string, citacaoId: string) => `/pecas/${id}/citacoes/${citacaoId}`,
+    revisao: (id: string) => `/pecas/${id}/revisao`,
+    exportar: (id: string) => `/pecas/${id}/exportar`,
   },
-  /** Acervo de documentos que alimenta a geração de peças (upload indexa de forma assíncrona). */
-  acervo: {
-    upload: '/documentos/upload',
-    byId: (id: string) => `/documentos/${id}`,
+  /** Casos: a unidade de isolamento da geração. Os anexos de um caso nunca entram em outro. */
+  casos: {
+    list: '/casos',
+    documentos: (id: string) => `/casos/${id}/documentos`,
+    documento: (id: string, documentoId: string) => `/casos/${id}/documentos/${documentoId}`,
+    documentoMarkdown: (id: string, documentoId: string) =>
+      `/casos/${id}/documentos/${documentoId}/markdown`,
+    revisarDocumento: (id: string, documentoId: string) =>
+      `/casos/${id}/documentos/${documentoId}/revisar`,
   },
   clientes: {
     list: '/clientes',

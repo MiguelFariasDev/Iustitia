@@ -24,7 +24,12 @@ public sealed class GeracaoPecaService(
     ILegalDocumentService documents,
     ILegalDocumentRepository repository,
     IGeracaoPecaFila fila,
-    IDraftingAuditService audit) : IGeracaoPecaService
+    IAuditoriaIaService audit,
+    ICasoAcessoService acesso,
+    ICasoDocumentoRepository anexos,
+    ISegurancaIaService seguranca,
+    IOptions<JanelaModeloOptions> janela,
+    IOptions<RagOptions> rag) : IGeracaoPecaService
 {
     private const string Aviso = SystemPrompt.Aviso;
 
@@ -36,13 +41,7 @@ public sealed class GeracaoPecaService(
             return Result.Failure<SubmissaoResponse>(ErrorFactory.From(ErrorCode.DRAFTING_DISABLED));
         }
 
-        var input = GerarPecaValidation.Validate(request);
-        if (input.IsFailure)
-        {
-            return Result.Failure<SubmissaoResponse>(input.Error);
-        }
-
-        return await RegistrarAsync(input.Value, cancellationToken);
+        return await ValidarERegistrarAsync(request, null, cancellationToken);
     }
 
     public async Task<Result<StatusPecaResponse>> ObterStatusAsync(Guid id, CancellationToken cancellationToken = default)
@@ -111,21 +110,20 @@ public sealed class GeracaoPecaService(
 
         var original = accessible.Value;
 
-        // Passa pelo MESMO funil de validação: as instruções novas também podem ser uma tentativa de injeção.
-        var input = GerarPecaValidation.Validate(new GerarPecaRequest(
-            original.TipoPeca,
-            original.Area,
-            original.Fatos,
-            original.Pedidos,
-            ParseGuids(original.DocumentosIdsJson),
-            request.InstrucoesAdicionais ?? original.InstrucoesAdicionais));
-
-        if (input.IsFailure)
-        {
-            return Result.Failure<SubmissaoResponse>(input.Error);
-        }
-
-        return await RegistrarAsync(input.Value with { PecaOrigemId = original.Id.Value }, cancellationToken);
+        // Passa pelo MESMO funil de validação: as instruções novas também podem ser uma tentativa de injeção, e
+        // o acesso ao caso pode ter sido revogado desde então.
+        return await ValidarERegistrarAsync(
+            new GerarPecaRequest(
+                original.TipoPeca,
+                original.Area,
+                original.Fatos,
+                original.Pedidos,
+                ParseGuids(original.DocumentosIdsJson),
+                request.InstrucoesAdicionais ?? original.InstrucoesAdicionais,
+                CasoId: original.CasoId,
+                DataFatos: original.DataFatos),
+            original.Id.Value,
+            cancellationToken);
     }
 
     public async Task<Result<IReadOnlyList<PecaResumoResponse>>> ListarAsync(
@@ -142,7 +140,7 @@ public sealed class GeracaoPecaService(
 
         return Result.Success<IReadOnlyList<PecaResumoResponse>>(items
             .Select(r => new PecaResumoResponse(
-                r.Id.Value, r.TipoPeca, r.Area, r.Status.ToString(), r.Versao, r.CriadoEm, r.ConcluidoEm))
+                r.Id.Value, r.TipoPeca, r.Area, r.Status.ToString(), r.Versao, r.CriadoEm, r.ConcluidoEm, r.CasoId, r.RevisadoEm))
             .ToList());
     }
 
@@ -232,6 +230,56 @@ public sealed class GeracaoPecaService(
         }
     }
 
+    private async Task<Result<SubmissaoResponse>> ValidarERegistrarAsync(
+        GerarPecaRequest request, Guid? origemId, CancellationToken ct)
+    {
+        var validado = GerarPecaValidation.Validate(request);
+        if (validado.IsFailure)
+        {
+            if (validado.Error.Code == nameof(ErrorCode.DRAFTING_PROMPT_INJECTION) && currentUser.TenantId is { } tenantId)
+            {
+                await seguranca.RegistrarAsync(
+                    tenantId, currentUser.UserId, "InjecaoNaEntrada", "POST /pecas/gerar",
+                    $"{request.Fatos}\n{request.Pedidos}\n{request.InstrucoesAdicionais}", ct);
+            }
+
+            return Result.Failure<SubmissaoResponse>(validado.Error);
+        }
+
+        var input = validado.Value with { PecaOrigemId = origemId };
+        var autorizado = await acesso.AutorizarAsync(input.CasoId, escrita: false, ct);
+        if (autorizado.IsFailure)
+        {
+            return Result.Failure<SubmissaoResponse>(autorizado.Error);
+        }
+
+        if (autorizado.Value.Caso.Status == Domain.Casos.CasoStatus.Encerrado)
+        {
+            return Result.Failure<SubmissaoResponse>(ErrorFactory.From(ErrorCode.DRAFTING_CASE_CLOSED));
+        }
+
+        // Só documentos DESTE caso, e que esta pessoa pode ver.
+        if (input.DocumentosIds.Count > 0)
+        {
+            var visiveis = (await anexos.ListarAsync(autorizado.Value.Caso.Id, ct))
+                .Where(d => Casos.AnexoService.Visivel(d, autorizado.Value))
+                .Select(d => d.Id.Value)
+                .ToHashSet();
+            if (!input.DocumentosIds.All(visiveis.Contains))
+            {
+                return Result.Failure<SubmissaoResponse>(ErrorFactory.From(ErrorCode.DRAFTING_DOCUMENT_NOT_IN_CASE));
+            }
+        }
+
+        var excesso = OrcamentoContexto.ExcessoEmCaracteres(input, janela.Value, rag.Value.CharsPorToken);
+        if (excesso > 0)
+        {
+            return Result.Failure<SubmissaoResponse>(ErrorFactory.From(ErrorCode.DRAFTING_INPUT_TOO_LARGE_FOR_MODEL, excesso));
+        }
+
+        return await RegistrarAsync(input with { ClienteId = autorizado.Value.Caso.ClienteId }, ct);
+    }
+
     private async Task<Result<SubmissaoResponse>> RegistrarAsync(PecaInput input, CancellationToken ct)
     {
         var created = await documents.CreateAndEnqueueAsync(input, ct);
@@ -257,7 +305,7 @@ public sealed class GeracaoPecaService(
     private async Task<Result<LegalDocumentRequest>> LoadAccessibleAsync(Guid id, CancellationToken ct)
     {
         var request = await repository.GetByIdAsync(LegalDocumentRequestId.From(id), ct);
-        if (request is null || !CanAccess(request))
+        if (request is null || !await CanAccessAsync(request, ct))
         {
             return Result.Failure<LegalDocumentRequest>(ErrorFactory.From(ErrorCode.DRAFTING_REQUEST_NOT_FOUND));
         }
@@ -265,8 +313,14 @@ public sealed class GeracaoPecaService(
         return Result.Success(request);
     }
 
-    private bool CanAccess(LegalDocumentRequest request) =>
-        request.UsuarioId == currentUser.UserId || CanSeeAll();
+    /// <summary>
+    /// Peça de um caso segue o acesso ao CASO (inclusive para quem a pediu: acesso revogado vale também para as
+    /// minutas). Solicitação antiga, sem caso, fica com quem pediu e com a gestão.
+    /// </summary>
+    private async Task<bool> CanAccessAsync(LegalDocumentRequest request, CancellationToken ct) =>
+        request.CasoId is { } casoId
+            ? (await acesso.AutorizarAsync(casoId, escrita: false, ct)).IsSuccess
+            : request.UsuarioId == currentUser.UserId || CanSeeAll();
 
     private bool CanSeeAll() => currentUser.IsInRole("Owner") || currentUser.IsInRole("Partner");
 
@@ -283,22 +337,11 @@ public sealed class GeracaoPecaService(
             r.Status == LegalDocumentStatus.Falhou ? PecaMensagens.FalhaGenerica : null,
             LinkDownload: null); // exportação DOCX/PDF não implementada
 
-    private static PecaDetalheResponse ToDetalhe(LegalDocumentRequest r)
+    internal static PecaDetalheResponse ToDetalhe(LegalDocumentRequest r)
     {
-        var fontes = r.Sources
-            .OrderByDescending(s => s.Score)
-            .Select(s => new FonteResponse(
-                s.Id,
-                s.DocumentoOrigemId,
-                s.NomeArquivo,
-                s.Pagina,
-                s.Trecho.Length <= 400 ? s.Trecho : s.Trecho[..400] + "…",
-                s.Score,
-                s.UtilizadaNaGeracao,
-                UrlOf(s.MetadadosJson)))
-            .ToList();
-
-        var avisos = ParseStrings(r.AvisosJson);
+        var fontes = r.Sources.OrderByDescending(s => s.Score).Select(ToFonte).ToList();
+        var citacoes = r.Citacoes.OrderBy(c => c.Ordem).Select(ToCitacao).ToList();
+        var concluida = r.Status == LegalDocumentStatus.Concluido;
 
         return new PecaDetalheResponse(
             r.Id.Value,
@@ -308,31 +351,56 @@ public sealed class GeracaoPecaService(
             r.Versao,
             r.RequestOrigemId?.Value,
             // Só é "a minuta" quando concluída; antes disso é texto parcial e não deve ser copiado como peça.
-            r.Status == LegalDocumentStatus.Concluido ? r.TextoGerado : null,
+            concluida ? r.TextoGerado : null,
             fontes,
-            avisos,
+            ParseStrings(r.AvisosJson),
             Aviso,
             r.TempoGeracaoMs,
             r.CriadoEm,
             r.ConcluidoEm,
-            ExportacaoBloqueada: r.Status == LegalDocumentStatus.Concluido
-                && avisos.Any(a => a.StartsWith(Normas.NormaCitationValidator.MarcadorBloqueio, StringComparison.Ordinal)));
+            ExportacaoBloqueada: concluida && r.RevisadoEm is null,
+            r.CasoId,
+            citacoes,
+            r.RevisadoEm,
+            r.TextoRevisado);
     }
 
-    private static string? UrlOf(string? metadadosJson)
+    internal static CitacaoResponse ToCitacao(CitacaoPeca c) =>
+        new(
+            c.Id, c.Texto, c.Status.ToString(), c.Detalhe, c.Bloqueante, c.FonteUrl, c.Urn,
+            c.Decisao.ToString().ToLowerInvariant(), c.Justificativa, c.DecididoEm);
+
+    private static FonteResponse ToFonte(RetrievedSource s)
     {
-        if (string.IsNullOrEmpty(metadadosJson))
+        var meta = ParseMetadados(s.MetadadosJson);
+
+        return new FonteResponse(
+            s.Id,
+            s.DocumentoOrigemId,
+            s.NomeArquivo,
+            s.Pagina,
+            s.Trecho.Length <= 400 ? s.Trecho : s.Trecho[..400] + "…",
+            s.Score,
+            s.UtilizadaNaGeracao,
+            meta?.UrlOrigem,
+            meta?.Rotulo,
+            meta?.Grupo,
+            meta?.Urn,
+            meta?.Situacao,
+            meta?.VersaoTexto,
+            meta?.Arquivo);
+    }
+
+    private static FonteMetadados? ParseMetadados(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
         {
             return null;
         }
 
         try
         {
-            using var document = JsonDocument.Parse(metadadosJson);
-
-            return document.RootElement.TryGetProperty("UrlOrigem", out var url) && url.ValueKind == JsonValueKind.String
-                ? url.GetString()
-                : null;
+            return JsonSerializer.Deserialize<FonteMetadados>(json);
         }
         catch (JsonException)
         {

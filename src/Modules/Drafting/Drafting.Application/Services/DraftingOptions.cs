@@ -17,27 +17,17 @@ public sealed class RagOptions
 {
     public const string SectionName = "Rag";
 
-    public const int MinResultados = 5;
-    public const int MaxResultados = 10;
-
-    public string Colecao { get; set; } = "juridico_chunks";
-
-    /// <summary>Trechos no contexto. Fica entre 5 e 10 mesmo que a configuração diga outra coisa.</summary>
-    public int LimiteResultados { get; set; } = 8;
-
-    /// <summary>Teto do contexto recuperado, em tokens APROXIMADOS (ver <see cref="CharsPorToken"/>).</summary>
+    /// <summary>
+    /// Teto do contexto recuperado, em tokens APROXIMADOS (ver <see cref="CharsPorToken"/>). O limite efetivo é
+    /// o menor entre este e o que sobra da janela do modelo (<see cref="OrcamentoContexto"/>).
+    /// </summary>
     public int MaxTokensContexto { get; set; } = 8000;
 
     /// <summary>
-    /// Estimativa de caracteres por token em português. Aproximação deliberadamente conservadora:
-    /// o tokenizador real do modelo não está disponível aqui, e errar para menos estouraria o contexto.
+    /// LETRAS por token no orçamento do prompt; dígito e pontuação contam à parte (<see cref="TokenEstimator"/>).
+    /// Medido no tokenizador do Qwen2.5; ao trocar de família de modelo, meça de novo: errar para menos estoura a janela.
     /// </summary>
-    public double CharsPorToken { get; set; } = 3.5;
-
-    /// <summary>Corta trechos com similaridade menor que isto. Nulo = só o limite de quantidade.</summary>
-    public double? ScoreMinimo { get; set; }
-
-    public int LimiteEfetivo => Math.Clamp(LimiteResultados, MinResultados, MaxResultados);
+    public double CharsPorToken { get; set; } = 3.2;
 }
 
 /// <summary>Seção <c>Drafting:Fila</c>: o worker que consome a fila e liga/desliga a GPU.</summary>
@@ -53,6 +43,9 @@ public sealed class FilaOptions
 
     /// <summary>Gerações simultâneas no Ollama (precisa de <c>OLLAMA_NUM_PARALLEL</c> igual ou maior no servidor).</summary>
     public int Paralelismo { get; set; } = 1;
+
+    /// <summary>Itens que só usam CPU (conversão e OCR de anexos) processados ao mesmo tempo.</summary>
+    public int ParalelismoCpu { get; set; } = 2;
 
     /// <summary>Tentativas por item antes de marcar como Falhou (só falhas transitórias são repetidas).</summary>
     public int MaxTentativas { get; set; } = 3;
@@ -88,14 +81,24 @@ public sealed class CustoOptions
     public decimal GpuUsdPorHora { get; set; } = 0.40m;
 }
 
-/// <summary>Seção <c>Drafting:Ingestao</c>.</summary>
-public sealed class IngestaoOptions
+/// <summary>Seção <c>Drafting:Anexos</c>: upload e conversão dos documentos do caso.</summary>
+public sealed class AnexosOptions
 {
-    public const string SectionName = "Drafting:Ingestao";
+    public const string SectionName = "Drafting:Anexos";
 
-    public int MaxMegabytes { get; set; } = 20;
+    public int MaxMegabytes { get; set; } = 30;
+
+    /// <summary>Áudio pesa mais que documento.</summary>
+    public int MaxMegabytesAudio { get; set; } = 100;
 
     public int MaxPaginas { get; set; } = 500;
+
+    /// <summary>Páginas que passam por OCR num documento. O resto fica de fora, com aviso explícito.</summary>
+    public int MaxPaginasOcr { get; set; } = 150;
+
+    public int MaxDocumentosPorCaso { get; set; } = 200;
+
+    public int MaxLinhasPlanilha { get; set; } = 2000;
 }
 
 /// <summary>Seção <c>VastAi</c>. A chave NUNCA vai no appsettings versionado.</summary>

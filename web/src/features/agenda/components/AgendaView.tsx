@@ -27,15 +27,31 @@ import { EventoDialog, type EventoDialogState } from './EventoDialog'
 import { MonthGrid } from './MonthGrid'
 import { TimeGrid } from './TimeGrid'
 
+/** `?novo=` → estado inicial do diálogo; valor desconhecido ou ausente = fechado. */
+function presetDoPedido(pedido: string | null): EventoDialogState | null {
+  switch (pedido) {
+    case 'prazo':
+      return { tipo: 'Prazo', diaInteiro: true }
+    case 'audiencia':
+      return { tipo: 'Audiencia' }
+    case 'evento':
+    case '1':
+      return {}
+    default:
+      return null
+  }
+}
+
 export function AgendaView() {
   const { hasTeam } = useAccess()
   const [view, setView] = useState<VisaoAgenda>('mes')
   const [anchor, setAnchor] = useState(() => new Date())
   const [responsavelId, setResponsavelId] = useState('')
   const [tipos, setTipos] = useState<ReadonlySet<TipoEvento>>(new Set())
-  // "Novo > Novo evento" do topo chega aqui com ?novo=1 e já abre o formulário.
-  const abrirNovo = useSearchParams().get('novo') === '1'
-  const [dialog, setDialog] = useState<EventoDialogState | null>(abrirNovo ? {} : null)
+  // "Novo > Novo prazo / Nova audiência / Novo evento" do topo chega aqui com ?novo=prazo|audiencia|evento
+  // (ou 1, o formato antigo) e já abre o formulário no tipo escolhido.
+  const pedidoNovo = useSearchParams().get('novo')
+  const [dialog, setDialog] = useState<EventoDialogState | null>(presetDoPedido(pedidoNovo))
 
   const periodo = periodFor(view, anchor)
   const { data, error, isPending, isError, refetch } = useAgenda(

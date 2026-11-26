@@ -1,5 +1,5 @@
 import { criarArmazem } from '@/lib/storage/armazem'
-import { coresTag, type AlvoTag, type EstadoTags, type Tag } from './types'
+import { proximaCor, type AlvoTag, type EstadoTags, type Tag } from './types'
 
 /**
  * Tags guardadas neste navegador, por usuário (ver armazem.ts). Só vale no modo de mocks:
@@ -30,7 +30,7 @@ export function criarTag(nome: string, cor?: string): Tag | null {
   const tag: Tag = {
     id: crypto.randomUUID(),
     nome: limpo,
-    cor: cor ?? coresTag[estado.tags.length % coresTag.length]!,
+    cor: cor ?? proximaCor(estado.tags.map((t) => t.cor)),
   }
   armazem.gravar({ ...estado, tags: [...estado.tags, tag] })
 

@@ -36,6 +36,8 @@ export interface Processo {
   createdAt: string
   /** Sigilo interno do escritório (distinto do segredo de justiça do tribunal). */
   confidencial?: boolean
+  /** Outros advogados do processo, além do responsável. Ausente em servidores antigos. */
+  advogadosAdicionaisUserIds?: string[]
 }
 
 export interface ProcessoListItem {

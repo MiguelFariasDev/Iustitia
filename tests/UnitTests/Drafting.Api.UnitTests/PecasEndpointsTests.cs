@@ -20,15 +20,15 @@ public class PecasEndpointsTests
 
     private static object Corpo(
         string tipoPeca = "peticao_inicial", string area = "civel", string fatos = "O autor contratou o serviço.",
-        string? pedidos = "Condenação ao pagamento.", bool stream = false) =>
-        new { tipoPeca, area, fatos, pedidos, documentosIds = Array.Empty<Guid>(), instrucoesAdicionais = (string?)null, stream };
+        string? pedidos = "Condenação ao pagamento.", bool stream = false, Guid? casoId = null) =>
+        new { casoId = casoId ?? Guid.NewGuid(), tipoPeca, area, fatos, pedidos, documentosIds = Array.Empty<Guid>(), instrucoesAdicionais = (string?)null, stream };
 
     private static async Task<JsonElement> Json(HttpResponseMessage response) =>
         await response.Content.ReadFromJsonAsync<JsonElement>();
 
     private static async Task<Guid> SubmeterAsync(EndpointHost host, string role = "Lawyer", Guid? user = null)
     {
-        var response = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(), role, user));
+        var response = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(casoId: await host.AbrirCasoAsync(role, user)), role, user));
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         return (await Json(response)).GetProperty("id").GetGuid();
@@ -51,6 +51,9 @@ public class PecasEndpointsTests
     [InlineData("GET", "/00000000-0000-0000-0000-000000000001/stream")]
     [InlineData("POST", "/00000000-0000-0000-0000-000000000001/cancelar")]
     [InlineData("POST", "/00000000-0000-0000-0000-000000000001/regenerar")]
+    [InlineData("GET", "/00000000-0000-0000-0000-000000000001/citacoes")]
+    [InlineData("POST", "/00000000-0000-0000-0000-000000000001/revisao")]
+    [InlineData("GET", "/00000000-0000-0000-0000-000000000001/exportar")]
     [InlineData("GET", "/admin/metricas")]
     public async Task SemAutenticacao_Retorna401EmTodosOsEndpoints(string metodo, string rota)
     {
@@ -87,7 +90,7 @@ public class PecasEndpointsTests
         var llm = new ScriptedLlm(["x"]);
         await using var host = await EndpointHost.StartAsync(llm);
 
-        var response = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(fatos: "Fatos específicos do caso.")));
+        var response = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(fatos: "Fatos específicos do caso.", casoId: await host.AbrirCasoAsync())));
         var json = await Json(response);
 
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
@@ -113,7 +116,7 @@ public class PecasEndpointsTests
     {
         await using var host = await EndpointHost.StartAsync();
 
-        var response = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(pedidos: null)));
+        var response = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(pedidos: null, casoId: await host.AbrirCasoAsync())));
 
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
     }
@@ -166,14 +169,15 @@ public class PecasEndpointsTests
         await using var host = await EndpointHost.StartAsync(rateLimitPermits: 2);
 
         var respostas = new List<HttpStatusCode>();
+        var caso = await host.AbrirCasoAsync();
         for (var i = 0; i < 3; i++)
         {
-            respostas.Add((await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo()))).StatusCode);
+            respostas.Add((await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(casoId: caso)))).StatusCode);
         }
 
         respostas.Should().Equal(HttpStatusCode.Accepted, HttpStatusCode.Accepted, HttpStatusCode.TooManyRequests);
         // Outro usuário não é afetado pelo limite do primeiro.
-        var outro = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(), "Lawyer", OutroUsuario));
+        var outro = await host.Client.SendAsync(host.Send(HttpMethod.Post, $"{Base}/gerar", Corpo(casoId: await host.AbrirCasoAsync(user: OutroUsuario)), "Lawyer", OutroUsuario));
         outro.StatusCode.Should().Be(HttpStatusCode.Accepted);
     }
 
@@ -219,16 +223,18 @@ public class PecasEndpointsTests
         var json = await Json(response);
 
         json.GetProperty("textoGerado").GetString().Should().Contain("DOS FATOS").And.Contain("PONTOS PARA REVISÃO HUMANA");
-        json.GetProperty("aviso").GetString().Should().Be("Minuta gerada por IA. Requer revisão e validação por profissional habilitado.");
+        json.GetProperty("aviso").GetString().Should().Be("Minuta gerada por IA. Requer revisão humana.");
         json.GetProperty("versao").GetInt32().Should().Be(1);
         var fonte = json.GetProperty("fontes").EnumerateArray().Should().ContainSingle().Subject;
-        fonte.GetProperty("nomeArquivo").GetString().Should().Be("contrato.pdf");
-        fonte.GetProperty("pagina").GetInt32().Should().Be(3);
+        fonte.GetProperty("rotulo").GetString().Should().Be("Código Civil, art. 186");
+        fonte.GetProperty("grupo").GetString().Should().Be("LeisFederais");
+        fonte.GetProperty("urn").GetString().Should().StartWith("urn:lex");
+        fonte.GetProperty("urlOrigem").GetString().Should().Be("https://normas.leg.br/x");
         fonte.GetProperty("citada").GetBoolean().Should().BeTrue();
-        json.GetProperty("avisos").GetArrayLength().Should().Be(0);
+        json.GetProperty("exportacaoBloqueada").GetBoolean().Should().BeTrue("ninguém revisou ainda");
 
         var texto = json.ToString();
-        texto.Should().NotContainEquivalentOf("qwen").And.NotContainEquivalentOf("ollama").And.NotContainEquivalentOf("qdrant")
+        texto.Should().NotContainEquivalentOf("jurema").And.NotContainEquivalentOf("ollama").And.NotContainEquivalentOf("qdrant")
             .And.NotContainEquivalentOf("vast").And.NotContain("modeloUtilizado").And.NotContain("11111111-2222-3333-4444-555555555555");
     }
 
@@ -245,6 +251,9 @@ public class PecasEndpointsTests
                      (HttpMethod.Get, $"{Base}/{id}/stream", null),
                      (HttpMethod.Post, $"{Base}/{id}/cancelar", null),
                      (HttpMethod.Post, $"{Base}/{id}/regenerar", new { confirmar = true }),
+                     (HttpMethod.Get, $"{Base}/{id}/citacoes", null),
+                     (HttpMethod.Get, $"{Base}/{id}/exportar", null),
+                     (HttpMethod.Post, $"{Base}/{id}/revisao", new { declaroRevisao = true }),
                  })
         {
             var response = await host.Client.SendAsync(host.Send(metodo, rota, corpo, "Lawyer", OutroUsuario));
@@ -276,8 +285,8 @@ public class PecasEndpointsTests
     public async Task Stream_DeUmaGeracaoEmAndamento_EmiteNdjsonValido_StatusFragmentosEFim()
     {
         var llm = new ScriptedLlm(
-            ["DOS FATOS\nO autor contratou.\n", "DO DIREITO\nHá ato ilícito [contrato.pdf, p. 3].\n",
-             "FONTES UTILIZADAS\ncontrato.pdf, p. 3\nPONTOS PARA REVISÃO HUMANA\nConferir."]) { DelayMs = 80 };
+            ["DOS FATOS\nO autor contratou.\n", "DO DIREITO\nHá ato ilícito [Código Civil, art. 186].\n",
+             "FONTES UTILIZADAS\nCódigo Civil, art. 186\nPONTOS PARA REVISÃO HUMANA\nConferir."]) { DelayMs = 80 };
         await using var host = await EndpointHost.StartAsync(llm);
         var id = await SubmeterAsync(host);
 
@@ -304,7 +313,7 @@ public class PecasEndpointsTests
         string.Concat(linhas.Where(l => l.GetProperty("tipo").GetString() == "fragmento").Select(l => l.GetProperty("conteudo").GetString()))
             .Should().Contain("DOS FATOS").And.Contain("PONTOS PARA REVISÃO HUMANA");
         var fim = linhas.Last();
-        fim.GetProperty("aviso").GetString().Should().Contain("Requer revisão");
+        fim.GetProperty("aviso").GetString().Should().Be("Minuta gerada por IA. Requer revisão humana.");
         fim.GetProperty("tempoGeracaoMs").GetInt64().Should().BeGreaterThanOrEqualTo(0);
         fim.GetProperty("fontes").GetArrayLength().Should().Be(1);
         fim.GetProperty("solicitacaoId").GetGuid().Should().Be(id);
@@ -458,6 +467,8 @@ public class PecasEndpointsTests
         json.GetProperty("falhas").GetInt32().Should().Be(0);
         json.GetProperty("custoEstimadoUsd").GetDecimal().Should().BeGreaterThanOrEqualTo(0m);
         json.GetProperty("moedaCusto").GetString().Should().Be("USD");
+        json.GetProperty("aguardandoRevisao").GetInt32().Should().Be(1);
+        json.TryGetProperty("gpuHorasUltimos30Dias", out _).Should().BeTrue();
         json.GetProperty("tempoMedioGeracaoMs").ValueKind.Should().Be(JsonValueKind.Number);
     }
 }

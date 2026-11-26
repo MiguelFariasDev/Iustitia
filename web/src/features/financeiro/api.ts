@@ -58,6 +58,8 @@ export async function createLancamento(values: LancamentoFormValues): Promise<La
     valor: values.valor,
     vencimento: values.vencimento,
     jaPago: values.status === 'Pago',
+    recorrencia: values.recorrencia,
+    parcelas: values.recorrencia === 'Unica' ? 1 : values.parcelas,
   })
 
   return toLancamento(data)

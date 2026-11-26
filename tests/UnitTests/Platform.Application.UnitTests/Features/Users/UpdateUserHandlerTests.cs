@@ -58,4 +58,36 @@ public class UpdateUserHandlerTests
         result.Error.Code.Should().Be(nameof(ErrorCode.VALIDATION_REQUIRED_FIELD));
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_ComEspecialidadeEAvatarAusentes_MantemOQueJaEstava()
+    {
+        var user = User.Create(UserId.New(), Guid.NewGuid(), "Antigo", Email.Create("fulano@teste.com").Value, UserRole.Lawyer).Value;
+        user.UpdateProfile("Antigo", null, "https://avatar.png");
+        user.UpdateSpecialty("Trabalhista");
+        _userRepository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateHandler().Handle(
+            new UpdateUserCommand(user.Id.Value, "Novo Nome", null, null, "11999999999"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        user.Name.Should().Be("Novo Nome");
+        user.Specialty.Should().Be("Trabalhista");
+        user.AvatarUrl.Should().Be("https://avatar.png");
+    }
+
+    [Fact]
+    public async Task Handle_ComTextoEmBranco_LimpaEspecialidadeEAvatar()
+    {
+        var user = User.Create(UserId.New(), Guid.NewGuid(), "Antigo", Email.Create("fulano@teste.com").Value, UserRole.Lawyer).Value;
+        user.UpdateProfile("Antigo", null, "https://avatar.png");
+        user.UpdateSpecialty("Trabalhista");
+        _userRepository.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        await CreateHandler().Handle(
+            new UpdateUserCommand(user.Id.Value, "Antigo", " ", "", null), CancellationToken.None);
+
+        user.Specialty.Should().BeNull();
+        user.AvatarUrl.Should().BeNull();
+    }
 }

@@ -169,3 +169,23 @@ describe('prazos', () => {
     ])
   })
 })
+
+describe('compromissos concluídos', () => {
+  const concluido = evento('c', 0, 15, { concluidoEm: NOW.toISOString() })
+
+  it('saem da fila e dos contadores de prazo', () => {
+    const aberto = evento('a', 0, 16)
+
+    const fila = buildQueue({
+      events: [concluido, aberto],
+      processNumbers: vazio,
+      reviews: [],
+      aiEnabled: false,
+      now: NOW,
+    })
+
+    expect(fila.map((item) => item.eventoId)).toEqual(['a'])
+    expect(prazosDoDia([concluido, aberto], NOW).map((e) => e.id)).toEqual(['a'])
+    expect(prazosDaSemana([concluido, aberto], NOW).map((e) => e.id)).toEqual(['a'])
+  })
+})

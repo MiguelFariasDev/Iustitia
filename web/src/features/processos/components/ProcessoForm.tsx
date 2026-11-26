@@ -32,11 +32,13 @@ import {
   isValidCnj,
   tribunalTemConsultaPublica,
 } from '@/lib/validation/documento'
+import { useAccess } from '@/hooks/useAccess'
 import { toFormPatch, type ProcessoTribunal } from '../datajud'
 import { useConsultarTribunal } from '../hooks'
 import { processoFormDefaults, processoFormSchema, type ProcessoFormValues } from '../schemas'
 import { areaDireitoLabels, areasDireito } from '../types'
 import { ClienteSelect } from './ClienteSelect'
+import { AdvogadosField } from './AdvogadosField'
 import { ConsultaTribunalDialog } from './ConsultaTribunalDialog'
 
 interface ProcessoFormProps {
@@ -64,6 +66,9 @@ export function ProcessoForm({
     reValidateMode: 'onChange',
   })
 
+  const { hasTeam } = useAccess()
+  const responsavel = form.watch('responsavelUserId') ?? ''
+  const advogadosAdicionais = form.watch('advogadosAdicionais') ?? []
   const [consultaAberta, setConsultaAberta] = useState(false)
   const consulta = useConsultarTribunal()
 
@@ -79,7 +84,7 @@ export function ProcessoForm({
   const tituloBotaoConsulta = !isValidCnj(cnjNumber)
     ? 'Informe um número CNJ válido para consultar'
     : !tribunalTemConsultaPublica(tribunal)
-      ? `${tribunal ?? 'Este tribunal'} não é atendido pela consulta pública do CNJ`
+      ? `${tribunal ?? 'Este tribunal'} não tem consulta automática`
       : `Consultar no ${tribunal}`
 
   function consultar() {
@@ -112,7 +117,8 @@ export function ProcessoForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Número do processo (CNJ)</FormLabel>
-                  <div className="flex gap-2">
+                  {/* Empilhado no celular: o número inteiro (25 caracteres) não cabe ao lado do botão. */}
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <FormControl>
                       <Input
                         inputMode="numeric"
@@ -132,7 +138,7 @@ export function ProcessoForm({
                       <Button
                         type="button"
                         variant="outline"
-                        size="icon"
+                        className="w-full sm:size-9 sm:px-0"
                         onClick={consultar}
                         disabled={!podeConsultar || consulta.isPending}
                         aria-label={
@@ -147,6 +153,10 @@ export function ProcessoForm({
                         ) : (
                           <Search aria-hidden />
                         )}
+                        {/* Texto só no celular, onde o botão ocupa a linha inteira; no desktop, só o ícone. */}
+                        <span className="sm:hidden" aria-hidden>
+                          {tribunal ? `Consultar no ${tribunal}` : 'Consultar no tribunal'}
+                        </span>
                       </Button>
                     ) : null}
                   </div>
@@ -214,6 +224,17 @@ export function ProcessoForm({
                 </FormItem>
               )}
             />
+
+            {hasTeam ? (
+              <AdvogadosField
+                responsavel={responsavel}
+                adicionais={advogadosAdicionais}
+                onChange={({ responsavel: novoResponsavel, adicionais }) => {
+                  form.setValue('responsavelUserId', novoResponsavel, { shouldDirty: true })
+                  form.setValue('advogadosAdicionais', adicionais, { shouldDirty: true })
+                }}
+              />
+            ) : null}
           </CardContent>
         </Card>
 
@@ -341,12 +362,12 @@ export function ProcessoForm({
           </CardContent>
         </Card>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting} aria-busy={isSubmitting}>
             {isSubmitting ? <LoadingSpinner size="sm" decorative /> : null}
             {submitLabel}
           </Button>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" className="w-full sm:w-auto" asChild>
             <Link href={cancelHref as never}>Cancelar</Link>
           </Button>
         </div>

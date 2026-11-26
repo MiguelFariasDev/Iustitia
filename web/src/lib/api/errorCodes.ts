@@ -51,8 +51,6 @@ export const ErrorCode = {
   CNJ_RATE_LIMITED: 'CNJ_RATE_LIMITED',
 } as const
 
-export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode]
-
 /** Grupos do catálogo (BuildingBlocks.Domain.Errors.ErrorGroup). */
 export const ErrorGroup = {
   Common: 'Common',
@@ -71,8 +69,6 @@ export const ErrorGroup = {
   Cnj: 'Cnj',
   Internal: 'Internal',
 } as const
-
-export type ErrorGroupValue = (typeof ErrorGroup)[keyof typeof ErrorGroup]
 
 /**
  * Como a UI reage a um erro.

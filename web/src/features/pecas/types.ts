@@ -11,6 +11,11 @@ export const tiposPeca = [
   { value: 'agravo_instrumento', label: 'Agravo de instrumento' },
   { value: 'contrarrazoes', label: 'Contrarrazões' },
   { value: 'manifestacao', label: 'Manifestação' },
+  { value: 'recurso_ordinario', label: 'Recurso ordinário' },
+  { value: 'recurso_especial', label: 'Recurso especial' },
+  { value: 'recurso_extraordinario', label: 'Recurso extraordinário' },
+  { value: 'contrato', label: 'Contrato' },
+  { value: 'parecer', label: 'Parecer' },
 ] as const
 
 export const areasPeca = [
@@ -22,34 +27,30 @@ export const areasPeca = [
   { value: 'consumidor', label: 'Consumidor' },
   { value: 'administrativo', label: 'Administrativo' },
   { value: 'empresarial', label: 'Empresarial' },
-] as const
-
-/** Tipos de documento aceitos no upload do acervo; os que fazem sentido para anexos de um processo. */
-export const tiposAnexo = [
-  { value: 'peticao', label: 'Petição' },
-  { value: 'sentenca', label: 'Sentença' },
-  { value: 'acordao', label: 'Acórdão' },
-  { value: 'contrato', label: 'Contrato' },
-  { value: 'parecer', label: 'Parecer' },
-  { value: 'outro', label: 'Outro documento' },
+  { value: 'penal', label: 'Penal' },
+  { value: 'constitucional', label: 'Constitucional' },
 ] as const
 
 export type TipoPeca = (typeof tiposPeca)[number]['value']
 export type AreaPeca = (typeof areasPeca)[number]['value']
-export type TipoAnexo = (typeof tiposAnexo)[number]['value']
 
-/** Extensões que o backend extrai (PDF com texto, DOCX, TXT). PDF escaneado é recusado: não há OCR. */
-export const EXTENSOES_ANEXO = '.pdf,.docx,.txt'
+/** Extensões que o backend lê. Escaneados e imagens passam por OCR; áudio, por transcrição. */
+export const EXTENSOES_ANEXO =
+  '.pdf,.docx,.doc,.txt,.md,.png,.jpg,.jpeg,.tif,.tiff,.xlsx,.xls,.ods,.csv,.eml,.mp3,.wav,.m4a,.ogg,.opus,.flac'
 
 export interface GerarPecaRequest {
+  /** Obrigatório: a IA só enxerga os anexos deste caso. */
+  casoId: string
   tipoPeca: TipoPeca
   area: AreaPeca
   fatos: string
   pedidos?: string
   /** O comando do advogado: instruções livres de tom, tese e estrutura. */
   instrucoesAdicionais?: string
-  /** Ids de documentos JÁ indexados no acervo. */
+  /** Ids de anexos do caso, para restringir a busca. Ausente = todos os anexos do caso. */
   documentosIds?: string[]
+  /** AAAA-MM-DD: base da conferência de vigência das normas citadas. */
+  dataFatos?: string
 }
 
 export interface Submissao {
@@ -74,6 +75,33 @@ export interface FontePeca {
   trecho: string
   citada: boolean
   urlOrigem: string | null
+  rotulo?: string | null
+  situacao?: string | null
+  urn?: string | null
+}
+
+export type StatusCitacao =
+  'Validada' | 'PendenteDeVerificacao' | 'PossivelAlucinacao' | 'ConflitoDeVersao' | 'NormaRevogada'
+
+export type DecisaoCitacao = 'pendente' | 'confirmada' | 'corrigida' | 'rejeitada'
+
+export interface CitacaoPeca {
+  id: string
+  texto: string
+  status: StatusCitacao
+  detalhe: string
+  bloqueante: boolean
+  fonteUrl: string | null
+  decisao: DecisaoCitacao
+  justificativa: string | null
+}
+
+export const rotuloStatusCitacao: Record<StatusCitacao, string> = {
+  Validada: 'Validada',
+  PendenteDeVerificacao: 'Pendente de verificação',
+  PossivelAlucinacao: 'Possível invenção da IA',
+  ConflitoDeVersao: 'Conflito de versão',
+  NormaRevogada: 'Norma revogada',
 }
 
 export interface PecaDetalhe {
@@ -87,12 +115,47 @@ export interface PecaDetalhe {
   avisos: string[]
   aviso: string
   exportacaoBloqueada: boolean
+  citacoes: CitacaoPeca[] | null
+  revisadoEm: string | null
+  textoRevisado: string | null
 }
 
-export interface DocumentoAcervo {
+export interface Caso {
+  id: string
+  clienteId: string
+  clienteNome: string | null
+  titulo: string
+  area: string
+  processoId: string | null
+  status: string
+  podeEscrever: boolean
+}
+
+export interface CriarCasoRequest {
+  clienteId: string
+  titulo: string
+  area: AreaPeca
+  clienteNome?: string
+  processoId?: string
+  numeroProcesso?: string
+}
+
+export interface AnexoCaso {
   id: string
   nomeArquivo: string
   status: string
+  mensagem: string | null
+  origem: string
+  confiancaOcr: string | null
+  tipoDocumento: string | null
+  requerRevisaoHumana: boolean
+  revisado: boolean
+  conteudoSuspeito: boolean
+}
+
+/** Estados de um anexo que não mudam mais sozinhos. */
+export function anexoTerminado(status: string): boolean {
+  return status === 'Indexado' || status === 'Falhou'
 }
 
 /** Estados de uma solicitação que não mudam mais — o polling para aqui. */

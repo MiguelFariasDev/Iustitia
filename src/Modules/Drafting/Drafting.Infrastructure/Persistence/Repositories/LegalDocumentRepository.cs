@@ -12,10 +12,20 @@ public sealed class LegalDocumentRepository(DraftingDbContext dbContext)
 
     public void AddChild(LegalDocumentEvent evento) => dbContext.LegalDocumentEvents.Add(evento);
 
+    public void AddChild(CitacaoPeca citacao) => dbContext.Citacoes.Add(citacao);
+
+    public Task<LegalDocumentRequest?> GetWithCitationsAsync(
+        LegalDocumentRequestId id, CancellationToken cancellationToken = default) =>
+        dbContext.LegalDocumentRequests
+            .Include(request => request.Citacoes)
+            .FirstOrDefaultAsync(request => request.Id == id, cancellationToken);
+
     public Task<LegalDocumentRequest?> GetWithSourcesAsync(
         LegalDocumentRequestId id, CancellationToken cancellationToken = default) =>
         dbContext.LegalDocumentRequests
+            .AsSplitQuery()
             .Include(request => request.Sources)
+            .Include(request => request.Citacoes)
             .FirstOrDefaultAsync(request => request.Id == id, cancellationToken);
 
     public Task<PecaSnapshot?> GetSnapshotAsync(LegalDocumentRequestId id, CancellationToken cancellationToken = default) =>

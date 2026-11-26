@@ -34,6 +34,12 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
     /// <summary>Usuário do escritório responsável (Platform.Domain.Identity.User) — por id.</summary>
     public Guid ResponsavelUserId { get; private set; }
 
+    /// <summary>
+    /// Outros advogados que atuam no processo, além do <see cref="ResponsavelUserId"/> (escritório com equipe).
+    /// Nunca contém o responsável, repetidos nem <see cref="Guid.Empty"/> — ver <see cref="NormalizarAdvogados"/>.
+    /// </summary>
+    public Guid[] AdvogadosAdicionais { get; private set; } = [];
+
     public AreaDireito Area { get; private set; }
 
     public StatusProcesso Status { get; private set; }
@@ -79,6 +85,15 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
     /// </summary>
     public bool GeraCaptura => !IsDeleted && Status is StatusProcesso.Ativo or StatusProcesso.Suspenso;
 
+    /// <summary>Máximo de advogados adicionais por processo: evita lista sem fim num formulário.</summary>
+    public const int MaxAdvogadosAdicionais = 20;
+
+    /// <summary>Todos os advogados do processo: o responsável primeiro, depois os adicionais.</summary>
+    public IReadOnlyList<Guid> TodosOsAdvogados => [ResponsavelUserId, .. AdvogadosAdicionais];
+
+    public bool TemAdvogado(Guid userId) =>
+        userId != Guid.Empty && (ResponsavelUserId == userId || AdvogadosAdicionais.Contains(userId));
+
     private Processo()
     {
         // EF Core.
@@ -107,7 +122,8 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
         string? parteContraria = null,
         decimal? valorCausa = null,
         DateOnly? dataDistribuicao = null,
-        string? observacoes = null)
+        string? observacoes = null,
+        IEnumerable<Guid>? advogadosAdicionais = null)
     {
         if (tenantId == Guid.Empty)
         {
@@ -134,8 +150,15 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
             return Result.Failure<Processo>(ErrorFactory.From(ErrorCode.VALIDATION_OUT_OF_RANGE, nameof(ValorCausa)));
         }
 
+        var adicionais = NormalizarAdvogados(responsavelUserId, advogadosAdicionais);
+        if (adicionais.Length > MaxAdvogadosAdicionais)
+        {
+            return Result.Failure<Processo>(ErrorFactory.From(ErrorCode.VALIDATION_OUT_OF_RANGE, nameof(AdvogadosAdicionais)));
+        }
+
         var processo = new Processo(ProcessoId.New(), tenantId, cnjNumber, clienteId, responsavelUserId, area)
         {
+            AdvogadosAdicionais = adicionais,
             Foro = foro ?? DadosForo.Vazio,
             Assunto = Normalizar(assunto),
             ParteContraria = Normalizar(parteContraria),
@@ -164,7 +187,8 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
         string? parteContraria,
         decimal? valorCausa,
         DateOnly? dataDistribuicao,
-        string? observacoes)
+        string? observacoes,
+        IEnumerable<Guid>? advogadosAdicionais = null)
     {
         if (clienteId == Guid.Empty)
         {
@@ -181,8 +205,16 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
             return Result.Failure(ErrorFactory.From(ErrorCode.VALIDATION_OUT_OF_RANGE, nameof(ValorCausa)));
         }
 
+        // Nulo = não mexer na lista; o novo responsável sai dela (não pode figurar duas vezes).
+        var adicionais = NormalizarAdvogados(responsavelUserId, advogadosAdicionais ?? AdvogadosAdicionais);
+        if (adicionais.Length > MaxAdvogadosAdicionais)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.VALIDATION_OUT_OF_RANGE, nameof(AdvogadosAdicionais)));
+        }
+
         ClienteId = clienteId;
         ResponsavelUserId = responsavelUserId;
+        AdvogadosAdicionais = adicionais;
         Area = area;
         Foro = foro ?? DadosForo.Vazio;
         Assunto = Normalizar(assunto);
@@ -228,6 +260,10 @@ public sealed class Processo : AggregateRoot<ProcessoId>, IAuditable, ISoftDelet
     }
 
     public Result Archive() => ChangeStatus(StatusProcesso.Arquivado);
+
+    /// <summary>Sem vazios, sem repetidos e sem o responsável; a ordem de entrada é mantida.</summary>
+    private static Guid[] NormalizarAdvogados(Guid responsavelUserId, IEnumerable<Guid>? ids) =>
+        ids is null ? [] : ids.Where(id => id != Guid.Empty && id != responsavelUserId).Distinct().ToArray();
 
     private static string? Normalizar(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();

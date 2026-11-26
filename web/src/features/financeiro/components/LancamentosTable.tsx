@@ -25,10 +25,29 @@ type Coluna = ColumnDef<Lancamento, unknown>
 
 const traco = (valor: string | null) => valor ?? '—'
 
+/** "Parcela 2 de 12" ou "Mensal 2 de 12"; vazio no lançamento avulso. */
+export function rotuloSerie(lancamento: Lancamento): string | null {
+  if (lancamento.recorrencia === 'Unica' || !lancamento.parcela || !lancamento.totalParcelas) {
+    return null
+  }
+  const tipo = lancamento.recorrencia === 'Mensal' ? 'Mensal' : 'Parcela'
+
+  return `${tipo} ${lancamento.parcela} de ${lancamento.totalParcelas}`
+}
+
 const valor: Coluna = {
   accessorKey: 'valor',
   header: 'Valor',
-  cell: ({ row }) => <span className="tabular-nums">{formatCurrency(row.original.valor)}</span>,
+  cell: ({ row }) => {
+    const serie = rotuloSerie(row.original)
+
+    return (
+      <span className="flex flex-col">
+        <span className="tabular-nums">{formatCurrency(row.original.valor)}</span>
+        {serie ? <span className="text-xs text-muted-foreground">{serie}</span> : null}
+      </span>
+    )
+  },
 }
 
 const vencimento: Coluna = {

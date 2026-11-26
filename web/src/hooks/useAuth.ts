@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { routes } from '@/config/routes'
 import { authService } from '@/lib/auth/authService'
+import { registerSession } from '@/lib/auth/registerSession'
 import type { Credentials } from '@/lib/auth/types'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
@@ -20,6 +21,8 @@ export function useAuth() {
   async function signIn(credentials: Credentials) {
     const newSession = await authService.signIn(credentials)
     useAuthStore.getState().setSession(newSession)
+    // Último acesso e auditoria do login: a API não vê o login do Supabase, então é avisada aqui.
+    void registerSession()
     return newSession
   }
 

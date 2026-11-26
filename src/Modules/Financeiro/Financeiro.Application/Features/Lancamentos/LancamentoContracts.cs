@@ -5,6 +5,12 @@ namespace Advocacia.Modules.Financeiro.Application.Features.Lancamentos;
 /// <summary>
 /// Novo lançamento. <c>Tipo</c> é "Honorario", "ContaPagar" ou "ContaReceber". <c>Pessoa</c> é o
 /// cliente (honorário e conta a receber) ou o fornecedor (conta a pagar).
+/// <para>
+/// <c>Recorrencia</c>: "Unica" (padrão), "Parcelado" (<c>Valor</c> é o total, dividido em <c>Parcelas</c>)
+/// ou "Mensal" (<c>Valor</c> é o de cada mês, repetido por <c>Parcelas</c> meses). Nas séries,
+/// <c>Vencimento</c> é o da primeira e as demais vencem no mesmo dia dos meses seguintes; <c>JaPago</c>
+/// marca só a primeira. A resposta é sempre a primeira parcela.
+/// </para>
 /// </summary>
 [Audited("Created", "Lancamento")]
 public sealed record CreateLancamentoCommand(
@@ -14,7 +20,9 @@ public sealed record CreateLancamentoCommand(
     string? Processo,
     decimal Valor,
     DateOnly Vencimento,
-    bool JaPago = false) : ICommand<LancamentoResponse>;
+    bool JaPago = false,
+    string? Recorrencia = null,
+    int Parcelas = 1) : ICommand<LancamentoResponse>;
 
 [Audited("Paid", "Lancamento", EntityIdProperty = nameof(LancamentoId))]
 public sealed record MarcarLancamentoPagoCommand(Guid LancamentoId) : ICommand<LancamentoResponse>;
@@ -44,7 +52,11 @@ public sealed record LancamentoResponse(
     DateOnly Vencimento,
     string Status,
     DateTimeOffset? PagoEm,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string Recorrencia = "Unica",
+    Guid? SerieId = null,
+    int? Parcela = null,
+    int? TotalParcelas = null);
 
 public sealed record ListLancamentosResponse(
     IReadOnlyList<LancamentoResponse> Items,

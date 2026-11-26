@@ -8,6 +8,8 @@ using Advocacia.Modules.Integrations.CNJ.Application.Abstractions;
 using Advocacia.Modules.Integrations.CNJ.Application.Models.DataJud;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly.CircuitBreaker;
+using Polly.Timeout;
 
 namespace Advocacia.Modules.Integrations.CNJ.Infrastructure.DataJud;
 
@@ -30,6 +32,13 @@ public sealed class DataJudClient(
     ILogger<DataJudClient> logger) : IDataJudClient
 {
     public const string HttpClientName = "datajud";
+
+    /// <summary>
+    /// Marca de "o DataJud acabou de recusar por limite" (429). Enquanto existir, a consulta
+    /// responde CNJ_RATE_LIMITED na hora: o 429 do DataJud chegou a levar 28 s para vir, e
+    /// insistir só gasta a cota pública (que é de todos) e prende a pessoa na tela.
+    /// </summary>
+    internal const string PausaCacheKey = "datajud:pausa-limite";
 
     private readonly DataJudOptions _options = options.Value;
 
@@ -59,6 +68,13 @@ public sealed class DataJudClient(
             return Result.Success(emCache.Processo);
         }
 
+        if (await cacheService.GetAsync<PausaPorLimite>(PausaCacheKey, cancellationToken) is not null)
+        {
+            telemetry.RecordRateLimited(tribunal);
+            logger.LogInformation("DataJud: consulta ao {Tribunal} não enviada — pausa após limite (429) em vigor", tribunal);
+            return Result.Failure<DataJudProcesso?>(ErrorFactory.From(ErrorCode.CNJ_RATE_LIMITED));
+        }
+
         using var activity = DataJudTelemetry.StartConsulta(tribunal);
         var cronometro = Stopwatch.StartNew();
         telemetry.RecordRequest(tribunal);
@@ -69,10 +85,17 @@ public sealed class DataJudClient(
             response = await httpClient.PostAsJsonAsync(
                 searchPath, DataJudSearchRequest.ByNumeroProcesso(numeroProcesso), cancellationToken);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+        // TimeoutRejectedException: estourou o tempo do pipeline (tentativa ou total).
+        // BrokenCircuitException: o circuito abriu depois de falhas seguidas — falha rápida, sem chamar.
+        // Sem estes dois, o erro escapava como exceção não tratada (500) em vez de uma mensagem.
+        catch (Exception exception) when (
+            exception is HttpRequestException or TaskCanceledException or TimeoutRejectedException or BrokenCircuitException
+            && !cancellationToken.IsCancellationRequested)
         {
             cronometro.Stop();
-            var codigo = exception is TaskCanceledException ? ErrorCode.CNJ_TIMEOUT : ErrorCode.CNJ_UNAVAILABLE;
+            var codigo = exception is TaskCanceledException or TimeoutRejectedException
+                ? ErrorCode.CNJ_TIMEOUT
+                : ErrorCode.CNJ_UNAVAILABLE;
             telemetry.RecordFailure(tribunal, codigo.ToString());
             activity?.SetStatus(ActivityStatusCode.Error);
             logger.LogWarning(exception, "DataJud: consulta ao {Tribunal} falhou após {Elapsed}ms", tribunal, cronometro.ElapsedMilliseconds);
@@ -90,6 +113,8 @@ public sealed class DataJudClient(
                 if (codigo == ErrorCode.CNJ_RATE_LIMITED)
                 {
                     telemetry.RecordRateLimited(tribunal);
+                    await cacheService.SetAsync(
+                        PausaCacheKey, new PausaPorLimite(DateTimeOffset.UtcNow), DuracaoDaPausa(response), cancellationToken);
                 }
 
                 telemetry.RecordFailure(tribunal, codigo.ToString());
@@ -168,6 +193,17 @@ public sealed class DataJudClient(
     private static DataJudItemTabelado? Tabelado(DataJudTabelado? item) =>
         item?.Nome is { } nome ? new DataJudItemTabelado(item.Codigo, nome) : null;
 
+    /// <summary>Respeita o Retry-After do DataJud quando vier; senão, a pausa configurada.</summary>
+    private TimeSpan DuracaoDaPausa(HttpResponseMessage response)
+    {
+        var padrao = TimeSpan.FromSeconds(Math.Max(1, _options.RateLimitPauseSeconds));
+        var retryAfter = response.Headers.RetryAfter;
+        var pedido = retryAfter?.Delta
+            ?? (retryAfter?.Date is { } data ? data - DateTimeOffset.UtcNow : null);
+
+        return pedido is { } tempo && tempo > TimeSpan.Zero && tempo < TimeSpan.FromMinutes(30) ? tempo : padrao;
+    }
+
     private static ErrorCode MapStatusCode(HttpStatusCode statusCode) => statusCode switch
     {
         HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => ErrorCode.CNJ_AUTH_FAILED,
@@ -183,4 +219,6 @@ public sealed class DataJudClient(
     /// inexistente seria reconsultado a cada tentativa do usuário.
     /// </summary>
     private sealed record CachedResult(DataJudProcesso? Processo);
+
+    internal sealed record PausaPorLimite(DateTimeOffset Desde);
 }

@@ -43,10 +43,10 @@ public sealed class OllamaService(
             _options.Modelo,
             request.Messages.Select(m => new ChatMessage(m.Role, m.Content)).ToList(),
             Stream: true,
-            // Modelos de raciocínio (qwen3): pensar gasta minutos de GPU e não vira texto de peça.
-            Think: false,
+            Think: _options.Pensar,
             new ChatOptions(_options.Temperatura, _options.TopP, _options.NumCtx, _options.NumPredict),
-            _options.KeepAlive);
+            _options.KeepAlive,
+            Format: null);
 
         using var response = await SendAsync(
             () => new HttpRequestMessage(HttpMethod.Post, Url("api/chat")) { Content = JsonContent.Create(body, options: Json) },
@@ -61,8 +61,7 @@ public sealed class OllamaService(
 
         while (true)
         {
-            // O leitor pode devolver linhas já bufferizadas sem olhar o token: o cancelamento do chamador
-            // (cancelar a peça) tem de interromper a geração mesmo assim — e fechar a conexão com a GPU.
+            // Linhas já em buffer voltam sem olhar o token: sem isto, cancelar só valeria no próximo pacote.
             cancellationToken.ThrowIfCancellationRequested();
             var line = await ReadAsync(() => reader.ReadLineAsync(deadline.Token).AsTask(), deadline, cancellationToken);
             if (line is null)
@@ -95,6 +94,35 @@ public sealed class OllamaService(
 
         // O Ollama fechou a conexão sem a linha "done": a minuta pode estar truncada.
         throw new LlmServiceException("O Ollama encerrou o stream sem concluir a resposta.");
+    }
+
+    /// <summary>Saída restrita a um JSON Schema (<c>format</c>), sem streaming e com temperatura zero: é extração, não redação.</summary>
+    public async Task<string> CompletarJsonAsync(
+        string system, string user, string jsonSchema, int maxTokens, CancellationToken cancellationToken = default)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(Math.Min(_options.TimeoutSegundos, 180)));
+
+        using var schema = JsonDocument.Parse(jsonSchema);
+        var body = new ChatBody(
+            _options.ModeloExtracao ?? _options.Modelo,
+            [new ChatMessage("system", system), new ChatMessage("user", user)],
+            Stream: false,
+            Think: _options.Pensar,
+            new ChatOptions(0, 1, _options.NumCtx, maxTokens),
+            _options.KeepAlive,
+            Format: schema.RootElement.Clone());
+
+        using var response = await SendAsync(
+            () => new HttpRequestMessage(HttpMethod.Post, Url("api/chat")) { Content = JsonContent.Create(body, options: Json) },
+            HttpCompletionOption.ResponseContentRead,
+            deadline,
+            cancellationToken);
+        var texto = await ReadAsync(() => response.Content.ReadAsStringAsync(deadline.Token), deadline, cancellationToken);
+        var linha = ParseChatLine(texto);
+        var filtro = new ThinkTagFilter();
+
+        return (filtro.Push(linha.Content) + filtro.Flush()).Trim();
     }
 
     public async Task<IReadOnlyList<float[]>> EmbedAsync(
@@ -257,9 +285,10 @@ public sealed class OllamaService(
         string Model,
         IReadOnlyList<ChatMessage> Messages,
         bool Stream,
-        bool Think,
+        bool? Think,
         ChatOptions Options,
-        [property: JsonPropertyName("keep_alive")] string KeepAlive);
+        [property: JsonPropertyName("keep_alive")] string KeepAlive,
+        JsonElement? Format);
 
     private sealed record EmbedBody(string Model, IReadOnlyList<string> Input);
 

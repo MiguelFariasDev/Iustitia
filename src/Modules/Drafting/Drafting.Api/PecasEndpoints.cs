@@ -31,7 +31,7 @@ public static class PecasEndpoints
             .WithName("GerarPeca")
             .WithSummary("Registra um pedido de minuta com IA e o enfileira. Responde 202 com o id; a geração é assíncrona.")
             .WithDescription(
-                "Valida e sanitiza a entrada, grava a solicitação como Pendente e a coloca na fila. A GPU só é ligada " +
+                "Exige casoId: a IA só enxerga os anexos daquele caso. Valida e sanitiza a entrada, grava a solicitação como Pendente e a coloca na fila. A GPU só é ligada " +
                 "quando há trabalho. Acompanhe em GET /pecas/{id}/status (polling) ou GET /pecas/{id}/stream (NDJSON). " +
                 "A minuta é sempre rascunho: exige revisão e validação por profissional habilitado.")
             .RequireAuthorization(Policies.LawyerOrAbove)
@@ -48,7 +48,7 @@ public static class PecasEndpoints
         group.MapGet("/admin/metricas", async (IPecaMetricasService metricas, CancellationToken cancellationToken) =>
                 (await metricas.ObterAsync(cancellationToken)).ToHttpResult())
             .WithName("MetricasPecas")
-            .WithSummary("Gerações, falhas, tempo médio e custo estimado do escritório.")
+            .WithSummary("Painel: gerações, falhas, tempo de GPU, custo estimado, revisões pendentes e eventos de segurança.")
             .RequireAuthorization(Policies.PartnerOrAbove);
 
         group.MapGet("/{id:guid}/status", async (Guid id, IGeracaoPecaService service, CancellationToken cancellationToken) =>
@@ -96,6 +96,42 @@ public static class PecasEndpoints
             .RequireAuthorization(Policies.LawyerOrAbove)
             .RequireRateLimiting(RateLimitingConfiguration.AiGenerationPolicy);
 
+        MapRevisao(group);
+
         return app;
+    }
+
+    private static void MapRevisao(RouteGroupBuilder group)
+    {
+        group.MapGet("/{id:guid}/citacoes", async (Guid id, IRevisaoPecaService service, CancellationToken cancellationToken) =>
+                (await service.ObterAsync(id, cancellationToken)).ToHttpResult())
+            .WithName("CitacoesDaPeca")
+            .WithSummary("Citações da minuta com o resultado da conferência automática e as decisões da revisão.")
+            .RequireAuthorization(Policies.LawyerOrAbove);
+
+        group.MapPut("/{id:guid}/citacoes/{citacaoId:guid}", async (
+                Guid id, Guid citacaoId, DecidirCitacaoRequest request, IRevisaoPecaService service, CancellationToken cancellationToken) =>
+                (await service.DecidirAsync(id, citacaoId, request, cancellationToken)).ToHttpResult())
+            .WithName("DecidirCitacao")
+            .WithSummary("Registra a decisão humana sobre uma citação: confirmada, corrigida ou rejeitada, com justificativa.")
+            .RequireAuthorization(Policies.LawyerOrAbove);
+
+        group.MapPost("/{id:guid}/revisao", async (
+                Guid id, ConcluirRevisaoRequest request, IRevisaoPecaService service, CancellationToken cancellationToken) =>
+                (await service.ConcluirAsync(id, request, cancellationToken)).ToHttpResult())
+            .WithName("ConcluirRevisao")
+            .WithSummary("Conclui a revisão humana. 409 enquanto houver citação pendente; exige \"declaroRevisao\": true.")
+            .RequireAuthorization(Policies.LawyerOrAbove);
+
+        group.MapGet("/{id:guid}/exportar", async Task<IResult> (
+                Guid id, string? formato, IRevisaoPecaService service, CancellationToken cancellationToken) =>
+            {
+                var arquivo = await service.ExportarAsync(id, formato ?? "docx", cancellationToken);
+
+                return arquivo.ToHttpResult(value => Results.File(value.Conteudo, value.ContentType, value.NomeArquivo));
+            })
+            .WithName("ExportarPeca")
+            .WithSummary("Exporta a peça REVISADA (docx ou md). 409 DRAFTING_REVIEW_REQUIRED antes da revisão humana.")
+            .RequireAuthorization(Policies.LawyerOrAbove);
     }
 }

@@ -7,4 +7,7 @@ public enum AlertType
     Task,
     Birthday,
     Other,
+
+    /// <summary>Andamento novo num processo acompanhado (ADR-075).</summary>
+    Movimentacao,
 }

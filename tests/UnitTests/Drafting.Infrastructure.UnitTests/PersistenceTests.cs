@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Application.Services;
+using Advocacia.Modules.Drafting.Application.Validacao;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 using Advocacia.Modules.Drafting.Infrastructure.Fila;
@@ -24,6 +25,7 @@ public class PersistenceTests
 {
     private static readonly Guid TenantA = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static readonly Guid TenantB = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+    private static readonly Guid Caso = Guid.Parse("77777777-7777-7777-7777-777777777777");
     private static readonly Guid User = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     private sealed class FixedTenant(Guid tenantId) : ITenantContext
@@ -60,13 +62,13 @@ public class PersistenceTests
     private static DbContextOptions<DraftingDbContext> NewDatabase() =>
         new DbContextOptionsBuilder<DraftingDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
 
-    private sealed class Scope(DraftingDbContext db, LegalDocumentService service, DraftingAuditService audit) : IAsyncDisposable
+    private sealed class Scope(DraftingDbContext db, LegalDocumentService service, AuditoriaIaService audit) : IAsyncDisposable
     {
         public DraftingDbContext Db { get; } = db;
 
         public LegalDocumentService Service { get; } = service;
 
-        public DraftingAuditService Audit { get; } = audit;
+        public AuditoriaIaService Audit { get; } = audit;
 
         public ValueTask DisposeAsync() => Db.DisposeAsync();
     }
@@ -83,11 +85,11 @@ public class PersistenceTests
             new LegalDocumentService(
                 repository, new GeracaoPecaFila(db, clock), unitOfWork, new FixedUser(tenantId), clock,
                 Options.Create(new CustoOptions { GpuUsdPorHora = 0.40m })),
-            new DraftingAuditService(repository, unitOfWork, clock, NullLogger<DraftingAuditService>.Instance));
+            new AuditoriaIaService(repository, unitOfWork, clock, NullLogger<AuditoriaIaService>.Instance));
     }
 
     private static PecaInput Input(Guid? origem = null) =>
-        new("peticao_inicial", "civel", "Fatos.", "Pedidos.", "Tom firme.", [Guid.Parse("33333333-3333-3333-3333-333333333333")], origem);
+        new("peticao_inicial", "civel", "Fatos.", "Pedidos.", "Tom firme.", [Guid.Parse("33333333-3333-3333-3333-333333333333")], origem, Caso);
 
     private static RetrievedChunk Chunk() =>
         new("11111111-2222-3333-4444-555555555555", "Art. 186: ato ilícito.", 0.91,
@@ -139,8 +141,9 @@ public class PersistenceTests
             var request = (await service.CreateAndEnqueueAsync(Input())).Value;
             id = request.Id.Value;
             await audit.RecordAsync(request, "Recebida", new { documentos = 1 });
-            await service.StartGenerationAsync(request, SystemPrompt.Versao, "qwen3:8b");
-            await service.CompleteAsync(request, "Minuta pronta.", 1234, 100, 200, [(Chunk(), true)], ["Aviso de teste"]);
+            await service.StartGenerationAsync(request, SystemPrompt.Versao, "jurema-7b");
+            await service.CompleteAsync(request, "Minuta pronta.", 1234, 100, 200, [(Chunk(), true)], ["Aviso de teste"],
+                [new CitacaoAvaliada("contrato.pdf, p. 3", CitacaoStatus.Validada, "ok")]);
             await audit.RecordAsync(request, "GeracaoConcluida", new { tempoMs = 1234 });
         }
 
@@ -149,11 +152,12 @@ public class PersistenceTests
         var saved = await verify.LegalDocumentRequests
             .Include(r => r.Sources)
             .Include(r => r.Events)
+            .Include(r => r.Citacoes)
             .SingleAsync(r => r.Id == LegalDocumentRequestId.From(id));
 
         saved.Status.Should().Be(LegalDocumentStatus.Concluido);
         saved.TextoGerado.Should().Be("Minuta pronta.");
-        saved.ModeloUtilizado.Should().Be("qwen3:8b");
+        saved.ModeloUtilizado.Should().Be("jurema-7b");
         saved.PromptVersao.Should().Be(SystemPrompt.Versao);
         saved.TempoGeracaoMs.Should().Be(1234);
         saved.TokensEntrada.Should().Be(100);
@@ -172,6 +176,8 @@ public class PersistenceTests
         fonte.TenantId.Should().Be(TenantA);
         fonte.MetadadosJson.Should().Contain("TJSP").And.Contain("2024-05-01");
 
+        saved.Citacoes.Should().ContainSingle().Which.Texto.Should().Be("contrato.pdf, p. 3");
+        saved.CasoId.Should().Be(Caso);
         saved.Events.Select(e => e.Tipo).Should().BeEquivalentTo("Recebida", "GeracaoConcluida");
         saved.Events.Should().OnlyContain(e => e.TenantId == TenantA);
     }
@@ -209,7 +215,7 @@ public class PersistenceTests
         {
             var service = scope.Service;
             var primeira = (await service.CreateAndEnqueueAsync(Input())).Value;
-            await service.CompleteAsync(primeira, "Versão 1.", 10, null, null, [], []);
+            await service.CompleteAsync(primeira, "Versão 1.", 10, null, null, [], [], []);
             primeiraId = primeira.Id.Value;
             var segunda = (await service.CreateAndEnqueueAsync(Input(origem: primeiraId))).Value;
             segundaId = segunda.Id.Value;

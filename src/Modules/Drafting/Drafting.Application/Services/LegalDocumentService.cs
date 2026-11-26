@@ -5,6 +5,7 @@ using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Drafting.Application.Abstractions;
 using Advocacia.Modules.Drafting.Application.Models;
+using Advocacia.Modules.Drafting.Application.Validacao;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 using Microsoft.Extensions.Options;
@@ -52,7 +53,7 @@ public sealed class LegalDocumentService(
         var documentosJson = input.DocumentosIds.Count == 0 ? null : JsonSerializer.Serialize(input.DocumentosIds);
         var created = LegalDocumentRequest.Create(
             tenantId, userId, input.TipoPeca, input.Area, input.Fatos, input.Pedidos, input.InstrucoesAdicionais,
-            documentosJson, clock.UtcNow, versao, origemId);
+            documentosJson, clock.UtcNow, versao, origemId, input.CasoId, input.ClienteId, input.DataFatos);
 
         if (created.IsFailure)
         {
@@ -110,9 +111,11 @@ public sealed class LegalDocumentService(
         int? tokensSaida,
         IReadOnlyList<(RetrievedChunk Chunk, bool Utilizada)> fontes,
         IReadOnlyList<string> avisos,
+        IReadOnlyList<CitacaoAvaliada> citacoes,
         CancellationToken cancellationToken = default)
     {
         AddSources(request, fontes);
+        AddCitacoes(request, citacoes);
         request.AddUsage(tokensEntrada, tokensSaida);
 
         // Custo ESTIMADO da geração: tempo de modelo × preço/hora configurado. Não rateia subida/ociosidade da GPU.
@@ -152,6 +155,26 @@ public sealed class LegalDocumentService(
         return result;
     }
 
+    public async Task SetConsultaAsync(
+        LegalDocumentRequest request, string consultaJson, CancellationToken cancellationToken = default)
+    {
+        request.SetConsulta(consultaJson);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private void AddCitacoes(LegalDocumentRequest request, IReadOnlyList<CitacaoAvaliada> citacoes)
+    {
+        if (request.Citacoes.Count > 0)
+        {
+            return;
+        }
+
+        foreach (var c in citacoes)
+        {
+            repository.AddChild(request.AddCitacao(c.Texto, c.Status, c.Detalhe, c.PontoId, c.FonteUrl, c.Urn));
+        }
+    }
+
     private void AddSources(LegalDocumentRequest request, IReadOnlyList<(RetrievedChunk Chunk, bool Utilizada)> fontes)
     {
         // Uma nova tentativa não pode duplicar as fontes de uma tentativa anterior que falhou.
@@ -163,19 +186,31 @@ public sealed class LegalDocumentService(
         foreach (var (chunk, utilizada) in fontes)
         {
             var meta = chunk.Meta;
-            var metadados = JsonSerializer.Serialize(new
-            {
+            var metadados = JsonSerializer.Serialize(new FonteMetadados(
+                chunk.Rotulo,
+                RagContext.GrupoDe(meta).ToString(),
                 meta.TipoDocumento,
                 meta.Area,
                 meta.Tribunal,
-                DataPublicacao = meta.DataPublicacao?.ToString("yyyy-MM-dd"),
+                meta.DataPublicacao?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
                 meta.UrlOrigem,
                 meta.HashConteudo,
-                meta.Referencia,
-            });
+                meta.Norma?.Urn,
+                meta.Norma?.Situacao,
+                meta.Norma?.VersaoTexto,
+                meta.Norma?.ArquivoMarkdownPath,
+                meta.Norma?.NormaId,
+                meta.Norma?.VersaoNumero,
+                meta.Norma?.Artigo));
 
             repository.AddChild(request.AddSource(
                 chunk.PointId, meta.DocumentoOrigemId, meta.NomeArquivo, meta.Pagina, chunk.Texto, chunk.Score, metadados, utilizada));
         }
     }
 }
+
+/// <summary>O que se guarda de cada fonte para reconstituir a citação sem depender do índice.</summary>
+internal sealed record FonteMetadados(
+    string? Rotulo, string? Grupo, string? TipoDocumento, string? Area, string? Tribunal, string? DataPublicacao,
+    string? UrlOrigem, string? HashConteudo, string? Urn, string? Situacao, string? VersaoTexto, string? Arquivo,
+    Guid? NormaId, int? Versao, string? Artigo);

@@ -24,11 +24,20 @@ public sealed class LegalDocumentRequest : AggregateRoot<LegalDocumentRequestId>
 
     private readonly List<RetrievedSource> _sources = [];
     private readonly List<LegalDocumentEvent> _events = [];
+    private readonly List<CitacaoPeca> _citacoes = [];
 
     public Guid TenantId { get; private set; }
 
     /// <summary>Usuário que pediu a peça (do JWT, nunca do corpo da requisição).</summary>
     public Guid UsuarioId { get; private set; }
+
+    /// <summary>Caso a que a peça pertence. Nulo só em solicitações anteriores ao isolamento por caso.</summary>
+    public Guid? CasoId { get; private set; }
+
+    public Guid? ClienteId { get; private set; }
+
+    /// <summary>Data relevante dos fatos: base da conferência de vigência das normas citadas.</summary>
+    public DateOnly? DataFatos { get; private set; }
 
     public string TipoPeca { get; private set; } = string.Empty;
 
@@ -87,7 +96,17 @@ public sealed class LegalDocumentRequest : AggregateRoot<LegalDocumentRequestId>
     /// <summary>Versão do system prompt usada (ver SystemPrompt.Versao), para regressão e auditoria.</summary>
     public string? PromptVersao { get; private set; }
 
-    /// <summary>Documentos que o usuário pediu para restringir a busca (ids dos documentos indexados).</summary>
+    /// <summary>Consulta estruturada extraída antes da busca (tese, temas, dispositivos…), em JSON.</summary>
+    public string? ConsultaJson { get; private set; }
+
+    /// <summary>Texto final aprovado na revisão humana. Nulo enquanto a minuta não foi revisada.</summary>
+    public string? TextoRevisado { get; private set; }
+
+    public Guid? RevisadoPor { get; private set; }
+
+    public DateTimeOffset? RevisadoEm { get; private set; }
+
+    /// <summary>Documentos que o usuário pediu para restringir a busca (ids dos anexos do caso).</summary>
     public string? DocumentosIdsJson { get; private set; }
 
     /// <summary>Avisos da verificação pós-geração (citações desconhecidas, seções ausentes…), em JSON.</summary>
@@ -104,6 +123,8 @@ public sealed class LegalDocumentRequest : AggregateRoot<LegalDocumentRequestId>
     public IReadOnlyCollection<RetrievedSource> Sources => _sources;
 
     public IReadOnlyCollection<LegalDocumentEvent> Events => _events;
+
+    public IReadOnlyCollection<CitacaoPeca> Citacoes => _citacoes;
 
     public bool IsTerminal => Status is LegalDocumentStatus.Concluido or LegalDocumentStatus.Falhou or LegalDocumentStatus.Cancelado;
 
@@ -128,7 +149,10 @@ public sealed class LegalDocumentRequest : AggregateRoot<LegalDocumentRequestId>
         string? documentosIdsJson,
         DateTimeOffset agora,
         int versao = 1,
-        LegalDocumentRequestId? requestOrigemId = null)
+        LegalDocumentRequestId? requestOrigemId = null,
+        Guid? casoId = null,
+        Guid? clienteId = null,
+        DateOnly? dataFatos = null)
     {
         if (string.IsNullOrWhiteSpace(fatos))
         {
@@ -139,6 +163,9 @@ public sealed class LegalDocumentRequest : AggregateRoot<LegalDocumentRequestId>
         {
             TenantId = tenantId,
             UsuarioId = usuarioId,
+            CasoId = casoId,
+            ClienteId = clienteId,
+            DataFatos = dataFatos,
             TipoPeca = tipoPeca,
             Area = area,
             Fatos = fatos,
@@ -275,6 +302,55 @@ public sealed class LegalDocumentRequest : AggregateRoot<LegalDocumentRequestId>
         _events.Add(evento);
 
         return evento;
+    }
+
+    public void SetConsulta(string json) => ConsultaJson = json;
+
+    public CitacaoPeca AddCitacao(
+        string texto, CitacaoStatus status, string detalhe, string? pontoId, string? fonteUrl, string? urn)
+    {
+        var citacao = new CitacaoPeca(TenantId, Id, _citacoes.Count, texto, status, detalhe, pontoId, fonteUrl, urn);
+        _citacoes.Add(citacao);
+
+        return citacao;
+    }
+
+    /// <summary>
+    /// Revisão humana concluída: fixa o texto final. Só depois que TODA citação bloqueante tem decisão, e
+    /// nenhuma citação rejeitada pode continuar no texto.
+    /// </summary>
+    public Result ConcluirRevisao(string textoFinal, Guid usuarioId, DateTimeOffset agora)
+    {
+        if (Status != LegalDocumentStatus.Concluido)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.DRAFTING_NOT_READY));
+        }
+
+        var pendentes = _citacoes.Count(c => !c.Resolvida);
+        if (pendentes > 0)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.DRAFTING_REVIEW_PENDING, pendentes));
+        }
+
+        var remanescente = _citacoes.FirstOrDefault(c =>
+            c.Decisao == DecisaoCitacao.Rejeitada && textoFinal.Contains(c.Texto, StringComparison.OrdinalIgnoreCase));
+        if (remanescente is not null)
+        {
+            return Result.Failure(ErrorFactory.From(ErrorCode.DRAFTING_REJECTED_CITATION_PRESENT, remanescente.Texto));
+        }
+
+        TextoRevisado = textoFinal;
+        RevisadoPor = usuarioId;
+        RevisadoEm = agora;
+
+        return Result.Success();
+    }
+
+    public void ReabrirRevisao()
+    {
+        TextoRevisado = null;
+        RevisadoPor = null;
+        RevisadoEm = null;
     }
 
     private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];

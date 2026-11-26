@@ -126,6 +126,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     {
         if (_externalDatabaseName is not null)
         {
+            NpgsqlConnection.ClearAllPools();
             await ExternalPostgres.DropDatabaseAsync(_externalDatabaseName);
             return;
         }
@@ -174,7 +175,6 @@ public sealed class PostgresFixture : IAsyncLifetime
         // host de teste conecta como app_user. Em produção esse schema é provisionado por quem
         // tem o privilégio; aqui o container é descartável, então basta conceder CREATE no banco.
         await using var hangfireGrant = connection.CreateCommand();
-        hangfireGrant.CommandText = $"GRANT CREATE ON DATABASE \"{new NpgsqlConnectionStringBuilder(SuperuserConnectionString).Database}\" TO app_user";
         hangfireGrant.CommandText = "DO $$ BEGIN EXECUTE format('GRANT CREATE ON DATABASE %I TO app_user', current_database()); END $$";
         await hangfireGrant.ExecuteNonQueryAsync();
     }

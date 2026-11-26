@@ -187,7 +187,7 @@ public sealed class AnthropicHttpClient(
                     "Anthropic: HTTP {StatusCode} ({ErrorType}) do modelo {Model} (request-id {RequestId}).",
                     (int)response.StatusCode, errorType, request.Model, requestId);
 
-                return Result.Failure<AnthropicResponse>(MapStatusCode(response.StatusCode));
+                return Result.Failure<AnthropicResponse>(MapStatusCode(response.StatusCode) with { Reference = requestId });
             }
 
             AnthropicResponseDto? payload;
@@ -198,12 +198,12 @@ public sealed class AnthropicHttpClient(
             catch (JsonException exception)
             {
                 logger.LogWarning(exception, "Anthropic: corpo de resposta ilegível (request-id {RequestId}).", requestId);
-                return Fail(ErrorCode.AI_PARSE_ERROR);
+                return Fail(ErrorCode.AI_PARSE_ERROR, requestId);
             }
 
             if (payload is null)
             {
-                return Fail(ErrorCode.AI_PARSE_ERROR);
+                return Fail(ErrorCode.AI_PARSE_ERROR, requestId);
             }
 
             var mapped = Map(payload, request.Model, requestId);
@@ -290,6 +290,6 @@ public sealed class AnthropicHttpClient(
         return document.RootElement.Clone();
     }
 
-    private static Result<AnthropicResponse> Fail(ErrorCode code) =>
-        Result.Failure<AnthropicResponse>(ErrorFactory.From(code));
+    private static Result<AnthropicResponse> Fail(ErrorCode code, string? requestId = null) =>
+        Result.Failure<AnthropicResponse>(ErrorFactory.From(code) with { Reference = requestId });
 }

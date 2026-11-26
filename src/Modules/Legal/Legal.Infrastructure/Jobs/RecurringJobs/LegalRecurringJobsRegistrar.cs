@@ -16,11 +16,14 @@ namespace Advocacia.Modules.Legal.Infrastructure.Jobs.RecurringJobs;
 public sealed class LegalRecurringJobsRegistrar(
     IRecurringJobManager recurringJobManager,
     IOptions<CnjCaptureJobOptions> cnjCaptureOptions,
-    IOptions<PublicationClassificationJobOptions> classificationOptions)
+    IOptions<PublicationClassificationJobOptions> classificationOptions,
+    IOptions<AcompanhamentoMovimentacoesJobOptions> acompanhamentoOptions)
 {
     public const string CnjCaptureJobId = "cnj-capture";
 
     public const string PublicationClassificationJobId = "publication-classification";
+
+    public const string AcompanhamentoMovimentacoesJobId = "acompanhamento-movimentacoes";
 
     public void RegisterAll()
     {
@@ -50,6 +53,21 @@ public sealed class LegalRecurringJobsRegistrar(
         else
         {
             recurringJobManager.RemoveIfExists(PublicationClassificationJobId);
+        }
+
+        // Desligado por padrão (ADR-075): consultar os portais toda noite é decisão do ambiente.
+        var acompanhamento = acompanhamentoOptions.Value;
+
+        if (acompanhamento.Enabled)
+        {
+            recurringJobManager.AddOrUpdate<AcompanhamentoMovimentacoesJob>(
+                AcompanhamentoMovimentacoesJobId,
+                job => job.ExecuteAsync(CancellationToken.None),
+                acompanhamento.CronExpression);
+        }
+        else
+        {
+            recurringJobManager.RemoveIfExists(AcompanhamentoMovimentacoesJobId);
         }
     }
 }

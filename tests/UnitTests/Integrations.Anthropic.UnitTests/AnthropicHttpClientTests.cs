@@ -175,6 +175,17 @@ public sealed class AnthropicHttpClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Failure_CarriesTheRequestIdForSupport()
+    {
+        Reply(401, """{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}""", "req_011CTESTE");
+
+        var result = await CreateClient().SendMessageAsync("p", "s", new AnthropicOptions());
+
+        result.Error.Code.Should().Be("AI_UNAUTHORIZED");
+        result.Error.Reference.Should().Be("req_011CTESTE");
+    }
+
+    [Fact]
     public async Task BadRequest_MapsToAiInvalidRequest_WithoutRetry_AndNeverEchoesTheErrorMessage()
     {
         Reply(400, """{"type":"error","error":{"type":"invalid_request_error","message":"conteudo-sigiloso-do-processo"}}""");
@@ -304,6 +315,11 @@ public sealed class AnthropicHttpClientTests : IDisposable
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    private void Reply(int status, string body, string? requestId) =>
+        _server.Given(Request.Create().WithPath("/v1/messages").UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(status).WithHeader("Content-Type", "application/json")
+                .WithHeader("request-id", requestId ?? string.Empty).WithBody(body));
 
     private void Reply(int status, string body) =>
         _server.Given(Request.Create().WithPath("/v1/messages").UsingPost())

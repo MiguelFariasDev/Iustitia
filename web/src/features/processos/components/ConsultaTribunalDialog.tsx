@@ -12,9 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ApiError } from '@/lib/api/errors'
 import { formatDate } from '@/lib/format'
-import type { ConsultaTribunalResult, ProcessoTribunal } from '../datajud'
+import {
+  mensagemConsultaTribunal,
+  rotuloFonte,
+  type ConsultaTribunalResult,
+  type ProcessoTribunal,
+} from '../datajud'
 
 interface ConsultaTribunalDialogProps {
   open: boolean
@@ -66,7 +70,10 @@ export function ConsultaTribunalDialog({
         ) : error ? (
           <ConsultaErro error={error} />
         ) : processo ? (
-          <ProcessoEncontrado processo={processo} />
+          <ProcessoEncontrado
+            processo={processo}
+            origem={rotuloFonte(result?.fonte ?? null, processo.tribunal)}
+          />
         ) : (
           <NaoEncontrado tribunal={result?.tribunal ?? tribunal} />
         )}
@@ -91,9 +98,17 @@ export function ConsultaTribunalDialog({
   )
 }
 
-export function ProcessoEncontrado({ processo }: { processo: ProcessoTribunal }) {
+export function ProcessoEncontrado({
+  processo,
+  origem = null,
+}: {
+  processo: ProcessoTribunal
+  /** "Dados do portal do TJSP" / "Dados do DataJud (CNJ)". */
+  origem?: string | null
+}) {
   return (
     <div className="space-y-4">
+      {origem ? <p className="text-xs text-muted-foreground">{origem}</p> : null}
       {processo.emSegredoDeJustica ? (
         <p className="flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -176,10 +191,7 @@ function NaoEncontrado({ tribunal }: { tribunal: string | null }) {
 }
 
 function ConsultaErro({ error }: { error: unknown }) {
-  const mensagem =
-    error instanceof ApiError
-      ? error.message
-      : 'Não foi possível consultar o tribunal agora. Tente de novo ou preencha manualmente.'
+  const mensagem = mensagemConsultaTribunal(error)
 
   return (
     <div className="flex flex-col items-center gap-3 py-8 text-center">

@@ -78,3 +78,51 @@ describe('TarefasView', () => {
     expect(screen.getByRole('dialog', { name: 'Nova tarefa' })).toBeInTheDocument()
   })
 })
+
+describe('TarefasView — em atraso', () => {
+  it('tarefa com prazo vencido vai para "Em atraso" e sai da coluna da etapa', async () => {
+    vi.mocked(useNow).mockReturnValue(new Date(2026, 10, 24, 10, 0))
+    criarTarefa({ titulo: 'Protocolar recurso', prazo: '2026-11-20' })
+    criarTarefa({ titulo: 'Ligar para o cliente', prazo: '2026-11-30' })
+    renderWithProviders(<TarefasView />)
+
+    const atraso = await screen.findByRole('region', { name: /^Em atraso, 1 tarefas/ })
+    expect(within(atraso).getByText('Protocolar recurso')).toBeInTheDocument()
+    expect(within(atraso).getByText('venceu há 4 dias')).toBeInTheDocument()
+    expect(within(atraso).getByText('Etapa: A fazer')).toBeInTheDocument()
+    const aFazer = coluna(/^A fazer, 1 tarefas/)
+    expect(within(aFazer).getByText('Ligar para o cliente')).toBeInTheDocument()
+    expect(within(aFazer).queryByText('Protocolar recurso')).toBeNull()
+  })
+
+  it('conclui direto a tarefa em atraso, que sai de "Em atraso" e vai para "Concluído"', async () => {
+    vi.mocked(useNow).mockReturnValue(new Date(2026, 10, 24, 10, 0))
+    criarTarefa({ titulo: 'Protocolar recurso', prazo: '2026-11-20' })
+    renderWithProviders(<TarefasView />)
+
+    const atraso = await screen.findByRole('region', { name: /^Em atraso, 1 tarefas/ })
+    fireEvent.click(within(atraso).getByRole('button', { name: 'Concluir “Protocolar recurso”' }))
+
+    const concluido = await screen.findByRole('region', { name: /^Concluído, 1 tarefas/ })
+    expect(within(concluido).getByText('Protocolar recurso')).toBeInTheDocument()
+    expect(coluna(/^Em atraso, 0 tarefas/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('“Protocolar recurso” concluída.')
+  })
+})
+
+describe('TarefasView — concluir', () => {
+  it('conclui direto de "A fazer", sem passar pelas outras etapas, e permite reabrir', async () => {
+    criarTarefa({ titulo: 'Juntar procuração', prazo: '2099-01-10' })
+    renderWithProviders(<TarefasView />)
+
+    const aFazer = await screen.findByRole('region', { name: /^A fazer, 1 tarefas/ })
+    fireEvent.click(within(aFazer).getByRole('button', { name: 'Concluir “Juntar procuração”' }))
+
+    const concluido = await screen.findByRole('region', { name: /^Concluído, 1 tarefas/ })
+    expect(within(concluido).getByText('Juntar procuração')).toHaveClass('line-through')
+    expect(within(concluido).queryByRole('button', { name: /^Concluir/ })).toBeNull()
+
+    fireEvent.click(within(concluido).getByRole('button', { name: 'Reabrir “Juntar procuração”' }))
+    expect(await screen.findByRole('region', { name: /^A fazer, 1 tarefas/ })).toBeInTheDocument()
+  })
+})

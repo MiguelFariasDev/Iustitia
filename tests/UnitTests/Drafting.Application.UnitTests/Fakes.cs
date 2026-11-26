@@ -4,7 +4,11 @@ using Advocacia.BuildingBlocks.Domain.Specifications;
 using Advocacia.BuildingBlocks.Domain.Time;
 using Advocacia.Modules.Drafting.Application.Abstractions;
 using Advocacia.Modules.Drafting.Application.Models;
-using Advocacia.Modules.Drafting.Domain.Acervo;
+using Advocacia.Modules.Drafting.Application.Busca;
+using Advocacia.Modules.Drafting.Application.Normas;
+using Advocacia.Modules.Drafting.Application.Services;
+using Advocacia.Modules.Drafting.Domain.Casos;
+using Advocacia.Modules.Drafting.Domain.Seguranca;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Pecas;
 
@@ -71,6 +75,8 @@ internal sealed class FakeRepository : ILegalDocumentRepository
 
     public List<LegalDocumentEvent> Events { get; } = [];
 
+    public List<CitacaoPeca> Citacoes { get; } = [];
+
     public Task<LegalDocumentRequest?> GetByIdAsync(LegalDocumentRequestId id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Requests.FirstOrDefault(r => r.Id == id));
 
@@ -98,6 +104,11 @@ internal sealed class FakeRepository : ILegalDocumentRepository
 
     public void AddChild(LegalDocumentEvent evento) => Events.Add(evento);
 
+    public void AddChild(CitacaoPeca citacao) => Citacoes.Add(citacao);
+
+    public Task<LegalDocumentRequest?> GetWithCitationsAsync(LegalDocumentRequestId id, CancellationToken cancellationToken = default) =>
+        GetByIdAsync(id, cancellationToken);
+
     public Task<LegalDocumentRequest?> FirstOrDefaultAsync(ISpecification<LegalDocumentRequest> specification, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
@@ -112,39 +123,6 @@ internal sealed class FakeRepository : ILegalDocumentRepository
     }
 
     public void Remove(LegalDocumentRequest entity) => Requests.Remove(entity);
-}
-
-internal sealed class FakeIndexedDocuments : IIndexedDocumentRepository
-{
-    public List<IndexedDocument> Items { get; } = [];
-
-    public Task<IndexedDocument?> GetByIdAsync(IndexedDocumentId id, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Items.FirstOrDefault(d => d.Id == id));
-
-    public Task<IndexedDocument?> FindByHashAsync(string hashConteudo, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Items.FirstOrDefault(d => d.HashConteudo == hashConteudo));
-
-    public Task<IReadOnlyList<IndexedDocument>> ListVisibleAsync(Guid usuarioId, int skip, int take, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<IndexedDocument>>(Items
-            .Where(d => d.Visibilidade == DocumentVisibility.Escritorio || d.UsuarioId == usuarioId)
-            .Skip(skip).Take(take).ToList());
-
-    public void Add(IndexedDocument entity) => Items.Add(entity);
-
-    public void Remove(IndexedDocument entity) => Items.Remove(entity);
-
-    public Task<IndexedDocument?> FirstOrDefaultAsync(ISpecification<IndexedDocument> specification, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
-
-    public Task<IReadOnlyList<IndexedDocument>> ListAsync(ISpecification<IndexedDocument> specification, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
-
-    public Task<int> CountAsync(ISpecification<IndexedDocument> specification, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
-
-    public void Update(IndexedDocument entity)
-    {
-    }
 }
 
 /// <summary>Fila em memória com as MESMAS regras de elegibilidade da real (disponibilidade, reserva, tentativas).</summary>
@@ -265,7 +243,7 @@ internal sealed class FakeQueue(FakeClock clock) : IGeracaoPecaFila
 /// <summary>LLM de mentira: devolve os pedaços na ordem; opcionalmente falha ou trava depois deles.</summary>
 internal sealed class FakeLlm(IReadOnlyList<string> pieces) : ILlmService
 {
-    public string ModelName => "qwen3:8b";
+    public string ModelName => "jurema-7b";
 
     public Exception? FailAfter { get; init; }
 
@@ -309,49 +287,8 @@ internal sealed class FakeEmbeddings : IEmbeddingService
     {
         Calls.Add(inputs);
 
-        return Task.FromResult<IReadOnlyList<float[]>>(inputs.Select(_ => new[] { 0.1f, 0.2f }).ToList());
+        return Task.FromResult<IReadOnlyList<float[]>>(inputs.Select(_ => new float[EmbeddingConstants.Dimensoes]).ToList());
     }
-}
-
-internal sealed class FakeVectorStore(IReadOnlyList<VectorHit>? hits = null) : IVectorStore
-{
-    public VectorSearchQuery? LastQuery { get; private set; }
-
-    public List<VectorPoint> Upserted { get; } = [];
-
-    public List<(Guid Tenant, Guid Documento)> Deleted { get; } = [];
-
-    public int Ensured { get; private set; }
-
-    public Task EnsureCollectionAsync(int dimensions, CancellationToken cancellationToken = default)
-    {
-        Ensured++;
-
-        return Task.CompletedTask;
-    }
-
-    public Task<IReadOnlyList<VectorHit>> SearchAsync(VectorSearchQuery query, CancellationToken cancellationToken = default)
-    {
-        LastQuery = query;
-
-        return Task.FromResult(hits ?? []);
-    }
-
-    public Task UpsertAsync(IReadOnlyList<VectorPoint> points, CancellationToken cancellationToken = default)
-    {
-        Upserted.AddRange(points);
-
-        return Task.CompletedTask;
-    }
-
-    public Task DeleteByDocumentAsync(Guid tenantId, Guid documentoOrigemId, CancellationToken cancellationToken = default)
-    {
-        Deleted.Add((tenantId, documentoOrigemId));
-
-        return Task.CompletedTask;
-    }
-
-    public Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
 }
 
 internal sealed class FakeNotificacao : INotificacaoService
@@ -375,21 +312,301 @@ internal sealed class FakeNotificacao : INotificacaoService
     public void NotificarOperacao(string mensagem) => Eventos.Add($"operacao:{mensagem}");
 }
 
+internal sealed class MemCasos : ICasoRepository
+{
+    public List<Caso> Itens { get; } = [];
+
+    public void Add(Caso caso) => Itens.Add(caso);
+
+    public void AddMembro(CasoMembro membro)
+    {
+    }
+
+    public Task<Caso?> ObterAsync(CasoId id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Itens.FirstOrDefault(c => c.Id == id));
+
+    public Task<IReadOnlyList<Caso>> ListarAsync(
+        Guid? usuarioId, Guid? clienteId, int skip, int take, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Caso>>(Itens
+            .Where(c => usuarioId is null || c.PodeLer(usuarioId))
+            .Where(c => clienteId is null || c.ClienteId == clienteId)
+            .Skip(skip).Take(take).ToList());
+}
+
+internal sealed class MemDocumentos : ICasoDocumentoRepository
+{
+    public List<CasoDocumento> Itens { get; } = [];
+
+    public Dictionary<Guid, List<CasoDocumentoChunk>> Chunks { get; } = [];
+
+    public void Add(CasoDocumento documento) => Itens.Add(documento);
+
+    public void Remover(CasoDocumento documento)
+    {
+        Itens.Remove(documento);
+        Chunks.Remove(documento.Id.Value);
+    }
+
+    public Task<CasoDocumento?> ObterAsync(CasoDocumentoId id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Itens.FirstOrDefault(d => d.Id == id));
+
+    public Task<CasoDocumento?> ObterPorHashAsync(CasoId casoId, string hash, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Itens.FirstOrDefault(d => d.CasoId == casoId && d.HashSha256 == hash));
+
+    public Task<IReadOnlyList<CasoDocumento>> ListarAsync(CasoId casoId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<CasoDocumento>>(Itens.Where(d => d.CasoId == casoId).ToList());
+
+    public Task<IReadOnlyList<CasoDocumentoChunk>> ListarChunksAsync(CasoDocumentoId id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<CasoDocumentoChunk>>(Chunks.GetValueOrDefault(id.Value, []));
+
+    public Task SubstituirChunksAsync(CasoDocumentoId id, IReadOnlyList<CasoDocumentoChunk> chunks, CancellationToken cancellationToken = default)
+    {
+        Chunks[id.Value] = [.. chunks];
+
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class MemArquivos : ICasoArquivoStore
+{
+    public Dictionary<string, byte[]> Objetos { get; } = [];
+
+    public bool ForaDoAr { get; set; }
+
+    public Task GravarAsync(string chave, byte[] conteudo, CancellationToken cancellationToken = default)
+    {
+        Verificar();
+        Objetos[chave] = conteudo;
+
+        return Task.CompletedTask;
+    }
+
+    public Task<byte[]?> LerAsync(string chave, CancellationToken cancellationToken = default)
+    {
+        Verificar();
+
+        return Task.FromResult(Objetos.GetValueOrDefault(chave));
+    }
+
+    public Task RemoverAsync(string chave, CancellationToken cancellationToken = default)
+    {
+        Verificar();
+        Objetos.Remove(chave);
+
+        return Task.CompletedTask;
+    }
+
+    private void Verificar()
+    {
+        if (ForaDoAr)
+        {
+            throw new StorageException("fora do ar");
+        }
+    }
+}
+
+/// <summary>
+/// Índice de anexos em memória. <see cref="IgnorarFiltro"/> simula o pior caso: o banco vetorial devolvendo
+/// trecho de outro caso — é o que prova que a conferência da Application não depende dele.
+/// </summary>
+internal sealed class MemCasoVectorStore : ICasoVectorStore
+{
+    public List<CasoVectorPoint> Pontos { get; } = [];
+
+    public List<FiltroCaso> Filtros { get; } = [];
+
+    public bool IgnorarFiltro { get; set; }
+
+    public bool ForaDoAr { get; set; }
+
+    public bool Bm25ForaDoAr { get; set; }
+
+    public Task UpsertAsync(IReadOnlyList<CasoVectorPoint> pontos, CancellationToken cancellationToken = default)
+    {
+        if (ForaDoAr)
+        {
+            throw new VectorStoreException("qdrant fora do ar");
+        }
+
+        Pontos.AddRange(pontos);
+
+        return Task.CompletedTask;
+    }
+
+    public Task RemoverDocumentoAsync(Guid tenantId, Guid casoId, Guid documentoId, CancellationToken cancellationToken = default)
+    {
+        if (ForaDoAr)
+        {
+            throw new VectorStoreException("qdrant fora do ar");
+        }
+
+        Pontos.RemoveAll(p => p.Meta.Caso!.TenantId == tenantId && p.Meta.Caso.CasoId == casoId && p.Meta.Caso.DocumentoId == documentoId);
+
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<VectorHit>> BuscarDensoAsync(FiltroCaso filtro, float[] vetor, int limite, CancellationToken cancellationToken = default) =>
+        ForaDoAr ? throw new VectorStoreException("qdrant fora do ar") : Buscar(filtro, limite);
+
+    public Task<IReadOnlyList<VectorHit>> BuscarBm25Async(FiltroCaso filtro, VetorEsparso consulta, int limite, CancellationToken cancellationToken = default) =>
+        Bm25ForaDoAr ? throw new VectorStoreException("bm25 fora do ar") : Buscar(filtro, limite);
+
+    private Task<IReadOnlyList<VectorHit>> Buscar(FiltroCaso filtro, int limite)
+    {
+        Filtros.Add(filtro);
+
+        return Task.FromResult<IReadOnlyList<VectorHit>>(Pontos
+            .Where(p => IgnorarFiltro || (p.Meta.Caso!.TenantId == filtro.TenantId && p.Meta.Caso.CasoId == filtro.CasoId))
+            .Take(limite)
+            .Select((p, i) => new VectorHit(p.Id.ToString(), p.Texto, 0.9 - (i * 0.01), p.Meta))
+            .ToList());
+    }
+}
+
+internal sealed class FakeQdrant : IQdrantService
+{
+    public int Garantias { get; private set; }
+
+    public Task GarantirColecoesAsync(CancellationToken cancellationToken = default)
+    {
+        Garantias++;
+
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+
+    public Task<IReadOnlyList<ColecaoInfo>> EstadoAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ColecaoInfo>>(Colecoes.Todas.Select(c => new ColecaoInfo(c, true, 1)).ToList());
+}
+
+internal sealed class FakeSeguranca : ISegurancaIaService
+{
+    public List<(string Tipo, string Origem)> Eventos { get; } = [];
+
+    public Task RegistrarAsync(Guid tenantId, Guid? usuarioId, string tipo, string origem, string? conteudo, CancellationToken cancellationToken = default)
+    {
+        Eventos.Add((tipo, origem));
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Modelo de extração: devolve o JSON dado, ou lança.</summary>
+internal sealed class FakeEstruturado(string? json = null, Exception? falha = null) : ILlmEstruturado
+{
+    public string? UltimoUser { get; private set; }
+
+    public Task<string> CompletarJsonAsync(string system, string user, string jsonSchema, int maxTokens, CancellationToken cancellationToken = default)
+    {
+        UltimoUser = user;
+
+        return falha is not null ? throw falha : Task.FromResult(json ?? "{}");
+    }
+}
+
+/// <summary>Base jurídica de mentira: devolve sempre os mesmos trechos.</summary>
+internal sealed class FakeBuscaJuridica(params VectorHit[] hits) : IBuscaJuridicaService
+{
+    public Task<IReadOnlyList<VectorHit>> BuscarAsync(ConsultaPreparada consulta, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VectorHit>>(hits);
+}
+
+/// <summary>Um escritório com um caso, seu cliente e a pessoa responsável.</summary>
+internal sealed class Mundo
+{
+    public MemCasos Casos { get; } = new();
+
+    public MemDocumentos Documentos { get; } = new();
+
+    public MemCasoVectorStore Vetores { get; } = new();
+
+    public FakeSeguranca Seguranca { get; } = new();
+
+    public FakeClock Clock { get; } = new();
+
+    public Caso Caso { get; }
+
+    public Mundo() => Caso = NovoCaso();
+
+    public Caso NovoCaso(Guid? tenant = null, Guid? responsavel = null, string area = "civel")
+    {
+        var caso = Domain.Casos.Caso.Criar(
+            tenant ?? Ids.Tenant, responsavel ?? Ids.User, Guid.NewGuid(), "Cobrança", area, "Empresa X", null, null, "CE", Clock.UtcNow).Value;
+        Casos.Add(caso);
+
+        return caso;
+    }
+
+    public CasoDocumento NovoDocumento(
+        Caso? caso = null, string nome = "contrato.pdf", string texto = "Cláusula 5: multa de 10% por atraso no pagamento.",
+        bool restrito = false, Guid? autor = null, OrigemTexto origem = OrigemTexto.Nativo, double? confianca = null, bool suspeito = false,
+        int? pagina = 3)
+    {
+        caso ??= Caso;
+        var documento = CasoDocumento.Criar(
+            CasoDocumentoId.New(), caso, autor ?? caso.UsuarioIdResponsavel, nome, FormatoDocumento.Pdf, 100,
+            TextoHash.DoTexto(nome + texto + caso.Id), "chave", restrito, Clock.UtcNow);
+        documento.MarcarConvertido("md", origem, confianca, 4, 1, suspeito, null);
+        documento.MarcarIndexado(1, Clock.UtcNow);
+        Documentos.Add(documento);
+        var chunk = new CasoDocumentoChunk(documento, 0, pagina, "Cláusula 5", texto, TextoHash.DoTexto(texto), 20, origem, confianca, suspeito);
+        Documentos.Chunks[documento.Id.Value] = [chunk];
+        Vetores.Pontos.Add(Application.Casos.IndexacaoWorkHandler.Ponto(documento, chunk, [0f]));
+
+        return documento;
+    }
+
+    public Application.Casos.CasoAcessoService Acesso(FakeCurrentUser user) => new(Casos, user, Seguranca);
+}
+
 internal static class Samples
 {
-    public static VectorHit Hit(
-        string id, string texto, double score, string arquivo = "contrato.pdf", int? pagina = 3,
-        string? area = "civel", Guid? documento = null, string? hash = null) =>
-        new(id, texto, score, new ChunkMetadata(
-            documento ?? Guid.Parse("33333333-3333-3333-3333-333333333333"),
-            arquivo, pagina, "contrato", area, null, null, null, hash ?? string.Empty));
+    public static readonly Guid CasoId = Guid.Parse("77777777-7777-7777-7777-777777777777");
 
-    public static RetrievedChunk Chunk(string texto = "Cláusula 5: multa de 10%.", string arquivo = "contrato.pdf", int? pagina = 3) =>
-        new("p1", texto, 0.9, new ChunkMetadata(null, arquivo, pagina, null, "civel", null, null, null, "h"));
+    /// <summary>Trecho de anexo já recuperado.</summary>
+    public static VectorHit HitCaso(
+        string texto = "Cláusula 5: multa de 10%.", string arquivo = "contrato.pdf", int? pagina = 3, double score = 0.9,
+        Guid? casoId = null, Guid? documentoId = null, bool suspeito = false, OrigemTexto origem = OrigemTexto.Nativo,
+        double? confianca = null, bool revisaoPendente = false, string? id = null) =>
+        new(id ?? Guid.NewGuid().ToString(), texto, score, new ChunkMetadata(
+            documentoId, arquivo, pagina, "contrato", "civel", null, null, null, TextoHash.DoTexto(texto),
+            Caso: new CasoRef(
+                Ids.Tenant, casoId ?? CasoId, Guid.NewGuid(), documentoId ?? Guid.NewGuid(), Ids.User, origem, confianca, null, false,
+                suspeito, revisaoPendente)));
+
+    public static VectorHit HitNorma(
+        string titulo = "Lei nº 10.406 de 10/01/2002", string tipo = "Lei Ordinária", string? numero = "10406", string? artigo = "186",
+        string? texto = null, double score = 0.8, string colecao = Colecoes.LeisFederais, string situacao = "Vigente (conforme a fonte)",
+        bool revogada = false, string? tribunal = null, DateOnly? data = null, string? urn = "urn:lex:br:federal:lei:2002-01-10;10406",
+        string? url = "https://normas.leg.br/?urn=x", string? area = "civel", Guid? normaId = null, string? hierarquia = null, int versao = 1) =>
+        new(Guid.NewGuid().ToString(), texto ?? $"{titulo} — Art. {artigo}\nAquele que, por ação ou omissão voluntária, violar direito e causar dano a outrem, comete ato ilícito.", score,
+            new ChunkMetadata(
+                null, titulo, null, tipo, area, tribunal,
+                data ?? (colecao == Colecoes.Jurisprudencia ? null : new DateOnly(2002, 1, 10)), url,
+                TextoHash.DoTexto((texto ?? titulo) + artigo),
+                Norma: new NormaRef(
+                    normaId ?? Guid.NewGuid(), titulo, tipo, numero, urn, situacao, revogada, "compilada (texto vigente)",
+                    colecao == Colecoes.Jurisprudencia ? "jurisprudencia" : "federal", null, null, colecao, "federal/lei.md", artigo, null, null,
+                    hierarquia, versao)));
+
+    public static VectorHit HitSumula(string numero = "297", string tribunal = "STJ", string tipo = "Súmula", string? texto = null, bool revogada = false) =>
+        HitNorma(
+            $"Súmula nº {numero} do {tribunal}", tipo, numero, null, texto ?? "O Código de Defesa do Consumidor é aplicável às instituições financeiras.",
+            0.7, Colecoes.Jurisprudencia, "Vigente", revogada, tribunal, null, null);
+
+    public static RetrievedChunk Chunk(VectorHit hit) => new(hit.PointId, hit.Texto, hit.Score, hit.Meta);
+
+    public static RagContext Contexto(params VectorHit[] hits) => new(hits.Select(Chunk).ToList(), 100, 0);
 
     public static PecaInput Input(string fatos = "O cliente contratou o serviço e não recebeu.") =>
-        new("peticao_inicial", "civel", fatos, "Condenação ao pagamento de R$ 5.000,00.", null, [], null);
+        new("peticao_inicial", "civel", fatos, "Condenação ao pagamento de R$ 5.000,00.", null, [], null, CasoId, Guid.NewGuid());
 
-    public static GerarPecaRequest Request(string fatos = "O cliente contratou o serviço e não recebeu.") =>
-        new("peticao_inicial", "civel", fatos, "Condenação ao pagamento.");
+    public static GerarPecaRequest Request(Guid casoId, string fatos = "O cliente contratou o serviço e não recebeu.") =>
+        new("peticao_inicial", "civel", fatos, "Condenação ao pagamento.", CasoId: casoId);
+
+    public static ConsultaPreparada Consulta(string tese = "responsabilidade contratual", string area = "civel", DateOnly? dataFatos = null) =>
+        new(
+            new ConsultaEstruturada("peticao_inicial", area, tese, ["contrato", "multa"], [], [], null, "fatos", "pedidos", [], [], [], "teste"),
+            [new float[EmbeddingConstants.Dimensoes]], tese + " contrato multa", [], null, dataFatos);
 }

@@ -35,8 +35,15 @@ public static partial class NormaMetadataResolver
         ["medidas-provisorias"] = "Medida Provisória",
         ["resolucoes-senado"] = "Resolução do Senado",
         ["resolucoes-camara"] = "Resolução da Câmara",
+        ["emendas-constitucionais"] = "Emenda Constitucional",
         ["sumulas"] = "Súmula",
+        ["sumulas-vinculantes"] = "Súmula vinculante",
         ["repetitivos"] = "Tema repetitivo",
+        ["repercussao-geral"] = "Tema de repercussão geral",
+        ["controle-concentrado"] = "Controle concentrado",
+        ["orientacoes-jurisprudenciais"] = "Orientação Jurisprudencial",
+        ["uniformizacao"] = "Pedido de uniformização",
+        ["regimentos"] = "Regimento interno",
     };
 
     public static ResolucaoMetadata Resolver(string repoPath, FrontMatter fm)
@@ -45,6 +52,11 @@ public static partial class NormaMetadataResolver
         var segmentos = repoPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var raiz = segmentos.Length > 0 ? segmentos[0].ToLowerInvariant() : string.Empty;
         var corpo = fm.Corpo;
+
+        if (raiz is not ("constituicao.md" or "federal" or "jurisprudencia"))
+        {
+            return new ResolucaoMetadata(null, "fora do escopo (só Constituição, leis federais e jurisprudência)", avisos);
+        }
 
         if (corpo.Trim().Length < 20)
         {
@@ -88,20 +100,19 @@ public static partial class NormaMetadataResolver
             avisos.Add("Fonte oficial não identificada no arquivo.");
         }
 
-        var esfera = raiz switch
-        {
-            "constituicao.md" or "federal" => "federal",
-            "estaduais" => "estadual",
-            "municipais" => "municipal",
-            "reguladores" => "regulador",
-            "jurisprudencia" => "jurisprudencia",
-            "tratados" => "internacional",
-            _ => "federal",
-        };
-
-        var uf = Limpar(fm.Get("uf"))?.ToUpperInvariant() ?? UfDoCaminho(segmentos, raiz);
-        var municipio = Limpar(fm.Get("municipio")) ?? (raiz == "municipais" && segmentos.Length > 2 ? segmentos[2] : null);
+        var esfera = raiz == "jurisprudencia" ? "jurisprudencia" : "federal";
+        var uf = Limpar(fm.Get("uf"))?.ToUpperInvariant();
+        var municipio = Limpar(fm.Get("municipio"));
         var area = Limpar(fm.Get("area")) is { } areaYaml ? AreaMapper.Normalizar(areaYaml) : AreaMapper.Deduzir(tribunal, titulo, repoPath);
+
+        if (raiz == "constituicao.md")
+        {
+            // Sem YAML no arquivo: data de promulgação e texto compilado são fatos do próprio documento.
+            data ??= new DateOnly(1988, 10, 5);
+            ano = data.Value.Year;
+            revogada = false;
+            situacao = "Vigente (conforme a fonte)";
+        }
 
         var metadata = new NormaMetadata(
             titulo,
@@ -110,10 +121,10 @@ public static partial class NormaMetadataResolver
             ano,
             data,
             Limpar(fm.Get("publicacao")) ?? Limpar(fm.Get("data_publicacao")),
-            Limpar(fm.Get("ementa")) ?? EmentaDoCorpo(corpo),
+            Limpar(fm.Get("ementa")) ?? (raiz == "federal" ? EmentaDoCorpo(corpo) : null),
             situacao,
             revogada ?? false,
-            Limpar(fm.Get("versao_texto")) ?? "Não informada",
+            Limpar(fm.Get("versao_texto")) ?? (raiz == "constituicao.md" ? "compilada (texto vigente)" : "Não informada"),
             Limpar(fm.Get("urn")),
             fonte ?? string.Empty,
             esfera,
@@ -122,27 +133,17 @@ public static partial class NormaMetadataResolver
             tribunal,
             area,
             ParseLista(fm.Get("assuntos") ?? fm.Get("tags")),
-            ColecaoDe(esfera, segmentos, tipo));
+            ColecaoDe(raiz));
 
         return new ResolucaoMetadata(metadata, null, avisos);
     }
 
-    public static string ColecaoDe(string esfera, string[] segmentos, string tipo)
+    public static string ColecaoDe(string raiz) => raiz switch
     {
-        var sumula = tipo.Contains("súmula", StringComparison.OrdinalIgnoreCase)
-            || tipo.Contains("sumula", StringComparison.OrdinalIgnoreCase)
-            || segmentos.Any(s => s.Equals("sumulas", StringComparison.OrdinalIgnoreCase));
-
-        return esfera switch
-        {
-            "jurisprudencia" => sumula ? Colecoes.Sumulas : Colecoes.Jurisprudencia,
-            "estadual" => Colecoes.LegislacaoEstadual,
-            "municipal" => Colecoes.LegislacaoMunicipal,
-            "regulador" => Colecoes.Regulamentos,
-            "internacional" => Colecoes.Tratados,
-            _ => Colecoes.LeisFederais,
-        };
-    }
+        "constituicao.md" => Colecoes.ConstituicaoFederal,
+        "jurisprudencia" => Colecoes.Jurisprudencia,
+        _ => Colecoes.LeisFederais,
+    };
 
     private static string? Limpar(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
@@ -176,11 +177,6 @@ public static partial class NormaMetadataResolver
     private static int? AnoDoCaminho(string[] segmentos) =>
         segmentos.Select(s => int.TryParse(s, out var year) && year is >= 1500 and <= 2200 ? year : (int?)null).FirstOrDefault(y => y is not null);
 
-    private static string? UfDoCaminho(string[] segmentos, string raiz) =>
-        raiz is "estaduais" or "municipais" && segmentos.Length > 1 && segmentos[1].Length == 2
-            ? segmentos[1].ToUpperInvariant()
-            : null;
-
     private static string? TribunalDoCaminho(string[] segmentos)
     {
         if (segmentos.Length < 2 || !segmentos[0].Equals("jurisprudencia", StringComparison.OrdinalIgnoreCase))
@@ -188,7 +184,12 @@ public static partial class NormaMetadataResolver
             return null;
         }
 
-        // jurisprudencia/outros-tribunais/stm/... → STM; jurisprudencia/stf/... → STF
+        // jurisprudencia/outros-tribunais/stm/... → STM; jurisprudencia/stf/... → STF; regimentos não têm tribunal no caminho.
+        if (segmentos[1].Equals("regimentos", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
         var candidato = segmentos[1].Equals("outros-tribunais", StringComparison.OrdinalIgnoreCase) && segmentos.Length > 2
             ? segmentos[2]
             : segmentos[1];
@@ -213,8 +214,6 @@ public static partial class NormaMetadataResolver
 
         return raiz switch
         {
-            "tratados" => "Tratado",
-            "reguladores" => "Ato regulatório",
             "jurisprudencia" => "Decisão",
             _ => "Norma",
         };

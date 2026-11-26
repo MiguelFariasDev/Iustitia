@@ -5,15 +5,19 @@ using System.Text.Encodings.Web;
 using System.Threading.RateLimiting;
 using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Domain.Time;
+using Advocacia.BuildingBlocks.Infrastructure.Security;
 using Advocacia.Modules.Drafting.Application;
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Busca;
 using Advocacia.Modules.Drafting.Application.Models;
+using Advocacia.Modules.Drafting.Application.Normas;
 using Advocacia.Modules.Drafting.Application.Services;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Infrastructure.Persistence;
 using Advocacia.Modules.Drafting.Infrastructure.Persistence.Repositories;
 using Advocacia.Platform.Api.Extensions;
-using Advocacia.Modules.Drafting.Infrastructure.Extracao;
+using Advocacia.Modules.Drafting.Infrastructure.DocumentConversion;
+using Advocacia.Modules.Drafting.Infrastructure.Exportacao;
 using Advocacia.Platform.Infrastructure.Auth.Authorization;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication;
@@ -27,6 +31,19 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Advocacia.Modules.Drafting.Api.UnitTests;
+
+/// <summary>Os conversores de colunas cifradas usam o acessor estático; chaves fixas só deste projeto de teste.</summary>
+internal static class ModuleInit
+{
+    [ModuleInitializer]
+    internal static void Init() =>
+        FieldEncryption.Configure(new AesGcmFieldEncryptor(Options.Create(new FieldEncryptionOptions
+        {
+            ActiveKeyId = "t1",
+            Keys = new() { ["t1"] = Convert.ToBase64String(new byte[32]) },
+            BlindIndexKey = Convert.ToBase64String(new byte[32]),
+        })));
+}
 
 internal static class Ids
 {
@@ -93,7 +110,7 @@ internal sealed class SystemClock : IDateTimeProvider
 
 internal sealed class ScriptedLlm(IReadOnlyList<string> pieces) : ILlmService
 {
-    public string ModelName => "qwen3:8b";
+    public string ModelName => "jurema-7b";
 
     public Exception? FailAfter { get; init; }
 
@@ -121,40 +138,100 @@ internal sealed class ScriptedLlm(IReadOnlyList<string> pieces) : ILlmService
 internal sealed class StubEmbeddings : IEmbeddingService
 {
     public Task<IReadOnlyList<float[]>> EmbedAsync(IReadOnlyList<string> inputs, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<float[]>>(inputs.Select(_ => new[] { 0.1f }).ToList());
+        Task.FromResult<IReadOnlyList<float[]>>(inputs.Select(_ => new float[EmbeddingConstants.Dimensoes]).ToList());
 }
 
-internal sealed class StubVectorStore : IVectorStore
+internal sealed class SemExtracao : ILlmEstruturado
 {
-    public List<VectorPoint> Upserted { get; } = [];
+    public Task<string> CompletarJsonAsync(string system, string user, string jsonSchema, int maxTokens, CancellationToken cancellationToken = default) =>
+        throw new LlmServiceException("extração indisponível no teste");
+}
 
-    public List<(Guid Tenant, Guid Documento)> Deleted { get; } = [];
+internal sealed class MemCasoVectorStore : ICasoVectorStore
+{
+    public List<CasoVectorPoint> Pontos { get; } = [];
 
-    public Task EnsureCollectionAsync(int dimensions, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-    public Task<IReadOnlyList<VectorHit>> SearchAsync(VectorSearchQuery query, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<VectorHit>>(
-        [
-            new VectorHit(
-                "11111111-2222-3333-4444-555555555555", "Art. 186: ato ilícito.", 0.9,
-                new ChunkMetadata(Guid.NewGuid(), "contrato.pdf", 3, "contrato", "civel", null, null, null, "H1")),
-        ]);
-
-    public Task UpsertAsync(IReadOnlyList<VectorPoint> points, CancellationToken cancellationToken = default)
+    public Task UpsertAsync(IReadOnlyList<CasoVectorPoint> pontos, CancellationToken cancellationToken = default)
     {
-        Upserted.AddRange(points);
+        Pontos.AddRange(pontos);
 
         return Task.CompletedTask;
     }
 
-    public Task DeleteByDocumentAsync(Guid tenantId, Guid documentoOrigemId, CancellationToken cancellationToken = default)
+    public Task RemoverDocumentoAsync(Guid tenantId, Guid casoId, Guid documentoId, CancellationToken cancellationToken = default)
     {
-        Deleted.Add((tenantId, documentoOrigemId));
+        Pontos.RemoveAll(p => p.Meta.Caso!.DocumentoId == documentoId && p.Meta.Caso.CasoId == casoId && p.Meta.Caso.TenantId == tenantId);
 
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<VectorHit>> BuscarDensoAsync(FiltroCaso filtro, float[] vetor, int limite, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VectorHit>>(Pontos
+            .Where(p => p.Meta.Caso!.TenantId == filtro.TenantId && p.Meta.Caso.CasoId == filtro.CasoId)
+            .Select(p => new VectorHit(p.Id.ToString(), p.Texto, 0.9, p.Meta)).ToList());
+
+    public Task<IReadOnlyList<VectorHit>> BuscarBm25Async(FiltroCaso filtro, VetorEsparso consulta, int limite, CancellationToken cancellationToken = default) =>
+        BuscarDensoAsync(filtro, [], limite, cancellationToken);
+}
+
+/// <summary>Acervo de um artigo só: o art. 186 do Código Civil.</summary>
+internal sealed class UmArtigo : INormaVectorStore, INormaSearchIndex, IQdrantService
+{
+    private static readonly VectorHit Art186 = new NormaPayload(
+        Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), "urn:lex:br:federal:lei:2002-01-10;10406", "Lei nº 10.406 de 10/01/2002", "Lei Ordinária", "10406",
+        new DateOnly(2002, 1, 10), "Vigente", false, "compilada", 1, "federal", null, null, "civel", null, [], Colecoes.LeisFederais,
+        "federal/leis-ordinarias/2002/lei-10406-2002-01-10.md", "https://normas.leg.br/x", null, null, "186", null, null, "h186",
+        "Art. 186. Aquele que violar direito e causar dano a outrem comete ato ilícito.").ToHit("11111111-2222-3333-4444-555555555555", 0.9);
+
+    public Task<IReadOnlyList<VectorHit>> BuscarDensoAsync(
+        string colecao, NormaFiltro filtro, float[] vetor, int limite, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VectorHit>>(colecao == Colecoes.LeisFederais ? [Art186] : []);
+
+    public Task<IReadOnlyList<VectorHit>> BuscarBm25Async(
+        string colecao, NormaFiltro filtro, VetorEsparso consulta, int limite, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VectorHit>>([]);
+
+    public Task UpsertAsync(string colecao, IReadOnlyList<NormaVectorPoint> points, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task DeleteAsync(string colecao, Guid normaId, int? manterVersao, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<VectorHit>> BuscarReferenciasAsync(
+        IReadOnlyList<ReferenciaLegal> referencias, int limite, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VectorHit>>([]);
+
+    public Task<IReadOnlyList<VectorHit>> BuscarPalavrasChaveAsync(
+        NormaFiltro filtro, string consulta, int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<VectorHit>>([]);
+
+    public Task<bool> UrnExisteAsync(string urn, CancellationToken cancellationToken = default) => Task.FromResult(false);
+
+    public Task GarantirColecoesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     public Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+
+    public Task<IReadOnlyList<ColecaoInfo>> EstadoAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ColecaoInfo>>(Colecoes.Todas.Select(c => new ColecaoInfo(c, true, 0)).ToList());
+}
+
+internal sealed class MemArquivos : ICasoArquivoStore
+{
+    public Dictionary<string, byte[]> Objetos { get; } = [];
+
+    public Task GravarAsync(string chave, byte[] conteudo, CancellationToken cancellationToken = default)
+    {
+        Objetos[chave] = conteudo;
+
+        return Task.CompletedTask;
+    }
+
+    public Task<byte[]?> LerAsync(string chave, CancellationToken cancellationToken = default) => Task.FromResult(Objetos.GetValueOrDefault(chave));
+
+    public Task RemoverAsync(string chave, CancellationToken cancellationToken = default)
+    {
+        Objetos.Remove(chave);
+
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>Fila em memória (o ExecuteUpdate da real não existe no provedor em memória do EF; ela é testada no Postgres).</summary>
@@ -207,7 +284,7 @@ internal sealed class RecordingAlerts : IAlertPublisher
 }
 
 /// <summary>
-/// Sobe SÓ os endpoints de peças e do acervo num servidor em memória, com os serviços REAIS do módulo
+/// Sobe SÓ os endpoints de peças e de casos num servidor em memória, com os serviços REAIS do módulo
 /// (validação, serviço de peças, processador, ingestão, EF em memória) e fakes apenas nas pontas de
 /// rede (Ollama, Qdrant), na fila e na identidade. Autorização, versionamento e rate limit usam os
 /// mesmos nomes de policy do host real. O "worker" é simulado chamando o handler da fila à mão.
@@ -216,13 +293,14 @@ internal sealed class EndpointHost : IAsyncDisposable
 {
     private readonly WebApplication _app;
 
-    private EndpointHost(WebApplication app, HttpClient client, InMemoryFila fila, RecordingAlerts alerts, StubVectorStore store)
+    private EndpointHost(WebApplication app, HttpClient client, InMemoryFila fila, RecordingAlerts alerts, MemCasoVectorStore store, MemArquivos arquivos)
     {
         _app = app;
         Client = client;
         Fila = fila;
         Alerts = alerts;
         Store = store;
+        Arquivos = arquivos;
     }
 
     public HttpClient Client { get; }
@@ -231,7 +309,9 @@ internal sealed class EndpointHost : IAsyncDisposable
 
     public RecordingAlerts Alerts { get; }
 
-    public StubVectorStore Store { get; }
+    public MemCasoVectorStore Store { get; }
+
+    public MemArquivos Arquivos { get; }
 
     public IServiceProvider Services => _app.Services;
 
@@ -243,7 +323,9 @@ internal sealed class EndpointHost : IAsyncDisposable
         var database = Guid.NewGuid().ToString();
         var fila = new InMemoryFila();
         var alerts = new RecordingAlerts();
-        var store = new StubVectorStore();
+        var store = new MemCasoVectorStore();
+        var arquivos = new MemArquivos();
+        var acervo = new UmArtigo();
 
         builder.Services.AddLogging();
         builder.Services.AddHttpContextAccessor();
@@ -279,12 +361,20 @@ internal sealed class EndpointHost : IAsyncDisposable
         builder.Services.AddScoped<ICurrentUser, TestCurrentUser>();
         builder.Services.AddSingleton<IDateTimeProvider, SystemClock>();
         builder.Services.AddScoped<ILegalDocumentRepository, LegalDocumentRepository>();
-        builder.Services.AddScoped<IIndexedDocumentRepository, IndexedDocumentRepository>();
+        builder.Services.AddScoped<ICasoRepository, CasoRepository>();
+        builder.Services.AddScoped<ICasoDocumentoRepository, CasoDocumentoRepository>();
+        builder.Services.AddScoped<IEventoSegurancaRepository, EventoSegurancaRepository>();
+        builder.Services.AddSingleton<ICasoArquivoStore>(arquivos);
+        builder.Services.AddSingleton<INormaVectorStore>(acervo);
+        builder.Services.AddSingleton<INormaSearchIndex>(acervo);
+        builder.Services.AddSingleton<IQdrantService>(acervo);
+        builder.Services.AddSingleton<ILlmEstruturado, SemExtracao>();
+        builder.Services.AddSingleton<IConversorFormato, TextoConversor>();
+        builder.Services.AddSingleton<IExportadorDocx, ExportadorDocx>();
         builder.Services.AddScoped<IDraftingUnitOfWork, DraftingUnitOfWork>();
         builder.Services.AddScoped<IPecaMetricasService, Advocacia.Modules.Drafting.Infrastructure.Metricas.PecaMetricasService>();
         builder.Services.AddSingleton<IGeracaoPecaFila>(fila);
         builder.Services.AddSingleton<IAlertPublisher>(alerts);
-        builder.Services.AddSingleton<IDocumentTextExtractor, DocumentTextExtractor>();
         builder.Services.AddDraftingApplication();
         builder.Services.Configure<DraftingOptions>(options => options.Enabled = enabled);
         builder.Services.Configure<RagOptions>(_ => { });
@@ -294,27 +384,28 @@ internal sealed class EndpointHost : IAsyncDisposable
             options.StreamIntervaloMs = 10;
             options.ParcialIntervaloMs = 0;
         });
-        builder.Services.Configure<IngestaoOptions>(options => options.MaxMegabytes = maxMegabytes);
+        builder.Services.Configure<AnexosOptions>(options =>
+        {
+            options.MaxMegabytes = maxMegabytes;
+            options.MaxMegabytesAudio = maxMegabytes;
+        });
 
         ILlmService scripted = llm ?? new ScriptedLlm(
-            ["DOS FATOS\nO autor contratou.\n", "DO DIREITO\nHá ato ilícito [contrato.pdf, p. 3].\n",
-             "FONTES UTILIZADAS\ncontrato.pdf, p. 3\nPONTOS PARA REVISÃO HUMANA\nConferir."]);
+            ["DOS FATOS\nO autor contratou.\n", "DO DIREITO\nHá ato ilícito [Código Civil, art. 186].\n",
+             "FONTES UTILIZADAS\nCódigo Civil, art. 186\nPONTOS PARA REVISÃO HUMANA\nConferir."]);
         builder.Services.AddSingleton(scripted);
         builder.Services.AddSingleton<IEmbeddingService, StubEmbeddings>();
-        builder.Services.AddSingleton<IVectorStore>(store);
-        // Acervo normativo: sem Qdrant nem índice de palavra-chave nos testes de API (busca devolve vazio).
-        builder.Services.AddSingleton<Advocacia.Modules.Drafting.Application.Normas.INormaVectorStore, EmptyNormaVectorStore>();
-        builder.Services.AddSingleton<Advocacia.Modules.Drafting.Application.Normas.INormaSearchIndex, EmptyNormaSearchIndex>();
+        builder.Services.AddSingleton<ICasoVectorStore>(store);
 
         var app = builder.Build();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseRateLimiter();
         app.MapPecasEndpoints();
-        app.MapDocumentosEndpoints();
+        app.MapCasosEndpoints();
         await app.StartAsync();
 
-        return new EndpointHost(app, app.GetTestClient(), fila, alerts, store);
+        return new EndpointHost(app, app.GetTestClient(), fila, alerts, store, arquivos);
     }
 
     public async ValueTask DisposeAsync()
@@ -357,36 +448,37 @@ internal sealed class EndpointHost : IAsyncDisposable
         return await handler.ProcessarAsync(requestId, tentativa, cancellationToken);
     }
 
-    public async Task<WorkOutcome> RunIndexingAsync(Guid documentId, CancellationToken cancellationToken = default)
+    /// <summary>Faz o papel do worker para um anexo: conversão (CPU) e depois classificação + indexação.</summary>
+    public async Task<WorkOutcome> RunAnexoAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
-        await using var scope = Services.CreateAsyncScope();
-        var handler = scope.ServiceProvider.GetServices<IQueueWorkHandler>().First(h => h.Tipo == QueueItemKind.Indexacao);
+        var outcome = new WorkOutcome(WorkOutcomeKind.Cancelado);
+        foreach (var tipo in new[] { QueueItemKind.Conversao, QueueItemKind.Indexacao })
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var handler = scope.ServiceProvider.GetServices<IQueueWorkHandler>().First(h => h.Tipo == tipo);
+            outcome = await handler.ProcessarAsync(documentId, 1, cancellationToken);
+        }
 
-        return await handler.ProcessarAsync(documentId, 1, cancellationToken);
+        return outcome;
     }
-}
 
+    /// <summary>Abre um caso pela API e devolve o id.</summary>
+    public async Task<Guid> AbrirCasoAsync(string role = "Lawyer", Guid? user = null)
+    {
+        var resposta = await Client.SendAsync(Send(
+            HttpMethod.Post, "/api/v1/casos", new { clienteId = Guid.NewGuid(), titulo = "Cobrança", area = "civel", clienteNome = "Empresa X" }, role, user));
+        resposta.EnsureSuccessStatusCode();
 
-internal sealed class EmptyNormaVectorStore : Advocacia.Modules.Drafting.Application.Normas.INormaVectorStore
-{
-    public Task EnsureCollectionsAsync(int dimensions, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        return (await resposta.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("id").GetGuid();
+    }
 
-    public Task UpsertAsync(string colecao, IReadOnlyList<Advocacia.Modules.Drafting.Application.Normas.NormaVectorPoint> points, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public async Task<HttpResponseMessage> AnexarAsync(
+        Guid caso, string nome, byte[] conteudo, string? role = "Lawyer", Guid? user = null, bool restrito = false)
+    {
+        using var form = new MultipartFormDataContent { { new ByteArrayContent(conteudo), "arquivo", nome }, { new StringContent(restrito ? "true" : "false"), "restrito" } };
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/casos/{caso}/documentos") { Content = form };
+        Authenticate(request, role, user);
 
-    public Task DeleteAsync(string colecao, Guid normaId, int? manterVersao, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-    public Task<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>> SearchAsync(
-        Advocacia.Modules.Drafting.Application.Normas.NormaFiltro filtro, float[] vetor, int limit, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>>([]);
-
-    public Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
-}
-
-internal sealed class EmptyNormaSearchIndex : Advocacia.Modules.Drafting.Application.Normas.INormaSearchIndex
-{
-    public Task<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>> BuscarPalavrasChaveAsync(
-        Advocacia.Modules.Drafting.Application.Normas.NormaFiltro filtro, string consulta, int limit, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Advocacia.Modules.Drafting.Application.Models.VectorHit>>([]);
-
-    public Task<bool> UrnExisteAsync(string urn, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        return await Client.SendAsync(request);
+    }
 }

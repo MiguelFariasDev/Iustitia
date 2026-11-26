@@ -1,7 +1,8 @@
 using Advocacia.BuildingBlocks.Application.Abstractions;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Drafting.Application.Models;
-using Advocacia.Modules.Drafting.Domain.Acervo;
+using Advocacia.Modules.Drafting.Application.Validacao;
+using Advocacia.Modules.Drafting.Domain.Casos;
 using Advocacia.Modules.Drafting.Domain.Fila;
 using Advocacia.Modules.Drafting.Domain.Gpu;
 using Advocacia.Modules.Drafting.Domain.Pecas;
@@ -46,7 +47,7 @@ public interface ILlmHealth
 }
 
 /// <summary>O Ollama como um todo (geração + embeddings + saúde): a fachada que a especificação chama de IOllamaService.</summary>
-public interface IOllamaService : ILlmService, IEmbeddingService, ILlmHealth;
+public interface IOllamaService : ILlmService, ILlmEstruturado, IEmbeddingService, ILlmHealth;
 
 /// <summary>Endereço ATUAL do Ollama. Fixo (configuração) ou descoberto pela Vast.ai a cada subida da instância.</summary>
 public interface IOllamaEndpoint
@@ -56,30 +57,27 @@ public interface IOllamaEndpoint
     void Set(Uri baseAddress);
 }
 
-/// <summary>Banco vetorial (Qdrant hoje). Toda busca e toda exclusão são escopadas por tenant.</summary>
-public interface IVectorStore
-{
-    Task EnsureCollectionAsync(int dimensions, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<VectorHit>> SearchAsync(VectorSearchQuery query, CancellationToken cancellationToken = default);
-
-    Task UpsertAsync(IReadOnlyList<VectorPoint> points, CancellationToken cancellationToken = default);
-
-    Task DeleteByDocumentAsync(Guid tenantId, Guid documentoOrigemId, CancellationToken cancellationToken = default);
-
-    Task<bool> VerificarSaudeAsync(CancellationToken cancellationToken = default);
-}
-
+/// <summary>Recuperação em duas etapas (anexos do caso, depois base jurídica) e montagem do contexto que vai ao modelo.</summary>
 public interface IRagService
 {
-    Task<RagContext> RetrieveAsync(RagQuery query, CancellationToken cancellationToken = default);
+    /// <summary>Extrai a consulta estruturada e embute os textos dela.</summary>
+    Task<ConsultaPreparada> PrepararAsync(
+        PecaInput input, Caso caso, IReadOnlyList<CasoDocumento> documentos, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VectorHit>> BuscarCasoAsync(
+        FiltroCaso filtro, ConsultaPreparada consulta, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VectorHit>> BuscarJuridicoAsync(ConsultaPreparada consulta, CancellationToken cancellationToken = default);
+
+    /// <summary>5 a 10 trechos, com cota por grupo e dentro do que cabe na janela do modelo.</summary>
+    RagContext Montar(PecaInput input, IReadOnlyList<VectorHit> caso, IReadOnlyList<VectorHit> juridico);
 }
 
 public sealed record PromptBundle(string System, string User, string Versao);
 
 public interface IPromptBuilder
 {
-    PromptBundle Build(PecaInput input, IReadOnlyList<RetrievedChunk> chunks);
+    PromptBundle Build(PecaInput input, RagContext contexto);
 }
 
 // ---------------------------------------------------------------- persistência
@@ -108,6 +106,11 @@ public interface ILegalDocumentRepository : IRepository<LegalDocumentRequest, Le
 
     void AddChild(LegalDocumentEvent evento);
 
+    void AddChild(CitacaoPeca citacao);
+
+    Task<LegalDocumentRequest?> GetWithCitationsAsync(LegalDocumentRequestId id, CancellationToken cancellationToken = default);
+
+    /// <summary>A solicitação com fontes E citações.</summary>
     Task<LegalDocumentRequest?> GetWithSourcesAsync(LegalDocumentRequestId id, CancellationToken cancellationToken = default);
 
     Task<PecaSnapshot?> GetSnapshotAsync(LegalDocumentRequestId id, CancellationToken cancellationToken = default);
@@ -115,15 +118,6 @@ public interface ILegalDocumentRepository : IRepository<LegalDocumentRequest, Le
     /// <param name="usuarioId">Nulo = todas do escritório (quem pode ver tudo).</param>
     Task<IReadOnlyList<LegalDocumentRequest>> ListRecentAsync(
         Guid? usuarioId, int skip, int take, CancellationToken cancellationToken = default);
-}
-
-public interface IIndexedDocumentRepository : IRepository<IndexedDocument, IndexedDocumentId>
-{
-    Task<IndexedDocument?> FindByHashAsync(string hashConteudo, CancellationToken cancellationToken = default);
-
-    /// <summary>Documentos do escritório + os privados do próprio usuário. Privado de outro usuário nunca aparece.</summary>
-    Task<IReadOnlyList<IndexedDocument>> ListVisibleAsync(
-        Guid usuarioId, int skip, int take, CancellationToken cancellationToken = default);
 }
 
 public interface IGpuInstanceLogRepository
@@ -162,7 +156,10 @@ public interface ILegalDocumentService
         int? tokensSaida,
         IReadOnlyList<(RetrievedChunk Chunk, bool Utilizada)> fontes,
         IReadOnlyList<string> avisos,
+        IReadOnlyList<CitacaoAvaliada> citacoes,
         CancellationToken cancellationToken = default);
+
+    Task SetConsultaAsync(LegalDocumentRequest request, string consultaJson, CancellationToken cancellationToken = default);
 
     Task FailAsync(
         LegalDocumentRequest request, string erro, string? textoParcial, long tempoMs,
@@ -177,7 +174,7 @@ public interface ILegalDocumentService
 /// Trilha de auditoria e log do módulo: grava LegalDocumentEvent e emite log estruturado.
 /// SÓ metadados (ids, contagens, tempos) — nunca fatos, pedidos, trechos ou a minuta.
 /// </summary>
-public interface IDraftingAuditService
+public interface IAuditoriaIaService
 {
     Task RecordAsync(
         LegalDocumentRequest request, string tipo, object? detalhe = null, CancellationToken cancellationToken = default);
@@ -276,10 +273,13 @@ public enum WorkOutcomeKind
 
 public sealed record WorkOutcome(WorkOutcomeKind Kind, string? Erro = null);
 
-/// <summary>Quem sabe processar um tipo de item da fila (geração de peça, indexação de documento).</summary>
+/// <summary>Quem sabe processar um tipo de item da fila (geração de peça, conversão e indexação de anexo).</summary>
 public interface IQueueWorkHandler
 {
     QueueItemKind Tipo { get; }
+
+    /// <summary>Falso = roda só com CPU: o coordenador processa antes e não liga a GPU por causa dele.</summary>
+    bool RequerGpu => true;
 
     /// <summary>Chamado ao reservar: registra a tentativa e mostra "na fila"/"preparando IA" ao usuário.</summary>
     Task AoReservarAsync(Guid referenciaId, CancellationToken cancellationToken = default);
@@ -355,49 +355,4 @@ public interface IGpuOrchestrator
 
     /// <summary>Para a instância se não há trabalho e a carência acabou. Devolve verdadeiro se parou.</summary>
     Task<bool> PararSeOciosaAsync(CancellationToken cancellationToken = default);
-}
-
-// ---------------------------------------------------------------- acervo / ingestão
-
-public interface IDocumentTextExtractor
-{
-    /// <summary>Extrai o texto por página (PDF) ou como um bloco só (DOCX/TXT, sem página). PDF escaneado sem texto é erro.</summary>
-    Result<IReadOnlyList<ExtractedPage>> Extract(Stream content, string fileName);
-}
-
-public sealed record IndexDocumentRequest(
-    Guid TenantId,
-    Guid UsuarioId,
-    Guid DocumentoOrigemId,
-    string NomeArquivo,
-    string TipoDocumento,
-    string? Area,
-    string? Tribunal,
-    DateOnly? DataPublicacao,
-    string? UrlOrigem,
-    IReadOnlyList<string> Tags,
-    string Visibilidade,
-    IReadOnlyList<IndexPage> Paginas);
-
-public sealed record IndexPage(int? Numero, string Texto);
-
-public sealed record IndexDocumentResponse(Guid DocumentoOrigemId, int Trechos);
-
-/// <summary>Núcleo da indexação: quebra em trechos, gera embeddings e grava no banco vetorial. Roda no worker, com a GPU ligada.</summary>
-public interface IDocumentIndexer
-{
-    Task<Result<IndexDocumentResponse>> IndexAsync(IndexDocumentRequest request, CancellationToken cancellationToken = default);
-}
-
-public interface IDocumentIngestionService
-{
-    Task<Result<UploadDocumentoResponse>> EnviarAsync(
-        UploadDocumentoRequest metadados, Stream conteudo, string nomeArquivo, long tamanhoBytes,
-        CancellationToken cancellationToken = default);
-
-    Task<Result<DocumentoResponse>> ObterAsync(Guid id, CancellationToken cancellationToken = default);
-
-    Task<Result<IReadOnlyList<DocumentoResponse>>> ListarAsync(int pagina, int tamanho, CancellationToken cancellationToken = default);
-
-    Task<Result> RemoverAsync(Guid id, CancellationToken cancellationToken = default);
 }

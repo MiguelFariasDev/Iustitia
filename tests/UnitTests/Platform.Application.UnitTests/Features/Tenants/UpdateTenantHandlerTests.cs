@@ -79,4 +79,34 @@ public class UpdateTenantHandlerTests
         result.Error.Code.Should().Be(nameof(ErrorCode.TENANT_NAME_REQUIRED));
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_ApenasRenomeando_NaoApagaLogoNemEndereco()
+    {
+        var tenant = Tenant.Create("Nome Antigo", CNPJ.Create("11444777000161").Value).Value;
+        tenant.Update("Nome Antigo", "https://logo.png", "{\"rua\":\"X\"}");
+        _currentUser.TenantId.Returns(tenant.Id.Value);
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        var result = await CreateHandler().Handle(
+            new UpdateTenantCommand(tenant.Id.Value, "Nome Novo", null, null), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        tenant.Name.Should().Be("Nome Novo");
+        tenant.LogoUrl.Should().Be("https://logo.png");
+        tenant.AddressJson.Should().Be("{\"rua\":\"X\"}");
+    }
+
+    [Fact]
+    public async Task Handle_ComTextoEmBranco_LimpaLogo()
+    {
+        var tenant = Tenant.Create("Nome", CNPJ.Create("11444777000161").Value).Value;
+        tenant.Update("Nome", "https://logo.png", null);
+        _currentUser.TenantId.Returns(tenant.Id.Value);
+        _tenantRepository.GetByIdAsync(tenant.Id, Arg.Any<CancellationToken>()).Returns(tenant);
+
+        await CreateHandler().Handle(new UpdateTenantCommand(tenant.Id.Value, "Nome", "", null), CancellationToken.None);
+
+        tenant.LogoUrl.Should().BeNull();
+    }
 }

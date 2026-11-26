@@ -48,6 +48,7 @@ public sealed class CalendarEventRepository(WorkflowDbContext dbContext)
             .IgnoreQueryFilters()
             .Where(calendarEvent =>
                 !calendarEvent.IsDeleted
+                && calendarEvent.CompletedAt == null
                 && calendarEvent.AssignedUserId != null
                 && calendarEvent.StartAt > now
                 && ((calendarEvent.OneDayReminderSentAt == null && calendarEvent.StartAt <= dayLimit)

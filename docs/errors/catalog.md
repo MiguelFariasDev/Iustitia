@@ -146,6 +146,19 @@ Legenda das colunas: **Código** (`ErrorCode`) · **Mensagem** (molde pt-BR,
 | `CLIENT_HAS_ACTIVE_PROCESSES` | Este cliente tem processos em andamento. Encerre ou arquive os processos antes de anonimizar os dados. | 409 | Conflict | Anonimização pedida com processo ativo ou suspenso (LGPD: o escritório precisa manter os dados do caso em curso). | Encerrar/arquivar os processos e repetir. |
 | `CLIENT_ANONYMIZED` | Os dados deste cliente foram anonimizados e não podem mais ser alterados. | 409 | Conflict | Editar, reativar ou anonimizar de novo um cliente já anonimizado. | Nenhuma: a anonimização é irreversível. |
 
+## Process (1200–1299) — aviso de movimentação ao cliente
+
+Os demais códigos `PROCESS_*` (cadastro de processo) estão em `ErrorCatalog.cs`. Os abaixo são do aviso ao
+cliente gerado pelo acompanhamento de movimentações (ADR-075), que só sai depois da revisão do advogado.
+
+| Código | Mensagem | HTTP | Tipo | Quando ocorre | Como resolver |
+|---|---|---|---|---|---|
+| `PROCESS_CLIENT_NOTIFICATION_NOT_FOUND` | Aviso ao cliente não encontrado. | 404 | NotFound | Id inexistente, de outro escritório ou de processo confidencial que o usuário não vê. | Atualizar a fila. |
+| `PROCESS_CLIENT_NOTIFICATION_NOT_PENDING` | Este aviso já foi enviado ou descartado. | 409 | Conflict | Enviar ou descartar um aviso que já saiu da fila. | Nenhuma ação. |
+| `PROCESS_CLIENT_NOTIFICATION_RECIPIENT_UNAVAILABLE` | O cliente não pode receber o aviso: sem e-mail cadastrado, inativo ou com os dados anonimizados. | 409 | Conflict | O cadastro do cliente mudou depois que o rascunho foi criado. | Corrigir o cadastro ou descartar o aviso. |
+| `PROCESS_CLIENT_NOTIFICATION_SEND_FAILED` | O e-mail não pôde ser enviado agora. O aviso ficou como falha de envio e pode ser reenviado. | 500 | Failure | O provedor de e-mail recusou ou estava fora do ar. | Reenviar mais tarde. |
+| `PROCESS_CLIENT_NOTIFICATION_MESSAGE_INVALID` | A mensagem do aviso não pode ficar vazia nem passar de 8.000 caracteres. | 400 | Validation | Mensagem editada vazia ou longa demais. | Ajustar o texto. |
+
 ## Publication (1300–1399)
 
 Módulo Legal — ver `docs/modules/legal/publications.md`.
@@ -252,15 +265,27 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `DRAFTING_TOO_MANY_DOCUMENTS` | Informe no máximo {0} documentos. | 400 | Validation | `documentosIds` acima do limite. | Reduzir a lista. |
 | `DRAFTING_CANNOT_CANCEL` | Esta solicitação já foi concluída, falhou ou foi cancelada e não pode mais ser cancelada. | 409 | Conflict | `POST /pecas/{id}/cancelar` em solicitação terminal. | Nada a fazer; use regenerar para uma nova versão. |
 | `DRAFTING_CONFIRMATION_REQUIRED` | Confirme a regeração enviando "confirmar": true. | 400 | Validation | `POST /pecas/{id}/regenerar` sem confirmação. | Reenviar com `confirmar: true`. |
-| `DRAFTING_UNSUPPORTED_FILE` | Arquivo não suportado ou ilegível. Envie PDF com texto, DOCX ou TXT. | 400 | Validation | Extensão fora da lista, arquivo corrompido ou PDF escaneado (sem camada de texto; OCR não implementado). | Converter para PDF com texto/DOCX/TXT. |
-| `DRAFTING_FILE_TOO_LARGE` | O arquivo excede o limite de {0} MB. | 400 | Validation | Upload acima de `Drafting:Ingestao:MaxMegabytes`. | Dividir o arquivo. |
-| `DRAFTING_DOCUMENT_NOT_FOUND` | Documento não encontrado. | 404 | NotFound | Id inexistente ou de outro escritório/usuário (privado). | Conferir o identificador. |
-| `DRAFTING_DOCUMENT_DUPLICATE` | Este documento já foi enviado (mesmo conteúdo). | 409 | Conflict | Mesmo hash de conteúdo no escritório. | Usar o documento existente. |
+| `DRAFTING_UNSUPPORTED_FILE` | Arquivo não suportado ou ilegível. Envie PDF, DOCX, DOC, TXT, Markdown, imagem, planilha, e-mail (.eml) ou áudio. | 400 | Validation | Extensão fora da lista, conteúdo que não corresponde à extensão ou arquivo corrompido. | Converter para um formato aceito. |
+| `DRAFTING_FILE_TOO_LARGE` | O arquivo excede o limite de {0} MB. | 400 | Validation | Upload acima de `Drafting:Anexos:MaxMegabytes` (ou `MaxMegabytesAudio`). | Dividir o arquivo. |
+| `DRAFTING_DOCUMENT_NOT_FOUND` | Documento não encontrado. | 404 | NotFound | Id inexistente, de outro caso, ou restrito a outra pessoa. | Conferir o identificador. |
+| `DRAFTING_DOCUMENT_DUPLICATE` | Este documento já foi enviado (mesmo conteúdo). | 409 | Conflict | Mesmo hash de conteúdo no caso. | Usar o documento existente. |
 | `DRAFTING_NOT_STREAMING` | A solicitação não está em processamento; consulte o resultado em GET /pecas/{id}. | 409 | Conflict | `GET /pecas/{id}/stream` em solicitação já terminal. | Consultar `GET /pecas/{id}`. |
 | `DRAFTING_NOT_READY` | A minuta ainda não está pronta. Acompanhe o status da solicitação. | 409 | Conflict | Reservado para consumidores que exijam a minuta concluída. | Acompanhar `GET /pecas/{id}/status`. |
 | `DRAFTING_GPU_UNAVAILABLE` | A infraestrutura de IA não está disponível no momento. | 500 | Failure | A instância de GPU não subiu no prazo, o circuito está aberto ou a API da Vast.ai falhou. O detalhe fica em `gpu_instance_logs`; a solicitação continua na fila. | Verificar saldo/estado da instância na Vast.ai; o worker tenta de novo sozinho. |
 | `DRAFTING_NORMA_NOT_FOUND` | Norma não encontrada no acervo. | 404 | NotFound | Id inexistente ou norma removida do acervo normativo público. | Conferir o identificador (o `normaId` vem das fontes da peça). |
 | `DRAFTING_VECTOR_STORE_UNAVAILABLE` | O acervo de documentos está indisponível no momento. Tente novamente. | 500 | Failure | O Qdrant não respondeu ao remover um documento. | Tentar de novo; conferir o Qdrant. |
+| `DRAFTING_CASE_NOT_FOUND` | Caso não encontrado. | 404 | NotFound | Id inexistente, de outro escritório, ou caso a que a pessoa não tem acesso (nunca 403, para não revelar que existe). | Pedir acesso a quem é responsável pelo caso. |
+| `DRAFTING_CASE_CLOSED` | O caso está encerrado. Reabra-o para anexar documentos ou gerar peças. | 409 | Conflict | Escrita em caso encerrado. | `PUT /casos/{id}` com `encerrado: false`. |
+| `DRAFTING_CASE_FORBIDDEN` | Você pode consultar este caso, mas não alterá-lo. | 403 | Forbidden | Membro com permissão de leitura tentou alterar. | Pedir permissão de escrita. |
+| `DRAFTING_CONVERSION_UNAVAILABLE` | Este ambiente não consegue ler este tipo de arquivo: {0}. | 400 | Validation | Ferramenta ausente no Worker (Tesseract, LibreOffice, transcrição). | Instalar a ferramenta ou converter o arquivo. |
+| `DRAFTING_REVIEW_PENDING` | Ainda há {0} citação(ões) sem decisão. Confirme, corrija ou rejeite cada uma antes de concluir a revisão. | 409 | Conflict | `POST /pecas/{id}/revisao` com citação bloqueante pendente. | Decidir cada citação, com justificativa. |
+| `DRAFTING_REJECTED_CITATION_PRESENT` | O texto final ainda contém uma citação rejeitada: '{0}'. | 409 | Conflict | Citação rejeitada permanece no texto final. | Remover a citação e reenviar `textoFinal`. |
+| `DRAFTING_REVIEW_REQUIRED` | A exportação final exige revisão humana concluída. | 409 | Conflict | `GET /pecas/{id}/exportar` antes da revisão. | Concluir a revisão. |
+| `DRAFTING_CITATION_NOT_FOUND` | Citação não encontrada nesta peça. | 404 | NotFound | Id de citação inexistente ou de outra peça. | Conferir em `GET /pecas/{id}/citacoes`. |
+| `DRAFTING_REVIEW_CONFIRMATION_REQUIRED` | Declare que revisou a minuta enviando "declaroRevisao": true. | 400 | Validation | Conclusão sem a declaração. | Reenviar com `declaroRevisao: true`. |
+| `DRAFTING_INPUT_TOO_LARGE_FOR_MODEL` | Fatos, pedidos e instruções somam texto demais para o modelo: não sobra espaço para documentos e fundamentos. Reduza em cerca de {0} caracteres. | 400 | Validation | A entrada não cabe na janela do modelo com espaço mínimo de contexto. | Resumir, ou aumentar `Ollama:NumCtx`. |
+| `DRAFTING_DOCUMENT_NOT_IN_CASE` | Um dos documentos selecionados não pertence a este caso ou não está disponível para você. | 400 | Validation | `documentosIds` com anexo de outro caso ou restrito. | Conferir a lista. |
+| `DRAFTING_STORAGE_UNAVAILABLE` | O armazenamento de documentos está indisponível no momento. Tente novamente. | 500 | Failure | Object storage não respondeu. | Tentar de novo; conferir `Ingestao:Storage`. |
 
 ## Finance (2700–2799)
 
@@ -270,6 +295,7 @@ levantados pelo `DjenClient` e, no job de captura, relançados como
 | `FINANCE_ENTRY_DESCRIPTION_INVALID` | Informe a descrição do lançamento (até 200 caracteres). | 400 | Validation | Descrição vazia ou acima de 200 caracteres. | Corrigir a descrição. |
 | `FINANCE_ENTRY_AMOUNT_INVALID` | O valor deve ser maior que zero, com no máximo duas casas decimais. | 400 | Validation | Valor zero, negativo, absurdo ou com mais de duas casas. | Corrigir o valor. |
 | `FINANCE_ENTRY_ALREADY_PAID` | Este lançamento já foi pago. | 409 | Conflict | Marcar como pago um lançamento já pago. | Nenhuma ação. |
+| `FINANCE_ENTRY_INSTALLMENTS_INVALID` | Informe de 2 a 60 parcelas (ou meses de cobrança). | 400 | Validation | Parcelamento ou cobrança mensal com menos de 2 ou mais de 60 parcelas. | Corrigir a quantidade. |
 
 ## Internal (9000–9999)
 

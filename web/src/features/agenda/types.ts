@@ -12,6 +12,41 @@ export const tipoEventoLabels: Record<TipoEvento, string> = {
 }
 
 /**
+ * Nome do que está sendo criado/editado, no gênero certo: "Nova audiência", "Novo prazo"… O diálogo e o
+ * botão de salvar usam estes nomes para o card nunca dizer "Novo evento" quando é uma audiência.
+ * Reunião é o evento genérico da agenda; atendimento é uma reunião com o cliente.
+ */
+export interface NomeDoEvento {
+  novo: string
+  editar: string
+  criar: string
+  excluir: string
+}
+
+const nomesPorTipo: Record<TipoEvento, NomeDoEvento> = {
+  Prazo: { novo: 'Novo prazo', editar: 'Editar prazo', criar: 'Criar prazo', excluir: 'Excluir prazo?' },
+  Audiencia: {
+    novo: 'Nova audiência',
+    editar: 'Editar audiência',
+    criar: 'Criar audiência',
+    excluir: 'Excluir audiência?',
+  },
+  Reuniao: { novo: 'Novo evento', editar: 'Editar evento', criar: 'Criar evento', excluir: 'Excluir evento?' },
+  Tarefa: { novo: 'Nova tarefa', editar: 'Editar tarefa', criar: 'Criar tarefa', excluir: 'Excluir tarefa?' },
+}
+
+const nomeAtendimento: NomeDoEvento = {
+  novo: 'Novo atendimento',
+  editar: 'Editar atendimento',
+  criar: 'Criar atendimento',
+  excluir: 'Excluir atendimento?',
+}
+
+export function nomeDoEvento(tipo: TipoEvento, atendimento = false): NomeDoEvento {
+  return atendimento && tipo === 'Reuniao' ? nomeAtendimento : nomesPorTipo[tipo]
+}
+
+/**
  * Cor por tipo. Sempre acompanhada do rótulo textual no chip: cor sozinha não pode ser a
  * única diferença entre tipos (acessibilidade).
  */
@@ -33,7 +68,11 @@ export interface AgendaEvento {
   local: string | null
   processoId: string | null
   responsavelId: string | null
+  /** ISO de quando foi dado como concluído (prazo cumprido, audiência realizada…); ausente/`null` = em aberto. */
+  concluidoEm?: string | null
 }
+
+export const estaConcluido = (evento: Pick<AgendaEvento, 'concluidoEm'>) => Boolean(evento.concluidoEm)
 
 export interface AgendaPeriodo {
   /** Início inclusivo, ISO. */

@@ -4,9 +4,11 @@ using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Modules.Legal.Application.Abstractions;
 using Advocacia.Modules.Legal.Application.Authorization;
+using Advocacia.Modules.Legal.Application.Avisos;
 using Advocacia.Modules.Legal.Domain.Clientes;
 using Advocacia.Modules.Legal.Domain.Processos;
 using Advocacia.Modules.Legal.Domain.Shared;
+using Microsoft.Extensions.Logging;
 
 namespace Advocacia.Modules.Legal.Application.Features.Processos;
 
@@ -18,7 +20,9 @@ public sealed class CreateProcessoHandler(
     IProcessoRepository processoRepository,
     IClienteRepository clienteRepository,
     ILegalUnitOfWork unitOfWork,
-    ICurrentUser currentUser) : ICommandHandler<CreateProcessoCommand, ProcessoResponse>
+    ICurrentUser currentUser,
+    IAlertPublisher alertPublisher,
+    ILogger<CreateProcessoHandler> logger) : ICommandHandler<CreateProcessoCommand, ProcessoResponse>
 {
     public async Task<Result<ProcessoResponse>> Handle(CreateProcessoCommand request, CancellationToken cancellationToken)
     {
@@ -73,7 +77,8 @@ public sealed class CreateProcessoHandler(
             request.ParteContraria,
             request.ValorCausa,
             request.DataDistribuicao,
-            request.Observacoes);
+            request.Observacoes,
+            request.AdvogadosAdicionaisUserIds);
 
         if (processo.IsFailure)
         {
@@ -83,6 +88,9 @@ public sealed class CreateProcessoHandler(
         processoRepository.Add(processo.Value);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await AvisoDeAtribuicaoDeProcesso.AvisarAsync(
+            alertPublisher, logger, processo.Value, processo.Value.TodosOsAdvogados, currentUser.UserId, cancellationToken);
+
         return Result.Success(processo.Value.ToResponse());
     }
 }
@@ -91,7 +99,9 @@ public sealed class UpdateProcessoHandler(
     IProcessoRepository processoRepository,
     IClienteRepository clienteRepository,
     ILegalUnitOfWork unitOfWork,
-    ICurrentUser currentUser) : ICommandHandler<UpdateProcessoCommand>
+    ICurrentUser currentUser,
+    IAlertPublisher alertPublisher,
+    ILogger<UpdateProcessoHandler> logger) : ICommandHandler<UpdateProcessoCommand>
 {
     public async Task<Result> Handle(UpdateProcessoCommand request, CancellationToken cancellationToken)
     {
@@ -101,7 +111,7 @@ public sealed class UpdateProcessoHandler(
         }
 
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -118,6 +128,8 @@ public sealed class UpdateProcessoHandler(
 
         var foro = DadosForo.Create(request.Foro?.Tribunal, request.Foro?.Comarca, request.Foro?.Vara);
 
+        var advogadosAntes = processo.TodosOsAdvogados;
+
         var resultado = processo.Update(
             request.ClienteId,
             request.ResponsavelUserId,
@@ -127,7 +139,8 @@ public sealed class UpdateProcessoHandler(
             request.ParteContraria,
             request.ValorCausa,
             request.DataDistribuicao,
-            request.Observacoes);
+            request.Observacoes,
+            request.AdvogadosAdicionaisUserIds);
 
         if (resultado.IsFailure)
         {
@@ -136,6 +149,11 @@ public sealed class UpdateProcessoHandler(
 
         processoRepository.Update(processo);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Só quem passou a atuar agora é avisado; quem já estava no processo não recebe de novo a cada edição.
+        await AvisoDeAtribuicaoDeProcesso.AvisarAsync(
+            alertPublisher, logger, processo, AvisoDeAtribuicaoDeProcesso.NovosAdvogados(advogadosAntes, processo),
+            currentUser.UserId, cancellationToken);
 
         return Result.Success();
     }
@@ -153,7 +171,7 @@ public sealed class ChangeProcessoStatusHandler(
     public async Task<Result> Handle(ChangeProcessoStatusCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -184,7 +202,7 @@ public sealed class ArchiveProcessoHandler(
     public async Task<Result> Handle(ArchiveProcessoCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -210,7 +228,7 @@ public sealed class SetProcessoConfidencialHandler(
     public async Task<Result> Handle(SetProcessoConfidencialCommand request, CancellationToken cancellationToken)
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
-        if (processo is null || !ProcessoAcesso.PodeVer(processo, currentUser))
+        if (!ProcessoAcesso.PodeVer(processo, currentUser))
         {
             return Result.Failure(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND));
         }
@@ -230,7 +248,7 @@ public sealed class GetProcessoByIdHandler(IProcessoRepository processoRepositor
     {
         var processo = await processoRepository.GetByIdAsync(ProcessoId.From(request.ProcessoId), cancellationToken);
 
-        return processo is null || !ProcessoAcesso.PodeVer(processo, currentUser)
+        return !ProcessoAcesso.PodeVer(processo, currentUser)
             ? Result.Failure<ProcessoResponse>(ErrorFactory.From(ErrorCode.PROCESS_NOT_FOUND))
             : Result.Success(processo.ToResponse());
     }

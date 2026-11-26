@@ -1,0 +1,27 @@
+-- Desfaz 020_drafting_casos.sql (as tabelas são da migration do EF Core; use dotnet ef database update para removê-las).
+DROP INDEX IF EXISTS ix_normas_juridicas_numero;
+DROP INDEX IF EXISTS ix_norma_chunks_artigo;
+REVOKE ALL ON public.casos FROM app_user;
+DROP POLICY IF EXISTS tenant_isolation_casos_write ON casos;
+DROP POLICY IF EXISTS tenant_isolation_casos ON casos;
+ALTER TABLE casos DISABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.caso_membros FROM app_user;
+DROP POLICY IF EXISTS tenant_isolation_caso_membros_write ON caso_membros;
+DROP POLICY IF EXISTS tenant_isolation_caso_membros ON caso_membros;
+ALTER TABLE caso_membros DISABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.caso_documentos FROM app_user;
+DROP POLICY IF EXISTS tenant_isolation_caso_documentos_write ON caso_documentos;
+DROP POLICY IF EXISTS tenant_isolation_caso_documentos ON caso_documentos;
+ALTER TABLE caso_documentos DISABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.caso_documento_chunks FROM app_user;
+DROP POLICY IF EXISTS tenant_isolation_caso_documento_chunks_write ON caso_documento_chunks;
+DROP POLICY IF EXISTS tenant_isolation_caso_documento_chunks ON caso_documento_chunks;
+ALTER TABLE caso_documento_chunks DISABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.legal_document_citations FROM app_user;
+DROP POLICY IF EXISTS tenant_isolation_legal_document_citations_write ON legal_document_citations;
+DROP POLICY IF EXISTS tenant_isolation_legal_document_citations ON legal_document_citations;
+ALTER TABLE legal_document_citations DISABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.drafting_security_events FROM app_user;
+DROP POLICY IF EXISTS tenant_isolation_drafting_security_events_write ON drafting_security_events;
+DROP POLICY IF EXISTS tenant_isolation_drafting_security_events ON drafting_security_events;
+ALTER TABLE drafting_security_events DISABLE ROW LEVEL SECURITY;

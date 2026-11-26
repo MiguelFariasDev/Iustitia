@@ -68,6 +68,30 @@ function diaLocal(iso: string): Date {
 }
 
 /**
+ * Atrasada: não concluída e com prazo ANTES de hoje (vencer hoje ainda não é atraso).
+ * Tarefa sem prazo nunca atrasa.
+ */
+export function estaAtrasada(tarefa: Tarefa, agora: Date): boolean {
+  if (tarefa.coluna === 'concluido' || !tarefa.prazo) return false
+
+  return diaLocal(tarefa.prazo).getTime() < inicioDoDia(agora)
+}
+
+/** Dias de atraso (1 = venceu ontem); 0 se não está atrasada. */
+export function diasDeAtraso(tarefa: Tarefa, agora: Date): number {
+  if (!estaAtrasada(tarefa, agora)) return 0
+
+  return Math.round((inicioDoDia(agora) - diaLocal(tarefa.prazo!).getTime()) / DIA)
+}
+
+/** Atrasadas, da mais antiga para a mais recente. */
+export function tarefasAtrasadas(tarefas: readonly Tarefa[], agora: Date): Tarefa[] {
+  return tarefas
+    .filter((tarefa) => estaAtrasada(tarefa, agora))
+    .sort((a, b) => a.prazo!.localeCompare(b.prazo!))
+}
+
+/**
  * Progresso do prazo. Cor: a partir de 90% vermelho, a partir de 70% violeta, antes disso verde.
  * Concluída sempre mostra "ok" e verde, qualquer que seja o prazo. Sem prazo: 0% e "—".
  * Prazo vencido: 100%, vermelho, rótulo negativo ("-3d").

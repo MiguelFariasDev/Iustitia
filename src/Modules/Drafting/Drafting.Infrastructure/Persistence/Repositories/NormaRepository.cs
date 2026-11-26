@@ -1,5 +1,5 @@
-using System.Data;
 using System.Text;
+using Advocacia.Modules.Drafting.Application.Busca;
 using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Application.Normas;
 using Advocacia.Modules.Drafting.Domain.Normas;
@@ -10,11 +10,9 @@ using NpgsqlTypes;
 namespace Advocacia.Modules.Drafting.Infrastructure.Persistence.Repositories;
 
 /// <summary>
-/// Persistência do acervo normativo + busca por palavra-chave. A palavra-chave usa o full-text do
-/// PostgreSQL (<c>tsvector</c> 'portuguese' + <c>ts_rank_cd</c>). ATENÇÃO: isto NÃO é BM25 — o PostgreSQL
-/// não tem BM25 nativo; ts_rank_cd é um ranking por frequência/proximidade, suficiente para o papel de
-/// "segundo sinal" que a busca híbrida precisa. BM25 de verdade exigiria extensão (ParadeDB/pg_search) ou
-/// o modo esparso do Qdrant.
+/// Persistência do acervo normativo, busca por referência exata (norma + artigo, súmula, tema) e full-text de
+/// reserva. O BM25 é do Qdrant (vetor esparso com IDF); o full-text daqui (<c>tsvector</c> 'portuguese' +
+/// <c>ts_rank_cd</c>, que NÃO é BM25) só entra quando ele está fora do ar.
 /// </summary>
 public sealed class NormaRepository(DraftingDbContext db) : INormaStore, INormaSearchIndex
 {
@@ -88,19 +86,125 @@ public sealed class NormaRepository(DraftingDbContext db) : INormaStore, INormaS
         }
 
         var (sql, parametros) = MontarSql(filtro, termos, limit);
-        var connection = db.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
+
+        return await ConsultarAsync(sql, parametros, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<VectorHit>> BuscarReferenciasAsync(
+        IReadOnlyList<ReferenciaLegal> referencias, int limite, CancellationToken cancellationToken = default)
+    {
+        if (referencias.Count == 0)
         {
-            await connection.OpenAsync(cancellationToken);
+            return [];
         }
 
-        await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        foreach (var parametro in parametros)
+        var (sql, parametros) = MontarSqlReferencias(referencias.Take(20).ToList(), limite);
+
+        return await ConsultarAsync(sql, parametros, cancellationToken);
+    }
+
+    /// <summary>
+    /// A conexão é aberta PELO EF, e não por ADO direto: só assim o interceptor que define o tenant da sessão
+    /// (RLS) roda. Abrir por fora deixaria a conexão sem tenant para tudo que o mesmo contexto gravasse depois.
+    /// </summary>
+    private async Task<IReadOnlyList<VectorHit>> ConsultarAsync(
+        string sql, List<NpgsqlParameter> parametros, CancellationToken cancellationToken)
+    {
+        await db.Database.OpenConnectionAsync(cancellationToken);
+        try
         {
-            command.Parameters.Add(parametro);
+            await using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+            command.Parameters.AddRange(parametros.ToArray());
+
+            return await LerAsync(command, cancellationToken);
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
+
+    /// <summary>
+    /// Uma condição por referência, tudo por PARÂMETRO. O artigo é comparado sem ponto e sem "º" ("1.186" e
+    /// "5º" como 1186 e 5), e norma citada sem artigo só devolve os primeiros trechos dela.
+    /// </summary>
+    internal static (string Sql, List<NpgsqlParameter> Parametros) MontarSqlReferencias(
+        IReadOnlyList<ReferenciaLegal> referencias, int limite)
+    {
+        const string artigo = "upper(regexp_replace(c.artigo, '[.ºo°]', '', 'g'))";
+        var parametros = new List<NpgsqlParameter> { new("lim", Math.Clamp(limite, 1, 200)) };
+        var condicoes = new List<string>();
+        var pontos = new List<string>();
+
+        for (var i = 0; i < referencias.Count; i++)
+        {
+            var r = referencias[i];
+            var partes = new List<string>();
+            if (r.Constituicao)
+            {
+                partes.Add($"n.colecao = '{Colecoes.ConstituicaoFederal}'");
+                // ADCT reinicia a numeração: "art. 5º da CF" é o do corpo permanente.
+                partes.Add("(c.secao IS NULL OR c.secao NOT ILIKE 'ATO DAS%')");
+            }
+            else
+            {
+                parametros.Add(new NpgsqlParameter($"n{i}", r.Numero ?? string.Empty));
+                partes.Add($"replace(n.numero, '.', '') = @n{i}");
+                partes.Add(r.Tipo switch
+                {
+                    TipoReferencia.Sumula => $"n.colecao = '{Colecoes.Jurisprudencia}' AND n.tipo ILIKE '%súmula%'"
+                        + (r.Vinculante ? " AND n.tipo ILIKE '%vinculante%'" : " AND n.tipo NOT ILIKE '%vinculante%'"),
+                    TipoReferencia.Tema => $"n.colecao = '{Colecoes.Jurisprudencia}' AND (n.tipo ILIKE '%tema%' OR n.tipo ILIKE '%repercuss%')",
+                    _ => $"n.colecao = '{Colecoes.LeisFederais}'",
+                });
+                if (r.Tribunal is not null)
+                {
+                    parametros.Add(new NpgsqlParameter($"t{i}", r.Tribunal));
+                    partes.Add($"upper(n.tribunal) = @t{i}");
+                }
+            }
+
+            if (r.Artigo is not null)
+            {
+                parametros.Add(new NpgsqlParameter($"a{i}", r.Artigo));
+                partes.Add($"{artigo} = @a{i}");
+            }
+            else
+            {
+                partes.Add("c.ordem < 3");
+            }
+
+            var condicao = "(" + string.Join(" AND ", partes) + ")";
+            condicoes.Add(condicao);
+            pontos.Add($"CASE WHEN {condicao} THEN {(r.Artigo is null && r.Tipo == TipoReferencia.Norma ? 1 : 3)} ELSE 0 END");
         }
 
+        var pontuacao = string.Join(" + ", pontos);
+        var filtros = string.Join(" OR ", condicoes);
+        var sql = $"""
+            SELECT {Colunas},
+                   ({pontuacao})::float8 AS score
+            FROM norma_chunks c
+            JOIN normas_juridicas n ON n.id = c.norma_juridica_id
+            WHERE c.status = 'Indexado' AND n.status <> 'Removida' AND ({filtros})
+            ORDER BY score DESC, n.revogada, c.ordem
+            LIMIT @lim
+            """;
+
+        return (sql, parametros);
+    }
+
+    private const string Colunas = """
+        c.id AS chunk_id, c.texto, c.pagina, c.secao, c.artigo, c.paragrafo, c.inciso, c.hash_sha256 AS hash_conteudo,
+               n.id AS norma_id, n.urn, n.titulo, n.tipo, n.numero, n.data, n.situacao, n.revogada, n.versao_texto,
+               n.versao_atual AS versao_numero, n.esfera, n.uf, n.municipio, n.area, n.tribunal, n.assuntos, n.colecao,
+               n.repo_path AS arquivo_markdown_path, n.fonte_oficial_url
+        """;
+
+    private static async Task<IReadOnlyList<VectorHit>> LerAsync(
+        System.Data.Common.DbCommand command, CancellationToken cancellationToken)
+    {
         var hits = new List<VectorHit>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -185,11 +289,8 @@ public sealed class NormaRepository(DraftingDbContext db) : INormaStore, INormaS
         Any("n.uf", "ufs", f.Ufs, permiteNulo: true);
         Any("n.municipio", "municipios", f.Municipios, permiteNulo: true);
 
-        if (f.AreaEstrita && !string.IsNullOrWhiteSpace(f.Area))
-        {
-            parametros.Add(new NpgsqlParameter("area", f.Area));
-            where.Append(" AND n.area = @area");
-        }
+        // Área desconhecida (nula) não é "outra área": passa.
+        Any("n.area", "areas", f.Areas, permiteNulo: true);
 
         if (!f.IncluirRevogadas)
         {
@@ -221,10 +322,7 @@ public sealed class NormaRepository(DraftingDbContext db) : INormaStore, INormaS
         }
 
         var sql = $"""
-            SELECT c.id AS chunk_id, c.texto, c.pagina, c.secao, c.artigo, c.paragrafo, c.inciso, c.hash_sha256 AS hash_conteudo,
-                   n.id AS norma_id, n.urn, n.titulo, n.tipo, n.numero, n.data, n.situacao, n.revogada, n.versao_texto,
-                   n.versao_atual AS versao_numero, n.esfera, n.uf, n.municipio, n.area, n.tribunal, n.assuntos, n.colecao,
-                   n.arquivo_markdown_path, n.fonte_oficial_url,
+            SELECT {Colunas},
                    ts_rank_cd(c.tsv, q.query)::float8 AS score
             FROM norma_chunks c
             JOIN normas_juridicas n ON n.id = c.norma_juridica_id

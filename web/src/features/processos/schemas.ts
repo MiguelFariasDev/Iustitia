@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isValidCnj, onlyDigits } from '@/lib/validation/documento'
-import { areasDireito, statusProcesso } from './types'
+import { areasDireito } from './types'
 
 /**
  * Validação do formulário de processo — espelha Legal.Domain.Processos para avisar antes de
@@ -34,6 +34,10 @@ export const processoFormSchema = z.object({
     ),
   dataDistribuicao: z.string().trim().optional().or(z.literal('')),
   observacoes: z.string().trim().max(2000).optional().or(z.literal('')),
+  /** Advogado responsável; vazio/ausente = quem cadastra (criação) ou o atual (edição). */
+  responsavelUserId: z.string().optional(),
+  /** Outros advogados do processo; ausente = não mexer (escritório sem equipe não vê o campo). */
+  advogadosAdicionais: z.array(z.string()).max(20, 'No máximo 20 advogados adicionais.').optional(),
 })
 
 export type ProcessoFormValues = z.infer<typeof processoFormSchema>
@@ -51,8 +55,6 @@ export const processoFormDefaults: ProcessoFormValues = {
   dataDistribuicao: '',
   observacoes: '',
 }
-
-export const statusProcessoSchema = z.enum(statusProcesso as [string, ...string[]])
 
 /**
  * Converte o valor digitado em pt-BR ("1.234,56") para número. Troca o separador decimal

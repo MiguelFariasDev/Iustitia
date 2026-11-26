@@ -1,109 +1,78 @@
 using Advocacia.Modules.Drafting.Application.Abstractions;
+using Advocacia.Modules.Drafting.Application.Busca;
 using Advocacia.Modules.Drafting.Application.Models;
 using Advocacia.Modules.Drafting.Application.Normas;
-using Microsoft.Extensions.Logging;
+using Advocacia.Modules.Drafting.Domain.Casos;
 using Microsoft.Extensions.Options;
 
 namespace Advocacia.Modules.Drafting.Application.Services;
 
 /// <summary>
-/// Busca vetorial + montagem do contexto: embedding da consulta (BGE-M3) → busca no banco vetorial
-/// filtrada por tenant e área → defesa em profundidade contra hits fora do filtro → dedupe por
-/// hash → limite de trechos e de tokens.
+/// Recuperação: consulta estruturada → consultas distintas (semântica dos fatos, semântica da tese, BM25 com
+/// termos exatos, referências a dispositivos) → anexos do caso e base jurídica → contexto dentro da janela.
 /// </summary>
 public sealed class RagService(
+    IConsultaEnriquecidaService consultas,
     IEmbeddingService embeddings,
-    IVectorStore vectorStore,
-    IOptions<RagOptions> options,
-    ILogger<RagService> logger,
-    IHybridSearchService? normas = null) : IRagService
+    IBuscaDocumentosCasoService buscaCaso,
+    IBuscaJuridicaService buscaJuridica,
+    IOptions<RagOptions> rag,
+    IOptions<BuscaNormasOptions> busca,
+    IOptions<JanelaModeloOptions> janela) : IRagService
 {
-    /// <summary>Quanto da consulta vira texto de embedding: o começo dos fatos já carrega o assunto.</summary>
     private const int ConsultaMaxChars = 2000;
 
-    /// <summary>Bônus aos trechos de documentos escolhidos pelo usuário, para vencerem normas de score parecido.</summary>
-    private const double ClientePriorizadoBonus = 0.5;
-
-    public async Task<RagContext> RetrieveAsync(RagQuery query, CancellationToken cancellationToken = default)
+    public async Task<ConsultaPreparada> PrepararAsync(
+        PecaInput input, Caso caso, IReadOnlyList<CasoDocumento> documentos, CancellationToken cancellationToken = default)
     {
-        var settings = options.Value;
-        var limit = settings.LimiteEfetivo;
+        var consulta = await consultas.ExtrairAsync(input, documentos, cancellationToken);
 
-        var queryText = BuildQueryText(query);
-        var vectors = await embeddings.EmbedAsync([queryText], cancellationToken);
-        if (vectors.Count != 1)
+        var semanticaFatos = Cortar($"{PecaCatalogo.RotuloArea(input.Area)}. {input.Pedidos}\n{input.Fatos}");
+        var semanticaTese = Cortar($"{consulta.Tese}. {string.Join(", ", consulta.Temas)}");
+        var textos = new[] { semanticaFatos, semanticaTese }.Where(t => t.Trim(' ', '.').Length > 0).Distinct().ToList();
+        var vetores = await embeddings.EmbedAsync(textos, cancellationToken);
+        if (vetores.Count != textos.Count)
         {
-            throw new InvalidOperationException("O serviço de embeddings devolveu um número inesperado de vetores.");
+            throw new LlmServiceException("O serviço de embeddings devolveu um número inesperado de vetores.");
         }
 
-        // Pede o dobro: duplicatas e hits descartados não podem deixar o contexto abaixo do mínimo.
-        var hits = await vectorStore.SearchAsync(
-            new VectorSearchQuery(
-                query.TenantId,
-                vectors[0],
-                limit * 2,
-                Area: query.Area,
-                DocumentosIds: query.DocumentosIds.Count == 0 ? null : query.DocumentosIds,
-                ScoreMinimo: settings.ScoreMinimo,
-                UsuarioId: query.UsuarioId),
-            cancellationToken);
-
-        var inScope = hits.Where(hit => IsInScope(hit, query)).ToList();
-
-        // Acervo normativo público (leis, jurisprudência…): busca híbrida + reranking. Ausente em testes/dev sem acervo.
-        IReadOnlyList<VectorHit> normHits = normas is null
-            ? []
-            : await normas.BuscarAsync(
-                new NormaBusca(queryText, new NormaFiltro(Area: string.IsNullOrWhiteSpace(query.Area) ? null : query.Area)),
-                vectors[0],
-                cancellationToken);
-
-        RagContext context;
-        if (normHits.Count == 0)
+        var exato = string.Join(' ', new[]
         {
-            context = ContextSelector.Select(inScope, limit, settings.MaxTokensContexto, settings.CharsPorToken, settings.ScoreMinimo);
-        }
-        else
-        {
-            // Os scores dos dois lados não são comparáveis (cosseno × reranking): documentos que o usuário
-            // escolheu levam prioridade explícita; os demais do escritório entram pelo próprio score.
-            var prioridade = query.DocumentosIds.Count > 0 ? ClientePriorizadoBonus : 0;
-            var cliente = inScope
-                .Where(hit => settings.ScoreMinimo is not { } minimo || hit.Score >= minimo)
-                .Select(hit => hit with { Score = hit.Score + prioridade });
-            context = ContextSelector.Select(
-                cliente.Concat(normHits), limit, settings.MaxTokensContexto, settings.CharsPorToken);
-        }
+            consulta.Tese, string.Join(' ', consulta.Temas), string.Join(' ', consulta.DispositivosSuspeitos), input.Pedidos,
+        });
+        var referencias = ExtratorReferencias.Extrair(
+            $"{input.Fatos}\n{input.Pedidos}\n{input.InstrucoesAdicionais}\n{Combinados(consulta.DispositivosSuspeitos)}");
 
-        // Só contagens: o texto dos trechos e da consulta nunca vai para o log.
-        logger.LogInformation(
-            "RAG: {Recuperados} hits do escritório, {Fora} fora do escopo, {Normas} do acervo normativo, {Escolhidos} no contexto (~{Tokens} tokens), {Descartados} descartados.",
-            hits.Count, hits.Count - inScope.Count, normHits.Count, context.Chunks.Count, context.TokensAproximados, context.Descartados);
-
-        return context;
+        return new ConsultaPreparada(consulta, vetores, Cortar(exato), referencias, caso.Uf, input.DataFatos);
     }
 
-    private static string BuildQueryText(RagQuery query)
-    {
-        var text = $"{PecaCatalogo.RotuloTipo(query.TipoPeca)} {PecaCatalogo.RotuloArea(query.Area)}\n{query.Pedidos}\n{query.Fatos}";
+    public Task<IReadOnlyList<VectorHit>> BuscarCasoAsync(
+        FiltroCaso filtro, ConsultaPreparada consulta, CancellationToken cancellationToken = default) =>
+        buscaCaso.BuscarAsync(filtro, consulta, cancellationToken);
 
-        return text.Length <= ConsultaMaxChars ? text : text[..ConsultaMaxChars];
+    public Task<IReadOnlyList<VectorHit>> BuscarJuridicoAsync(
+        ConsultaPreparada consulta, CancellationToken cancellationToken = default) =>
+        buscaJuridica.BuscarAsync(consulta, cancellationToken);
+
+    public RagContext Montar(PecaInput input, IReadOnlyList<VectorHit> caso, IReadOnlyList<VectorHit> juridico)
+    {
+        var chars = rag.Value.CharsPorToken;
+        var orcamento = Math.Min(rag.Value.MaxTokensContexto, OrcamentoContexto.Disponivel(input, janela.Value, chars));
+
+        return MontadorContexto.Montar(caso, juridico, busca.Value, orcamento, chars);
     }
 
-    /// <summary>
-    /// O filtro de verdade roda no banco vetorial; isto é a segunda trava. Hit de OUTRA área é
-    /// descartado; hit sem área no payload passa (indexação antiga) — a regra de tenant, essa sim,
-    /// não admite exceção e já vem do filtro obrigatório do <see cref="IVectorStore"/>.
-    /// </summary>
-    private static bool IsInScope(VectorHit hit, RagQuery query)
+    /// <summary>O modelo às vezes separa a lei do artigo ("Código Civil", "art. 389"): junta para o extrator casar os dois.</summary>
+    internal static string Combinados(IReadOnlyList<string> dispositivos)
     {
-        if (!string.IsNullOrEmpty(hit.Meta.Area)
-            && !string.Equals(hit.Meta.Area, query.Area, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
+        var norma = dispositivos.FirstOrDefault(d => NormasConhecidas.PorNome(d) is not null);
+        var linhas = dispositivos.Select(d =>
+            norma is not null && d.StartsWith("art", StringComparison.OrdinalIgnoreCase) && ExtratorReferencias.Extrair(d).Count == 0
+                ? $"{d} do {norma}"
+                : d);
 
-        return query.DocumentosIds.Count == 0
-            || (hit.Meta.DocumentoOrigemId is { } documentoId && query.DocumentosIds.Contains(documentoId));
+        return string.Join('\n', linhas);
     }
+
+    private static string Cortar(string texto) => texto.Length <= ConsultaMaxChars ? texto : texto[..ConsultaMaxChars];
 }

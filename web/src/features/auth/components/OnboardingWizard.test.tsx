@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import type { UserEvent } from '@testing-library/user-event'
 import { mockUser } from '@/lib/auth/mockAuth'
 import { useAuthStore } from '@/stores/authStore'
@@ -147,6 +147,36 @@ describe('OnboardingWizard — cadastro de ponta a ponta (backend cria a conta, 
     )
     expect(signIn).toHaveBeenCalledWith({ email: 'ana@souza.adv.br', password: 'Senha123!' })
     expect(useAuthStore.getState().session?.accessToken).toBe('tok')
+  })
+
+  it('toques repetidos em "Criar" com a rede lenta cadastram UMA vez só', async () => {
+    let concluir: (valor: typeof created) => void = () => {}
+    vi.mocked(api.createTenant).mockImplementation(
+      () => new Promise((resolve) => (concluir = resolve))
+    )
+    const { user } = renderWithProviders(<OnboardingWizard />)
+    await user.type(screen.getByLabelText('Nome do escritório'), 'Souza & Associados')
+    await user.type(screen.getByLabelText('CNPJ'), '11222333000181')
+    await escolherOab(user)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await preencherTitular(user)
+    await user.click(await screen.findByRole('combobox', { name: 'Tamanho da equipe' }))
+    await user.click(await screen.findByRole('option', { name: '2 a 5 pessoas' }))
+    await user.click(screen.getByLabelText('Cível'))
+    await user.click(screen.getByLabelText(/Estou ciente de que toda sugestão de IA/))
+    await user.click(screen.getByLabelText(/Li e aceito os termos de uso/))
+
+    // Quatro toques no mesmo instante, antes de o React redesenhar o botão desabilitado.
+    const criar = screen.getByRole('button', { name: 'Criar escritório' })
+    fireEvent.click(criar)
+    fireEvent.click(criar)
+    fireEvent.click(criar)
+    fireEvent.click(criar)
+    await waitFor(() => expect(api.createTenant).toHaveBeenCalled())
+    concluir(created)
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/painel'))
+    expect(api.createTenant).toHaveBeenCalledTimes(1)
   })
 
   it('só entra DEPOIS de o cadastro terminar', async () => {
