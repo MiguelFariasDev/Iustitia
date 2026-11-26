@@ -8,7 +8,9 @@ import { ErrorState } from '@/components/shared/ErrorState'
 import { SegmentedControl } from '@/components/shared/SegmentedControl'
 import { UrgencyBadge } from '@/components/shared/UrgencyBadge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConcluirEventoButton } from '@/features/agenda/components/ConcluirEventoButton'
 import { formatHora } from '@/features/agenda/dates'
+import { tiposEvento } from '@/features/agenda/types'
 import { cn } from '@/lib/utils'
 import { useTenantStore } from '@/stores/tenantStore'
 import { filterQueue, type QueueFilter, type QueueItem } from '../workQueue'
@@ -94,10 +96,10 @@ export function WorkQueue({ items, isPending, isError, onRetry, className }: Wor
         ) : (
           <ul className="divide-y">
             {visiveis.map((item) => (
-              <li key={item.id}>
+              <li key={item.id} className="flex items-center gap-2 pr-3 hover:bg-accent">
                 <Link
                   href={item.href as never}
-                  className="grid items-center gap-x-3 gap-y-1 px-4 py-3 outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:grid-cols-[118px_1fr_190px_72px]"
+                  className="grid min-w-0 flex-1 items-center gap-x-3 gap-y-1 px-4 py-3 outline-none focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:grid-cols-[118px_1fr_190px_72px]"
                 >
                   <span>
                     <UrgencyBadge
@@ -134,6 +136,11 @@ export function WorkQueue({ items, isPending, isError, onRetry, className }: Wor
                     {prazoTexto(item)}
                   </span>
                 </Link>
+                {item.eventoId && item.kind !== 'Revisao' && tiposEvento.includes(item.kind) ? (
+                  <ConcluirEventoButton
+                    evento={{ id: item.eventoId, titulo: item.title, tipo: item.kind }}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>

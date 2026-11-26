@@ -124,4 +124,36 @@ describe('AgendaView', () => {
       expect(depois.inicio).not.toBe(antes.inicio)
     })
   })
+
+  it('o diálogo se chama pelo tipo escolhido: "Nova audiência", "Novo prazo", nunca "Novo evento"', async () => {
+    const { user } = await renderAgenda()
+
+    await user.click(screen.getByRole('button', { name: 'Novo evento' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Novo evento' })
+
+    await user.click(within(dialog).getByRole('combobox', { name: /Tipo/ }))
+    await user.click(await screen.findByRole('option', { name: 'Audiência' }))
+
+    expect(screen.getByRole('dialog', { name: 'Nova audiência' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Criar audiência' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Novo evento' })).toBeNull()
+  })
+
+  it('conclui um prazo pelo diálogo e ele aparece riscado, e pode ser reaberto', async () => {
+    const { user } = await renderAgenda()
+
+    await user.click(screen.getByRole('button', { name: /Prazo: Prazo: contestação/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Editar prazo' })
+    await user.click(within(dialog).getByRole('button', { name: 'Concluir prazo: Prazo: contestação' }))
+
+    const chip = await screen.findByRole('button', { name: /Prazo: Prazo: contestação.*concluído/ })
+    expect(chip).toHaveClass('line-through')
+
+    await user.click(chip)
+    const reaberto = await screen.findByRole('dialog', { name: 'Editar prazo' })
+    await user.click(within(reaberto).getByRole('button', { name: 'Reabrir prazo: Prazo: contestação' }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Prazo: Prazo: contestação/ })).not.toHaveClass('line-through')
+    )
+  })
 })

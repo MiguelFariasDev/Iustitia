@@ -34,6 +34,10 @@ export const processoFormSchema = z.object({
     ),
   dataDistribuicao: z.string().trim().optional().or(z.literal('')),
   observacoes: z.string().trim().max(2000).optional().or(z.literal('')),
+  /** Advogado responsável; vazio/ausente = quem cadastra (criação) ou o atual (edição). */
+  responsavelUserId: z.string().optional(),
+  /** Outros advogados do processo; ausente = não mexer (escritório sem equipe não vê o campo). */
+  advogadosAdicionais: z.array(z.string()).max(20, 'No máximo 20 advogados adicionais.').optional(),
 })
 
 export type ProcessoFormValues = z.infer<typeof processoFormSchema>

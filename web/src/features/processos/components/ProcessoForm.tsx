@@ -32,11 +32,13 @@ import {
   isValidCnj,
   tribunalTemConsultaPublica,
 } from '@/lib/validation/documento'
+import { useAccess } from '@/hooks/useAccess'
 import { toFormPatch, type ProcessoTribunal } from '../datajud'
 import { useConsultarTribunal } from '../hooks'
 import { processoFormDefaults, processoFormSchema, type ProcessoFormValues } from '../schemas'
 import { areaDireitoLabels, areasDireito } from '../types'
 import { ClienteSelect } from './ClienteSelect'
+import { AdvogadosField } from './AdvogadosField'
 import { ConsultaTribunalDialog } from './ConsultaTribunalDialog'
 
 interface ProcessoFormProps {
@@ -64,6 +66,9 @@ export function ProcessoForm({
     reValidateMode: 'onChange',
   })
 
+  const { hasTeam } = useAccess()
+  const responsavel = form.watch('responsavelUserId') ?? ''
+  const advogadosAdicionais = form.watch('advogadosAdicionais') ?? []
   const [consultaAberta, setConsultaAberta] = useState(false)
   const consulta = useConsultarTribunal()
 
@@ -219,6 +224,17 @@ export function ProcessoForm({
                 </FormItem>
               )}
             />
+
+            {hasTeam ? (
+              <AdvogadosField
+                responsavel={responsavel}
+                adicionais={advogadosAdicionais}
+                onChange={({ responsavel: novoResponsavel, adicionais }) => {
+                  form.setValue('responsavelUserId', novoResponsavel, { shouldDirty: true })
+                  form.setValue('advogadosAdicionais', adicionais, { shouldDirty: true })
+                }}
+              />
+            ) : null}
           </CardContent>
         </Card>
 

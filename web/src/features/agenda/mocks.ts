@@ -81,6 +81,12 @@ export function mockUpdateEvento(id: string, patch: Partial<AgendaEvento>): Agen
   return atualizado
 }
 
+export function mockConcluirEvento(id: string, concluido: boolean): boolean {
+  return (
+    mockUpdateEvento(id, { concluidoEm: concluido ? new Date().toISOString() : null }) !== null
+  )
+}
+
 export function mockDeleteEvento(id: string): boolean {
   const antes = eventos.length
   eventos = eventos.filter((e) => e.id !== id)

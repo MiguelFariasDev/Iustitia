@@ -4,6 +4,7 @@ import { routes } from '@/config/routes'
 import { useTenantStore } from '@/stores/tenantStore'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { formatHora } from '@/features/agenda/dates'
+import { estaConcluido } from '@/features/agenda/types'
 import { TarefasEmAtraso } from '@/features/tarefas/components/TarefasEmAtraso'
 import { useTarefasComEstado } from '@/features/tarefas/hooks'
 import { tarefasAtrasadas } from '@/features/tarefas/kanban'
@@ -181,7 +182,14 @@ export function AdvogadoPanel({ variant, metrics, work, now }: AdvogadoPanelProp
           ) : (
             <ul className="space-y-2">
               {hojeDaAgenda.map((evento) => (
-                <li key={evento.id} className="flex gap-3 text-sm">
+                <li
+                  key={evento.id}
+                  className={
+                    estaConcluido(evento)
+                      ? 'flex gap-3 text-sm text-muted-foreground line-through'
+                      : 'flex gap-3 text-sm'
+                  }
+                >
                   <span
                     className={
                       evento.tipo === 'Prazo'

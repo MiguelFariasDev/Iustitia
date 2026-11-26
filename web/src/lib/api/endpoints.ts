@@ -61,6 +61,8 @@ export const endpoints = {
     eventos: '/agenda/eventos',
     eventoById: (id: string) => `/agenda/eventos/${id}`,
     reschedule: (id: string) => `/agenda/eventos/${id}/reschedule`,
+    /** PATCH { done } — conclui ou reabre o compromisso. */
+    baixa: (id: string) => `/agenda/eventos/${id}/baixa`,
   },
   /** Criação de peças com IA (Drafting). A geração é assíncrona: enfileira e se acompanha por status. */
   pecas: {

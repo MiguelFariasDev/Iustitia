@@ -36,6 +36,8 @@ export interface EventoPreset {
   tipo?: TipoEvento
   descricao?: string
   diaInteiro?: boolean
+  /** Reunião criada como "atendimento ao cliente": só muda o nome do diálogo ("Novo atendimento"). */
+  atendimento?: boolean
 }
 
 export function eventoFormDefaults(inicio: string, preset: EventoPreset = {}): EventoFormValues {

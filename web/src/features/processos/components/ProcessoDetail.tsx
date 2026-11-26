@@ -182,6 +182,15 @@ export function ProcessoDetail({ processoId }: { processoId: string }) {
                   />
                 </span>
               </Field>
+              {(processo.advogadosAdicionaisUserIds ?? []).length > 0 ? (
+                <Field label="Outros advogados">
+                  <ul className="flex flex-col gap-1">
+                    {(processo.advogadosAdicionaisUserIds ?? []).map((id) => (
+                      <li key={id}>{usuarios?.find((u) => u.id === id)?.name ?? 'Advogado'}</li>
+                    ))}
+                  </ul>
+                </Field>
+              ) : null}
               <Field label="Distribuição">
                 {processo.dataDistribuicao ? formatDate(processo.dataDistribuicao) : null}
               </Field>

@@ -41,7 +41,8 @@ import {
   type EventoFormValues,
   type EventoPreset,
 } from '../schemas'
-import { tipoEventoLabels, tiposEvento, type AgendaEvento } from '../types'
+import { nomeDoEvento, tipoEventoLabels, tiposEvento, type AgendaEvento } from '../types'
+import { ConcluirEventoButton } from './ConcluirEventoButton'
 import { ProcessoSelect } from './ProcessoSelect'
 import { ResponsavelSelect } from './ResponsavelSelect'
 
@@ -108,6 +109,9 @@ function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClos
   })
 
   const diaInteiro = useWatch({ control: form.control, name: 'diaInteiro' })
+  // O nome segue o tipo escolhido: trocar para "Audiência" já muda o card para "Nova audiência".
+  const tipoEscolhido = useWatch({ control: form.control, name: 'tipo' })
+  const nome = nomeDoEvento(tipoEscolhido, state.atendimento && !evento)
   const isSaving = create.isPending || update.isPending
 
   function submit(values: EventoFormValues) {
@@ -118,7 +122,7 @@ function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClos
   return (
     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
       <DialogHeader>
-        <DialogTitle>{evento ? 'Editar evento' : 'Novo evento'}</DialogTitle>
+        <DialogTitle>{evento ? nome.editar : nome.novo}</DialogTitle>
         <DialogDescription>
           Prazos, audiências e reuniões avisam o responsável 1 dia e 1 hora antes.
         </DialogDescription>
@@ -277,14 +281,17 @@ function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClos
 
           <DialogFooter className="gap-2 sm:justify-between">
             {evento ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setConfirmDelete(true)}
-                disabled={isSaving}
-              >
-                Excluir
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <ConcluirEventoButton evento={evento} onDone={onClose} className="h-9 px-3 text-sm" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={isSaving}
+                >
+                  Excluir
+                </Button>
+              </div>
             ) : (
               <span />
             )}
@@ -294,7 +301,7 @@ function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClos
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? <LoadingSpinner /> : null}
-                {evento ? 'Salvar' : 'Criar evento'}
+                {evento ? 'Salvar' : nome.criar}
               </Button>
             </div>
           </DialogFooter>
@@ -304,8 +311,8 @@ function EventoDialogBody({ state, onClose }: { state: EventoDialogState; onClos
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="Excluir evento?"
-        description="O evento sai da agenda e os lembretes deixam de ser enviados."
+        title={nome.excluir}
+        description="O item sai da agenda e os lembretes deixam de ser enviados."
         confirmLabel="Excluir"
         destructive
         isPending={remove.isPending}

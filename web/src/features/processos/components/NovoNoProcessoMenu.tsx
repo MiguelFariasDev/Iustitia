@@ -60,6 +60,7 @@ export function presetDoEvento(
         processoId,
         tipo: 'Reuniao',
         titulo: clienteNome ? `Atendimento — ${clienteNome}` : 'Atendimento ao cliente',
+        atendimento: true,
       }
     default:
       return { processoId, tipo: 'Reuniao' }

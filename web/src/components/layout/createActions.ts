@@ -1,9 +1,11 @@
 import {
   Briefcase,
+  CalendarClock,
   CalendarPlus,
   CheckSquare,
   FilePlus2,
   FileText,
+  Gavel,
   type LucideIcon,
   UserPlus,
   Users,
@@ -24,7 +26,10 @@ export const createActions: CreateAction[] = [
   { id: 'process', label: 'Novo processo', icon: Briefcase, href: '/processos/novo' as Route },
   { id: 'client', label: 'Novo cliente', icon: Users, href: '/clientes/novo' as Route },
   { id: 'task', label: 'Nova tarefa', icon: CheckSquare, href: `${routes.tasks}?nova=1` as Route },
-  { id: 'event', label: 'Novo evento', icon: CalendarPlus, href: `${routes.agenda}?novo=1` as Route },
+  // Prazo, audiência e evento abrem o formulário da agenda já no tipo escolhido (?novo=prazo|audiencia|evento).
+  { id: 'deadline', label: 'Novo prazo', icon: CalendarClock, href: `${routes.agenda}?novo=prazo` as Route },
+  { id: 'hearing', label: 'Nova audiência', icon: Gavel, href: `${routes.agenda}?novo=audiencia` as Route },
+  { id: 'event', label: 'Novo evento', icon: CalendarPlus, href: `${routes.agenda}?novo=evento` as Route },
   { id: 'document', label: 'Novo documento', icon: FilePlus2 },
   { id: 'brief', label: 'Nova peça', icon: FileText, href: routes.drafting },
   {

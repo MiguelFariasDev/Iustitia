@@ -9,7 +9,13 @@ import {
   type CalendarEventDto,
   type ListCalendarEventsDto,
 } from './contract'
-import { mockCreateEvento, mockDeleteEvento, mockListEventos, mockUpdateEvento } from './mocks'
+import {
+  mockConcluirEvento,
+  mockCreateEvento,
+  mockDeleteEvento,
+  mockListEventos,
+  mockUpdateEvento,
+} from './mocks'
 import type { EventoFormValues } from './schemas'
 import { formToPayload } from './schemas'
 import type { AgendaEvento, AgendaPeriodo } from './types'
@@ -103,6 +109,18 @@ export async function rescheduleEvento(
     startAt: periodo.inicio,
     endAt: periodo.fim,
   })
+}
+
+/** Conclui (ou reabre) o compromisso: PATCH …/baixa. */
+export async function concluirEvento(id: string, concluido: boolean): Promise<void> {
+  if (env.useMocks) {
+    if (!mockConcluirEvento(id, concluido)) throw notFound()
+
+    await mockResponse(null, 100)
+    return
+  }
+
+  await apiClient.patch(endpoints.agenda.baixa(id), { done: concluido })
 }
 
 export async function deleteEvento(id: string): Promise<void> {

@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 import { EventoDialog, type EventoDialogState } from '@/features/agenda/components/EventoDialog'
 import { formatHora } from '@/features/agenda/dates'
 import { eventosDoProcessoQuery } from '@/features/agenda/queries'
-import { tipoEventoLabels, type AgendaEvento, type TipoEvento } from '@/features/agenda/types'
+import { ConcluirEventoButton } from '@/features/agenda/components/ConcluirEventoButton'
+import { estaConcluido, tipoEventoLabels, type AgendaEvento, type TipoEvento } from '@/features/agenda/types'
 import { useNow } from '@/hooks/useNow'
 import { formatDate } from '@/lib/format'
 import { presetDoEvento } from './NovoNoProcessoMenu'
@@ -121,18 +122,29 @@ function ItemDaAgenda({
   passou: boolean
   onAbrir: () => void
 }) {
+  const concluido = estaConcluido(evento)
+  const apagado = concluido || passou
+
   return (
-    <li>
+    <li className="flex items-center gap-2 pr-3 hover:bg-accent">
       <button
         type="button"
         onClick={onAbrir}
-        className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-w-0 flex-1 flex-wrap items-center gap-3 px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={`Abrir ${tipoEventoLabels[evento.tipo]}: ${evento.titulo}`}
       >
-        <StatusBadge tone={passou ? 'neutral' : tomDoTipo[evento.tipo]}>
+        <StatusBadge tone={apagado ? 'neutral' : tomDoTipo[evento.tipo]}>
           {tipoEventoLabels[evento.tipo]}
         </StatusBadge>
-        <span className={passou ? 'min-w-0 flex-1 truncate text-sm text-muted-foreground' : 'min-w-0 flex-1 truncate text-sm font-medium'}>
+        <span
+          className={
+            concluido
+              ? 'min-w-0 flex-1 truncate text-sm text-muted-foreground line-through'
+              : passou
+                ? 'min-w-0 flex-1 truncate text-sm text-muted-foreground'
+                : 'min-w-0 flex-1 truncate text-sm font-medium'
+          }
+        >
           {evento.titulo}
         </span>
         {evento.local ? <span className="text-xs text-muted-foreground">{evento.local}</span> : null}
@@ -140,8 +152,13 @@ function ItemDaAgenda({
           {formatDate(evento.inicio)}
           {evento.diaInteiro ? '' : ` ${formatHora(evento.inicio)}`}
         </time>
-        {passou ? <span className="text-xs text-muted-foreground">realizado</span> : null}
+        {concluido ? (
+          <span className="text-xs text-muted-foreground">concluído</span>
+        ) : passou ? (
+          <span className="text-xs text-muted-foreground">passou</span>
+        ) : null}
       </button>
+      <ConcluirEventoButton evento={evento} />
     </li>
   )
 }
