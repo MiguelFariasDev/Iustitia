@@ -94,7 +94,6 @@ de números, horário e contador, para os dígitos não "dançarem".
 | `MetricCard` | Métrica com variação e mini gráfico opcional |
 | `MiniBarChart` | Tendência em CSS puro, sem biblioteca de charts |
 | `OnboardingTooltip` | Aviso de primeiro acesso, dispensa persistida |
-| `HighlightBanner` | Faixa de destaque para novidades |
 | `ComingSoon` | Placeholder de módulo de fase futura |
 
 ### `LoadingSpinner` e a regra do `role="status"`

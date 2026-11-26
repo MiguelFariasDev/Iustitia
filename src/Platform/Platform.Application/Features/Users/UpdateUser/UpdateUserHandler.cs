@@ -3,6 +3,7 @@ using Advocacia.BuildingBlocks.Application.Messaging;
 using Advocacia.BuildingBlocks.Domain.Errors;
 using Advocacia.BuildingBlocks.Domain.Results;
 using Advocacia.Platform.Application.Abstractions;
+using Advocacia.Platform.Application.Common;
 using Advocacia.Platform.Domain.Auditing;
 using Advocacia.Platform.Domain.Identity;
 
@@ -23,13 +24,15 @@ public sealed class UpdateUserHandler(
 
         var before = new { user.Name, user.Specialty, user.AvatarUrl, user.Phone };
 
-        var updateResult = user.UpdateProfile(request.Name, request.Phone, request.AvatarUrl);
+        // Campo ausente (null) = manter; texto em branco = limpar. O formulário de perfil não edita
+        // especialidade nem avatar, e enviar null aqui os apagava a cada "Salvar".
+        var updateResult = user.UpdateProfile(request.Name, request.Phone, CampoOpcional.Resolver(request.AvatarUrl, user.AvatarUrl));
         if (updateResult.IsFailure)
         {
             return Result.Failure<UpdateUserResponse>(updateResult.Error);
         }
 
-        user.UpdateSpecialty(request.Specialty);
+        user.UpdateSpecialty(CampoOpcional.Resolver(request.Specialty, user.Specialty));
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

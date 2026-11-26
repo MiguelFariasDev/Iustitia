@@ -8,6 +8,8 @@ export const endpoints = {
     login: '/auth/login',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
+    /** POST — registra o login de quem entrou direto no Supabase (último acesso + auditoria). */
+    session: '/auth/session',
   },
   tenants: {
     create: '/tenants',

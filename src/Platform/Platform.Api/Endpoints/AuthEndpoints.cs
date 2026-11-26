@@ -2,6 +2,7 @@ using Advocacia.Platform.Api.Extensions;
 using Advocacia.Platform.Application.Features.Auth.Login;
 using Advocacia.Platform.Application.Features.Auth.Logout;
 using Advocacia.Platform.Application.Features.Auth.RefreshToken;
+using Advocacia.Platform.Application.Features.Auth.RegisterSession;
 using Advocacia.Platform.Infrastructure.Auth.Authorization;
 using MediatR;
 
@@ -20,6 +21,12 @@ public static class AuthEndpoints
         group.MapPost("/refresh", async (RefreshTokenCommand command, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(command, cancellationToken)).ToHttpResult())
             .AllowAnonymous();
+
+        group.MapPost("/session", async (ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new RegisterSessionCommand(), cancellationToken)).ToHttpResult())
+            .WithName("RegisterSession")
+            .WithSummary("Registra o login de quem entrou direto no Supabase Auth (último acesso + auditoria).")
+            .RequireAuthorization(Policies.AnyAuthenticatedUser);
 
         group.MapPost("/logout", async (LogoutCommand command, ISender sender, CancellationToken cancellationToken) =>
                 (await sender.Send(command, cancellationToken)).ToHttpResult())

@@ -31,6 +31,7 @@ import { env } from '@/config/env'
 import { routes } from '@/config/routes'
 import { getErrorMessage } from '@/lib/api/errors'
 import { authService } from '@/lib/auth/authService'
+import { registerSession } from '@/lib/auth/registerSession'
 import { notify } from '@/lib/notify'
 import { useAuthStore } from '@/stores/authStore'
 import { brazilianStates } from '@/lib/validation/common'
@@ -149,6 +150,7 @@ export function OnboardingWizard() {
     try {
       const session = await authService.signIn({ email, password })
       useAuthStore.getState().setSession(session)
+      void registerSession()
     } catch {
       setCompletion({ email, reason: 'login' })
       return

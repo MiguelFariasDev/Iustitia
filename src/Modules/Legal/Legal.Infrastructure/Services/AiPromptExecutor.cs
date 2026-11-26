@@ -82,7 +82,7 @@ public sealed class AiPromptExecutor(
             await usageRecorder.RecordAsync(
                 new AiUsageEntry(
                     purpose, model, template.Version, 0, 0, 0, 0, latencyMs,
-                    false, response.Error.Code, null),
+                    false, response.Error.Code, response.Error.Reference),
                 cancellationToken);
 
             return Result.Failure<AiCompletion>(response.Error);

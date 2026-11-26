@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isValidCnj, onlyDigits } from '@/lib/validation/documento'
-import { areasDireito, statusProcesso } from './types'
+import { areasDireito } from './types'
 
 /**
  * Validação do formulário de processo — espelha Legal.Domain.Processos para avisar antes de
@@ -55,8 +55,6 @@ export const processoFormDefaults: ProcessoFormValues = {
   dataDistribuicao: '',
   observacoes: '',
 }
-
-export const statusProcessoSchema = z.enum(statusProcesso as [string, ...string[]])
 
 /**
  * Converte o valor digitado em pt-BR ("1.234,56") para número. Troca o separador decimal

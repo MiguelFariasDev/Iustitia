@@ -5,7 +5,11 @@ namespace Advocacia.BuildingBlocks.Domain.Results;
 /// em vez de exceptions. <see cref="Code"/> deve ser estável (ex.: "tenant.cnpj.invalid") para
 /// permitir tratamento programático (i18n, mapeamento HTTP, etc.).
 /// </summary>
-public sealed record Error(string Code, string Message, ErrorType Type)
+/// <param name="Reference">
+/// Identificador do lado de fora para suporte (ex.: <c>request-id</c> da Anthropic numa chamada que falhou).
+/// Opcional e nunca exibido ao usuário final.
+/// </param>
+public sealed record Error(string Code, string Message, ErrorType Type, string? Reference = null)
 {
     public static readonly Error None = new(string.Empty, string.Empty, ErrorType.Failure);
 
