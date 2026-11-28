@@ -113,24 +113,36 @@ public sealed class PublicationConfiguration : IEntityTypeConfiguration<Publicat
             .IsDescending(false, false, true)
             .HasDatabaseName("ix_publications_tenant_process_published");
 
-        builder.HasIndex(publication => new { publication.TenantId, publication.Status })
-            .HasDatabaseName("ix_publications_tenant_status");
 
-        // Fila de revisão humana. A segunda coluna é published_at, NÃO process_id: a consulta
-        // da fila é "as pendentes do escritório, mais antigas primeiro"
-        // (PublicationsPendingReviewSpecification), e um índice chaveado por process_id
-        // obriga o Postgres a ler TODAS as pendentes e ordenar em memória.
+        // Índices de LISTAGEM (medidos em 300 mil linhas, escritório com 150 mil — ver
+        // docs/database/performance-consultas.md). Todos parciais em is_deleted = false (o filtro
+        // global do EF sempre o aplica) e já na ordem da tela, o que elimina o Sort.
         //
-        // Medido na prova de conceito com 50 mil publicações (Etapa 1.3, Parte 6.3):
-        // 25,0 ms com process_id (top-N heapsort sobre 2.500 linhas) contra 0,4 ms com
-        // published_at (index scan já ordenado, lê só as 20 do LIMIT) — 60x.
-        builder.HasIndex(publication => new { publication.TenantId, publication.PublishedAt })
-            .HasFilter("status = 'PendingReview' AND is_deleted = false")
-            .HasDatabaseName("ix_publications_tenant_pending_review");
+        // Lista geral / não lidas / contagem total: published_on DESC, captured_at DESC.
+        builder.HasIndex(publication => new { publication.TenantId, publication.PublishedOn, publication.CapturedAt })
+            .IsDescending(false, true, true)
+            .HasFilter("is_deleted = false")
+            .HasDatabaseName("ix_publications_tenant_published_cap");
 
-        builder.HasIndex(publication => new { publication.TenantId, publication.IsRead })
-            .HasFilter("is_read = false AND is_deleted = false")
-            .HasDatabaseName("ix_publications_tenant_unread");
+        // Lista por situação (fila de revisão, arquivadas...) e contadores do painel. is_read
+        // viaja no INCLUDE para os contadores saírem em Index Only Scan, sem visitar a tabela.
+        builder.HasIndex(publication => new { publication.TenantId, publication.Status, publication.PublishedOn, publication.CapturedAt })
+            .IsDescending(false, false, true, true)
+            .IncludeProperties(publication => publication.IsRead)
+            .HasFilter("is_deleted = false")
+            .HasDatabaseName("ix_publications_tenant_status_published");
+
+        // Filtros por cliente e por responsável também ordenam por data: sem published_on no
+        // índice o Postgres lê todas as linhas do responsável e ordena em memória.
+        builder.HasIndex(publication => new { publication.TenantId, publication.ClienteId, publication.PublishedOn, publication.CapturedAt })
+            .IsDescending(false, false, true, true)
+            .HasFilter("is_deleted = false AND cliente_id IS NOT NULL")
+            .HasDatabaseName("ix_publications_tenant_cliente_pub");
+
+        builder.HasIndex(publication => new { publication.TenantId, publication.ResponsavelUserId, publication.PublishedOn, publication.CapturedAt })
+            .IsDescending(false, false, true, true)
+            .HasFilter("is_deleted = false AND responsavel_user_id IS NOT NULL")
+            .HasDatabaseName("ix_publications_tenant_responsavel_pub");
 
         builder.HasIndex(publication => new { publication.TenantId, publication.ClienteId })
             .HasFilter("is_deleted = false")
@@ -144,11 +156,6 @@ public sealed class PublicationConfiguration : IEntityTypeConfiguration<Publicat
             .IsDescending(false, false, true)
             .HasDatabaseName("ix_publications_tenant_tribunal_published_on");
 
-        builder.HasIndex(publication => new { publication.TenantId, publication.PublishedOn })
-            .IsDescending(false, true)
-            .HasDatabaseName("ix_publications_tenant_published_on");
 
-        builder.HasIndex(publication => publication.CnjNumber)
-            .HasDatabaseName("ix_publications_cnj_number");
     }
 }

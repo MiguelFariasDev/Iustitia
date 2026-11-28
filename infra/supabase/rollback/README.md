@@ -31,6 +31,7 @@ npx supabase migration repair --status reverted 004 --workdir infra
 | 017_normas_juridicas | `017_normas_juridicas.down.sql` | Remove a coluna full-text e os índices; as tabelas são do EF. |
 | 018_tarefas_tags | `018_tarefas_tags.down.sql` | |
 | 019_financeiro | `019_financeiro.down.sql` | Desliga o RLS dos lançamentos. |
+| 020_publications_remove_gin_nao_usados | `020_publications_remove_gin_nao_usados.down.sql` | Recria `search_vector` e os GIN (reescreve a tabela). |
 
 O `.down.sql` cuida só do que o `.sql` fez (RLS, grants, índices, colunas geradas). As **tabelas** são criadas
 pelas migrations do EF Core e revertidas por elas (`efbundle <MigrationAnterior>`).

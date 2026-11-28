@@ -28,6 +28,17 @@ public sealed class AlertConfiguration : IEntityTypeConfiguration<Alert>
         builder.HasIndex(alert => new { alert.TenantId, alert.UserId, alert.IsRead })
             .HasDatabaseName("ix_alerts_tenant_user_read");
 
+        // Sino de alertas: lista do usuário (mais recentes primeiro) e contagem de não lidos.
+        // Parciais em dismissed_at IS NULL — alerta dispensado nunca é exibido.
+        builder.HasIndex(alert => new { alert.TenantId, alert.UserId, alert.CreatedAt })
+            .IsDescending(false, false, true)
+            .HasFilter("dismissed_at IS NULL")
+            .HasDatabaseName("ix_alerts_tenant_user_created");
+
+        builder.HasIndex(alert => new { alert.TenantId, alert.UserId })
+            .HasFilter("is_read = false AND dismissed_at IS NULL")
+            .HasDatabaseName("ix_alerts_tenant_user_unread");
+
         builder.HasIndex(alert => new { alert.TenantId, alert.Type, alert.CreatedAt })
             .IsDescending(false, false, true)
             .HasDatabaseName("ix_alerts_tenant_type_created");

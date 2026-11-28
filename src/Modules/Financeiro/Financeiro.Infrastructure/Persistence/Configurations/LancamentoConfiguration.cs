@@ -36,8 +36,11 @@ public sealed class LancamentoConfiguration : IEntityTypeConfiguration<Lancament
 
         builder.HasIndex(lancamento => new { lancamento.TenantId, lancamento.Vencimento })
             .HasDatabaseName("ix_lancamentos_tenant_vencimento");
-        builder.HasIndex(lancamento => new { lancamento.TenantId, lancamento.Status, lancamento.Tipo })
-            .HasDatabaseName("ix_lancamentos_tenant_status_tipo");
+        // Totais por tipo/situação: valor no INCLUDE para somar em Index Only Scan.
+        builder.HasIndex(lancamento => new { lancamento.TenantId, lancamento.Tipo, lancamento.Status })
+            .IncludeProperties(lancamento => lancamento.Valor)
+            .HasFilter("is_deleted = false")
+            .HasDatabaseName("ix_lancamentos_tenant_tipo_status_valor");
         builder.HasIndex(lancamento => new { lancamento.TenantId, lancamento.PagoEm })
             .HasDatabaseName("ix_lancamentos_tenant_pago_em");
     }

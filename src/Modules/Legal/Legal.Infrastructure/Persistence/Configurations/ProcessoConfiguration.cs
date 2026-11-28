@@ -93,8 +93,11 @@ public sealed class ProcessoConfiguration : IEntityTypeConfiguration<Processo>
         builder.HasIndex(processo => new { processo.TenantId, processo.ResponsavelUserId })
             .HasDatabaseName("ix_processos_tenant_responsavel");
 
-        builder.HasIndex(processo => new { processo.TenantId, processo.Area, processo.Status })
-            .HasDatabaseName("ix_processos_tenant_area_status");
+        // Lista de processos filtrada por situação e área, já ordenada por criação.
+        builder.HasIndex(processo => new { processo.TenantId, processo.Status, processo.Area, processo.CreatedAt })
+            .IsDescending(false, false, false, true)
+            .HasFilter("is_deleted = false")
+            .HasDatabaseName("ix_processos_tenant_status_area_created");
 
         // Índice PARCIAL para a consulta mais crítica do sistema: quais processos o job deve
         // consultar no DJEN. Roda a cada 6 horas por tenant e só enxerga ativos/suspensos —

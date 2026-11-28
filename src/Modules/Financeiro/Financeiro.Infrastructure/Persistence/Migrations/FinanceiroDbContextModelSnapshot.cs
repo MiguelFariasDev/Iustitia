@@ -112,8 +112,11 @@ namespace Advocacia.Modules.Financeiro.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "Vencimento")
                         .HasDatabaseName("ix_lancamentos_tenant_vencimento");
 
-                    b.HasIndex("TenantId", "Status", "Tipo")
-                        .HasDatabaseName("ix_lancamentos_tenant_status_tipo");
+                    b.HasIndex("TenantId", "Tipo", "Status")
+                        .HasDatabaseName("ix_lancamentos_tenant_tipo_status_valor")
+                        .HasFilter("is_deleted = false");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("TenantId", "Tipo", "Status"), new[] { "Valor" });
 
                     b.ToTable("lancamentos", (string)null);
                 });

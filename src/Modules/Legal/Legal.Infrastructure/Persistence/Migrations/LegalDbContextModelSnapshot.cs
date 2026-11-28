@@ -314,8 +314,10 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_processos_tenant_captura")
                         .HasFilter("status IN ('Ativo', 'Suspenso') AND is_deleted = false");
 
-                    b.HasIndex("TenantId", "Area", "Status")
-                        .HasDatabaseName("ix_processos_tenant_area_status");
+                    b.HasIndex("TenantId", "Status", "Area", "CreatedAt")
+                        .IsDescending(false, false, false, true)
+                        .HasDatabaseName("ix_processos_tenant_status_area_created")
+                        .HasFilter("is_deleted = false");
 
                     b.ToTable("processos", (string)null);
                 });
@@ -448,31 +450,13 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_publications");
 
-                    b.HasIndex("CnjNumber")
-                        .HasDatabaseName("ix_publications_cnj_number");
-
                     b.HasIndex("TenantId", "ClienteId")
                         .HasDatabaseName("ix_publications_tenant_cliente")
                         .HasFilter("is_deleted = false");
 
-                    b.HasIndex("TenantId", "IsRead")
-                        .HasDatabaseName("ix_publications_tenant_unread")
-                        .HasFilter("is_read = false AND is_deleted = false");
-
-                    b.HasIndex("TenantId", "PublishedAt")
-                        .HasDatabaseName("ix_publications_tenant_pending_review")
-                        .HasFilter("status = 'PendingReview' AND is_deleted = false");
-
-                    b.HasIndex("TenantId", "PublishedOn")
-                        .IsDescending(false, true)
-                        .HasDatabaseName("ix_publications_tenant_published_on");
-
                     b.HasIndex("TenantId", "ResponsavelUserId")
                         .HasDatabaseName("ix_publications_tenant_responsavel")
                         .HasFilter("is_deleted = false");
-
-                    b.HasIndex("TenantId", "Status")
-                        .HasDatabaseName("ix_publications_tenant_status");
 
                     b.HasIndex("TenantId", "ExternalId", "Source")
                         .IsUnique()
@@ -483,9 +467,31 @@ namespace Advocacia.Modules.Legal.Infrastructure.Persistence.Migrations
                         .IsDescending(false, false, true)
                         .HasDatabaseName("ix_publications_tenant_process_published");
 
+                    b.HasIndex("TenantId", "PublishedOn", "CapturedAt")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_publications_tenant_published_cap")
+                        .HasFilter("is_deleted = false");
+
                     b.HasIndex("TenantId", "Tribunal", "PublishedOn")
                         .IsDescending(false, false, true)
                         .HasDatabaseName("ix_publications_tenant_tribunal_published_on");
+
+                    b.HasIndex("TenantId", "ClienteId", "PublishedOn", "CapturedAt")
+                        .IsDescending(false, false, true, true)
+                        .HasDatabaseName("ix_publications_tenant_cliente_pub")
+                        .HasFilter("is_deleted = false AND cliente_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "ResponsavelUserId", "PublishedOn", "CapturedAt")
+                        .IsDescending(false, false, true, true)
+                        .HasDatabaseName("ix_publications_tenant_responsavel_pub")
+                        .HasFilter("is_deleted = false AND responsavel_user_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "Status", "PublishedOn", "CapturedAt")
+                        .IsDescending(false, false, true, true)
+                        .HasDatabaseName("ix_publications_tenant_status_published")
+                        .HasFilter("is_deleted = false");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("TenantId", "Status", "PublishedOn", "CapturedAt"), new[] { "IsRead" });
 
                     b.ToTable("publications", (string)null);
                 });

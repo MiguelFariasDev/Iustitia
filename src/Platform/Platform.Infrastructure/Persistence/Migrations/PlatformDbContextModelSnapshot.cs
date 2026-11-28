@@ -178,9 +178,18 @@ namespace Advocacia.Platform.Infrastructure.Persistence.Migrations
                     b.HasIndex("ReferenceId")
                         .HasDatabaseName("ix_alerts_reference");
 
+                    b.HasIndex("TenantId", "UserId")
+                        .HasDatabaseName("ix_alerts_tenant_user_unread")
+                        .HasFilter("is_read = false AND dismissed_at IS NULL");
+
                     b.HasIndex("TenantId", "Type", "CreatedAt")
                         .IsDescending(false, false, true)
                         .HasDatabaseName("ix_alerts_tenant_type_created");
+
+                    b.HasIndex("TenantId", "UserId", "CreatedAt")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("ix_alerts_tenant_user_created")
+                        .HasFilter("dismissed_at IS NULL");
 
                     b.HasIndex("TenantId", "UserId", "IsRead")
                         .HasDatabaseName("ix_alerts_tenant_user_read");
